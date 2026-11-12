@@ -18,11 +18,6 @@ See `adr/org-cloudflare-access-authentication-layer.md` for the rationale.
 | `/info/*`   | `info/org`         |
 | `/news/*`   | `news/org`         |
 
-## Out of Scope
-
-`auth/org`, `base/org`, and `core/org` are **not** covered by Cloudflare Access. Those surfaces use
-Acme/Sign ceremony + Operator session authentication, identical to the `app` and `com` surfaces.
-
 ## Authentication Flow
 
 ```
@@ -38,7 +33,7 @@ Identity Provider (e.g. Google Workspace)
 Cloudflare issues CF-Access-Jwt-Assertion (signed JWT)
   │
   ▼
-Origin (Next.js / Rails)  ← receives request with CF-Access-Jwt-Assertion header
+Rails origin  ← receives request with CF-Access-Jwt-Assertion header
 ```
 
 Unauthenticated requests are rejected at the Cloudflare edge and never reach the Rails origin or the

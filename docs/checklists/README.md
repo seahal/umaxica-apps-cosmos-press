@@ -1,9 +1,8 @@
 # Durable acceptance checklists
 
-`docs/checklists/` states WHAT MUST KEEP WORKING. `test/`, `gait/` and `e2e/` implement checks;
+`docs/checklists/` states WHAT MUST KEEP WORKING. `test/` implements Rails behavior checks;
 `evidence/` records WHAT WAS ACTUALLY OBSERVED. A checklist is neither a test result nor proof.
 
-- [Authentication](authentication.md)
 - [Session management](session-management.md)
 - [Authorization](authorization.md)
 - [Sign-out](sign-out.md)

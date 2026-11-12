@@ -108,6 +108,21 @@ module Authorization
       assert_nil AuthorizationTokenClaims.session_id(nil)
       assert_nil AuthorizationTokenClaims.base_session_id(nil)
       assert_nil AuthorizationTokenClaims.jti(nil)
+      assert_equal [], AuthorizationTokenClaims.scopes(nil)
+      assert_equal [], AuthorizationTokenClaims.audiences(nil)
+      assert_nil AuthorizationTokenClaims.client_id(nil)
+    end
+
+    test "extractors read scopes audiences and client identity from an access token payload" do
+      payload = {
+        "scope" => "domain:operator session:read",
+        "aud" => ["edit-org-ww"],
+        "client_id" => "edit-org-ww",
+      }
+
+      assert_equal %w(domain:operator session:read), AuthorizationTokenClaims.scopes(payload)
+      assert_equal ["edit-org-ww"], AuthorizationTokenClaims.audiences(payload)
+      assert_equal "edit-org-ww", AuthorizationTokenClaims.client_id(payload)
     end
 
     test "build carries the Base Browser Session binding separately from the RP sid" do

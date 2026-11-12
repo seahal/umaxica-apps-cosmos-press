@@ -49,8 +49,13 @@ module Publishing
     test "archiving is reversible and does not release the slug for reuse" do
       @term.update!(archived_at: Time.current, archive_reason: "retired")
 
-      assert_raises(ActiveRecord::RecordNotUnique) do
+      assert_raises(ActiveRecord::RecordInvalid) do
         publishing_term(vocabulary: @category, locale: "ja", slug: "retire-me")
+      end
+      assert_raises(ActiveRecord::RecordNotUnique) do
+        @term.class.transaction(requires_new: true) do
+          @term.class.insert_all!([@term.attributes.except("id").merge("public_id" => "z" * 21)])
+        end
       end
 
       @term.update!(archived_at: nil, archive_reason: nil)

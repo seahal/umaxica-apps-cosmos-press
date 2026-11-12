@@ -1,5 +1,9 @@
 # Unified Enforcement Rollout Runbook
 
+> **Route boundary update (2026-11-10):** The local Base ORG enforcement console was removed. This
+> procedure covers persisted enforcement records, migrations, secrets, and scheduled jobs; it does
+> not provide an HTTP workflow for creating or reviewing cases.
+
 This is the step-by-step operational companion to `adr/unified-enforcement.md` (design and Decision
 Log) and `docs/security/unified-enforcement.md` (operational contract). Read those first for
 rationale; this document only covers deployment mechanics, provisioning order, and verification
@@ -7,25 +11,16 @@ steps.
 
 ## Current status
 
-As of 2026-11-07, the live enforcement entrypoints cover `app` and `org`. The `org` Support routes
-for `com` Cases have been removed, and the runtime identifier digest accepts only `app` and `org`.
-Public anonymous `com` Preference, Chronicle, content and Publishing surfaces remain. No `com`
-enforcement data or database was deleted by this change. The accepted `adr/unified-enforcement.md`
-still specifies `app`/`com`/`org`; its intended supersession or amendment requires an owner decision.
-Until then, follow this runbook only for the live `app` and `org` enforcement paths, and do not
-provision the retired `com` enforcement key.
+The 2026-11-10 surface hard reset removed the local Auth and Base controller trees, including the
+enforcement case console. Press currently serves no local enforcement case creation or review route.
+Enforcement models, migrations, identifier digest code, triggers, and recurring jobs remain; no
+database was dropped. The accepted `adr/unified-enforcement.md` still describes the former route
+scope and is not amended by this report. Treat that route description as historical until its owner
+updates it.
 
-The enforcement implementation and rollout work is otherwise partially complete:
-
-- Signup gating (email + telephone, `app`) is wired and tested.
-- Identifier attachment gating (email + telephone, `app` and `org`) is wired and tested.
-- The org console (Phase 9: create/approve/release, realm-scoped) is wired and tested.
-- Recovery flow gating has no wiring target: this repository has no account-recovery or reactivation
-  controller today. `EnforcementIdentifierGate#enforcement_blocks_email_recovery?` and
-  `#enforcement_blocks_telephone_recovery?` exist and are unit-tested for when such a controller is
-  built; wiring them in without a recovery flow to attach to would be scope invention, not rollout.
-- Production secret provisioning (below) has not been performed outside `compose.yaml`'s
-  development-only defaults.
+This runbook now covers persisted enforcement data, migration state, secret provisioning, and
+scheduled cleanup/reconciliation. It does not describe a local case-management workflow. Production
+secret provisioning has not been performed outside `compose.yaml` development settings.
 
 ## Secret provisioning order
 
@@ -55,8 +50,8 @@ environment in turn (never all at once, and never after deploying the code):
 3. Restart/redeploy so every app process picks up the new value. Confirm with a Rails console in
    that environment: `EnforcementIdentifierDigest.key_for("app")` and
    `EnforcementIdentifierDigest.key_for("org")` must return non-nil strings, not raise.
-4. Only after both keys are confirmed present in an environment, deploy application code that
-   calls `EnforcementIdentifierDigest`/`EnforcementIdentifierGate` to that environment.
+4. Only after both keys are confirmed present in an environment, deploy application code that calls
+   `EnforcementIdentifierDigest`/`EnforcementIdentifierGate` to that environment.
 
 Deploying the gating code before the keys exist in that environment causes each signup, attachment,
 and future recovery request that reaches the gate to raise `KeyError` and return a server error.
@@ -83,11 +78,11 @@ Run after secret provisioning and migration, before considering that environment
 
 1. `EnforcementIdentifierDigest.key_for(realm)` returns non-nil for `app` and `org`.
 2. `bin/rails db:migrate:status` shows zero pending migrations across all configured database roles.
-3. Full regression suite green in that environment's CI, including
-   `test/controllers/base/org/support/enforcement_cases_controller_test.rb` (org console),
-   `test/integration/enforcement_identifier_attachment_gate_test.rb` (attachment gating),
-   `test/lib/enforcement_identifier_digest_test.rb`, and
-   `test/controllers/concerns/enforcement_identifier_gate_test.rb`.
+3. Run the retained enforcement regression tests in CI:
+   `test/operations/enforcement_case_apply_authority_test.rb`,
+   `test/models/enforcement_triggers_test.rb`, `test/lib/enforcement_identifier_digest_test.rb`, and
+   `test/policies/operator_capability_policies_test.rb`. These cover persisted behavior and policy;
+   they do not establish an HTTP case-management route.
 4. `test/models/enforcement_triggers_test.rb` passes (confirms both currently-built triggers —
    `client_emails` permanently_frozen protection, `clients` hard-delete protection — reject the
    raw-SQL/`delete_all` paths they guard).
@@ -96,9 +91,9 @@ Run after secret provisioning and migration, before considering that environment
    job runner's own operational dashboard, not just the YAML). `EnforcementReconciliationJob` must
    be able to rediscover a persisted appeal after a failed Case-ending or Chronicle side effect; a
    missing queue execution is not evidence that the appeal decision was rolled back.
-6. A smoke test through the org console: create a `cooldown` Case with no approval required, confirm
-   it applies immediately; create a `permanent_ban` Case, confirm it requires approval and does not
-   apply until a second operator approves.
+6. Do not attempt a local console smoke test: Press serves no enforcement case-creation or review
+   route. Case changes require the owning external operator authority until a separately approved
+   surface is introduced.
 
 ## Known remaining scope (not blocking this rollout, tracked for later work)
 

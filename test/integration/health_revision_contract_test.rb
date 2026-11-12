@@ -3,8 +3,7 @@
 
 require "test_helper"
 
-# The final wire contract for the health and revision endpoints, exercised end to end on two
-# surfaces (base/app and base/com).
+# The final wire contract for the health and revision endpoints, exercised end to end on retained surfaces (Info app, Info com and Edit org).
 #
 # Two endpoint families:
 #
@@ -21,9 +20,9 @@ require "test_helper"
 class HealthRevisionContractTest < ActionDispatch::IntegrationTest
   REVISION = "0123456789abcdef0123456789abcdef01234567"
 
-  APP_HOST = ENV.fetch("PUBLIC_BASE_SERVICE_URL", "base.app.localhost")
-  COM_HOST = ENV.fetch("PUBLIC_BASE_CORPORATE_URL", "base.com.localhost")
-  EDIT_HOST = ENV.fetch("PUBLIC_EDIT_STAFF_URL", "edit.org.localhost")
+  APP_HOST = ENV.fetch("PRIVATE_INFO_SERVICE_URL")
+  COM_HOST = ENV.fetch("PRIVATE_INFO_CORPORATE_URL")
+  EDIT_HOST = ENV.fetch("PUBLIC_EDIT_STAFF_URL")
 
   SURFACES = {
     APP_HOST => Health::Profiles::App,
@@ -606,7 +605,7 @@ class HealthRevisionContractTest < ActionDispatch::IntegrationTest
     assert_equal "no-store", response.headers["Cache-Control"]
     assert_match(
       Regexp.new(
-        "\\Atitle: Health status\\nnamespace: base/app\\nstatus: unavailable\\nstartup: ok\\n" \
+        "\\Atitle: Health status\\nnamespace: info/app\\nstatus: unavailable\\nstartup: ok\\n" \
         "liveness: ok\\nreadiness: unavailable\\ntimestamp: [^\\n]+Z\\n\\z",
       ),
       response.body,

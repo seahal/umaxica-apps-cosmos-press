@@ -2,7 +2,11 @@
 # frozen_string_literal: true
 
 module Authentication
-  class AccessPolicy < ApplicationPolicy
+  # Request admission includes anonymous Sign/public requests. Session capability checks belong
+  # to domain policies after authentication, not to these unchanged admission predicates.
+  class AccessPolicy < ActionPolicy::Base
+    authorize :user, optional: true
+
     def public_strict?
       true
     end

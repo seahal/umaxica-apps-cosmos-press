@@ -3,19 +3,14 @@
 
 require "test_helper"
 
-# Host Authorization admits more hostnames than the router serves: `config.hosts` is built from
-# both the PUBLIC_* and PRIVATE_* families plus the development tunnel aliases, while a surface is
-# only reachable if some `constraints(host:)` block claims it.
-#
-# For a hostname in that gap, Rails' development-only `get "/" => "rails/welcome#index"` answered
-# 200 while every other path returned 404. Anything checking status codes read the surface as
-# alive. A Core hostname sat in exactly that state, and the welcome page is what made it look
-# healthy while it served nothing.
+# Host Authorization can admit more hostnames than the router serves. A hostname is reachable only
+# when a retained surface route claims it. Rails' development welcome page previously answered 200
+# for an unclaimed root, making an unavailable surface appear alive.
 class UnknownHostRootTest < ActionDispatch::IntegrationTest
   self.fixture_table_names = []
 
-  # No Palm corporate route or host-authorization entry exists; this remains useful for confirming
-  # that an unclaimed product hostname cannot reach the framework welcome page.
+  # An unserved product hostname confirms that an unclaimed host cannot reach the framework welcome
+  # page.
   UNSERVED_HOST = "palm-jp.umaxica.com"
 
   test "a host no surface claims does not answer 200 on root" do
@@ -36,9 +31,7 @@ class UnknownHostRootTest < ActionDispatch::IntegrationTest
 
   test "claiming root for unknown hosts does not take it from the surfaces that own one" do
     {
-      ENV.fetch("PRIVATE_CORE_SERVICE_URL", "core.app.localhost") => "core/app/roots",
-      ENV.fetch("PRIVATE_BASE_SERVICE_URL", "base.app.localhost") => "base/app/roots",
-      ENV.fetch("PRIVATE_DOCS_SERVICE_URL", "docs.app.localhost") => "docs/app/roots",
+      ENV.fetch("PUBLIC_EDIT_STAFF_URL") => "edit/org/roots",
     }.each do |host, controller|
       recognized = Rails.application.routes.recognize_path("http://#{host}/", method: :get)
 

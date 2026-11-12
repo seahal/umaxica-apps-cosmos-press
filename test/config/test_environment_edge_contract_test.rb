@@ -38,6 +38,16 @@ class TestEnvironmentEdgeContractTest < ActiveSupport::TestCase
     assert_nil catalog.fetch(:server_version)
   end
 
+  test "database safety reports each configured test connection" do
+    assert_equal(
+      [{ name: "primary", database: "test_primary_db", host: "primary", port: 5432 }],
+      Umaxica::TestEnvironment::DatabaseSafety.report(
+        configurations: [database_config],
+        environment: database_environment,
+      ),
+    )
+  end
+
   test "database preparation rejects a blank list after trimming" do
     error =
       assert_raises(Umaxica::TestEnvironment::ConfigurationError) do

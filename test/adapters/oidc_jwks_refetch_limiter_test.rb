@@ -124,8 +124,8 @@ class OidcJwksRefetchLimiterTest < ActiveSupport::TestCase
 
     [[other_issuer, "invalid_token"], [wrong_algorithm, "invalid_header"]].each do |token, error|
       result = OidcOpAccessTokenVerifier.new(
-        access_token: token, client_id: "core-app-jp", realm: "app", issuer: "https://op.example",
-        audience: "core-app-jp", jwks_client: client,
+        access_token: token, client_id: "edit-org-ww", realm: "org", issuer: "https://op.example",
+        audience: "edit-org-ww", jwks_client: client,
       ).call
 
       assert_equal error, result.error

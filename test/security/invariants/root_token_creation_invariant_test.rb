@@ -10,9 +10,7 @@ class RootTokenCreationInvariantTest < ActiveSupport::TestCase
   ROOT_TOKEN_RECEIVERS = /\A(?:ClientToken|OperatorToken|token_class)\z/.freeze
   ROOT_TOKEN_ASSOCIATIONS = /\.(?:client_tokens|staff_tokens)\z/.freeze
   ROOT_TOKEN_TABLE_INSERTS = /\bINSERT\s+INTO\s+(?:client_tokens|operator_tokens)\b/i.freeze
-  ISSUANCE_PATH = "app/controllers/concerns/authentication_base.rb"
-
-  test "A44-7 root-token creation stays inside the final issuance method" do
+  test "root authentication tokens are not issued by this application" do
     violations = []
 
     (Rails.root.glob("app/**/*.rb") + Rails.root.glob("lib/**/*.rb")).each do |path|
@@ -26,7 +24,7 @@ class RootTokenCreationInvariantTest < ActiveSupport::TestCase
         if node.is_a?(Prism::CallNode) && ROOT_TOKEN_WRITES.include?(node.name)
           receiver = node.receiver&.location&.slice.to_s
           root_token_write = ROOT_TOKEN_RECEIVERS.match?(receiver) || ROOT_TOKEN_ASSOCIATIONS.match?(receiver)
-          allowed = path.relative_path_from(Rails.root).to_s == ISSUANCE_PATH && inside_final_issuance
+          allowed = false
           if root_token_write && !allowed
             violations << "#{path.relative_path_from(Rails.root)}:#{node.location.start_line}"
           end
@@ -39,6 +37,6 @@ class RootTokenCreationInvariantTest < ActiveSupport::TestCase
       end
     end
 
-    assert_empty violations.uniq, "Root tokens may be created only in AuthenticationBase#create_login_token_record"
+    assert_empty violations.uniq, "Root authentication tokens must be issued by their owning external surface"
   end
 end

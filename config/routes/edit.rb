@@ -27,6 +27,22 @@ scope module: :edit, as: :edit do
         namespace :v0 do
           resource :health, only: :show, path: "health.json", format: false
           resource :revision, only: :show, path: "revision.json", format: false
+
+          # Publishing authority for the Edit RP; fixed cells, scoped public references.
+          scope(
+            path: "publishing/:surface/:audience", as: :publishing,
+            constraints: { surface: /docs|help|info|news/, audience: /app|com|org/ },
+          ) do
+            resources(
+              :entries, only: %i(index show create update), param: :entry_ref,
+                        controller: "publishing/entries",
+            ) do
+              resources(
+                :publications, only: %i(create destroy), param: :publication_ref, controller: "publishing/publications",
+              )
+              resource(:archive, only: %i(create destroy), controller: "publishing/archives")
+            end
+          end
         end
       end
 
@@ -38,6 +54,9 @@ scope module: :edit, as: :edit do
         # R5-WU10 server-to-server OIDC Back-Channel Logout receiver for this RP cell.
         resources :closures, only: :create
       end
+
+      # Edit owns its RP-side step-up flow on the same host as the staff session.
+      resource :verification, only: %i(show create)
 
       scope path: "sign", as: :sign do
         get "", to: "sign/entries#show", as: :show

@@ -28,6 +28,14 @@ class Actor::AuthenticationTest < ActiveSupport::TestCase
     assert_not Actor::Authentication::NULL.signed_in?
   end
 
+  test "standby status comes from the signed authentication context" do
+    standby = Actor::Authentication.new(access_claims: { "authn_ctx" => "standby" })
+    normal = Actor::Authentication.new(access_claims: { "authn_ctx" => "normal" })
+
+    assert_predicate standby, :standby?
+    assert_not_predicate normal, :standby?
+  end
+
   test "reads an authentication event timestamp from the access claims" do
     timestamp = Time.utc(2026, 1, 2, 3, 4, 5)
 

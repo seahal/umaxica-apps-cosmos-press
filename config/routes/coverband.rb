@@ -4,15 +4,15 @@
 require_relative "../../lib/diagnostic_surface_credentials"
 
 # Coverband owns the runtime code-execution report (Coverband::Reporters::Web), on its own
-# dedicated host. Public canonical host: coverband.umaxica.dev.
+# dedicated host. Public canonical host: coverband-press.umaxica.dev.
 # Development host: coverband.core.dev.localhost.
-constraints host: [ENV["PUBLIC_COVERBAND_URL"], ENV["PRIVATE_COVERBAND_URL"],
+constraints host: ["coverband-press.umaxica.dev", ENV["PRIVATE_COVERBAND_URL"],
                    "coverband.core.dev.localhost",].compact do
   # `coverband` is a `group :development` gem (Gemfile), and config/application.rb requires it only
   # in the process that serves requests (CoverbandProcessGate). The constant therefore does not
   # exist while running the test suite, in a console, or in a rake task.
   if defined?(Coverband::Reporters::Web)
-    # Cloudflare Access fronts coverband.umaxica.dev, but the mounted Rack app must not depend on
+    # Cloudflare Access fronts coverband-press.umaxica.dev, but the mounted Rack app must not depend on
     # the edge alone: Coverband::Reporters::Web subclasses nothing of this application, so
     # enforce_access_policy! and surface isolation never run for it, and any request that reached
     # the origin directly would get a file-by-file, line-by-line read of this repository's source

@@ -4,7 +4,7 @@
 require "prism"
 require_relative "../../test_helper"
 
-class RateLimitDummyController < ApplicationController
+class Edit::Org::RateLimitDummyController < ApplicationController
   include ::RateLimit
 
   rate_limit(
@@ -22,7 +22,7 @@ class RateLimitDummyController < ApplicationController
   end
 end
 
-class RateLimitShortNameController < ApplicationController
+class Edit::Org::RateLimitShortNameController < ApplicationController
   include ::RateLimit
 
   rate_limit(
@@ -49,7 +49,7 @@ class RateLimitShortNameController < ApplicationController
   end
 end
 
-class RateLimitSharedScopeOneController < ApplicationController
+class Edit::Org::RateLimitSharedScopeOneController < ApplicationController
   include ::RateLimit
 
   rate_limit(
@@ -67,7 +67,7 @@ class RateLimitSharedScopeOneController < ApplicationController
   end
 end
 
-class RateLimitSharedScopeTwoController < ApplicationController
+class Edit::Org::RateLimitSharedScopeTwoController < ApplicationController
   include ::RateLimit
 
   rate_limit(
@@ -103,7 +103,7 @@ class RateLimitTest < ActionDispatch::IntegrationTest
 
   test "rails rate limiter returns a 429 problem document with Retry-After and RateLimit" do
     with_routing do |set|
-      set.draw { get "/test_rate_limit", to: "rate_limit_dummy#index" }
+      set.draw { get "/test_rate_limit", to: "edit/org/rate_limit_dummy#index" }
 
       get "/test_rate_limit", headers: { "Host" => "example.com", "Accept" => "application/json" }
 
@@ -129,7 +129,7 @@ class RateLimitTest < ActionDispatch::IntegrationTest
   # reshape traffic around it. Operators read it from the notification asserted below instead.
   test "the response discloses neither the rule that fired nor the enforcing layer" do
     with_routing do |set|
-      set.draw { get "/test_rate_limit", to: "rate_limit_dummy#index" }
+      set.draw { get "/test_rate_limit", to: "edit/org/rate_limit_dummy#index" }
 
       get "/test_rate_limit", headers: { "Host" => "example.com", "Accept" => "application/json" }
       get "/test_rate_limit", headers: { "Host" => "example.com", "Accept" => "application/json" }
@@ -146,7 +146,7 @@ class RateLimitTest < ActionDispatch::IntegrationTest
 
   test "rails rate limiter returns html 429 with plain message" do
     with_routing do |set|
-      set.draw { get "/test_rate_limit_html", to: "rate_limit_dummy#index" }
+      set.draw { get "/test_rate_limit_html", to: "edit/org/rate_limit_dummy#index" }
 
       get "/test_rate_limit_html", headers: { "Host" => "example.com", "Accept" => "text/html" }
       get "/test_rate_limit_html", headers: { "Host" => "example.com", "Accept" => "text/html" }
@@ -164,7 +164,7 @@ class RateLimitTest < ActionDispatch::IntegrationTest
 
     ActiveSupport::Notifications.subscribed(callback, "rate_limit.action_controller") do
       with_routing do |set|
-        set.draw { get "/test_rate_limit", to: "rate_limit_dummy#index" }
+        set.draw { get "/test_rate_limit", to: "edit/org/rate_limit_dummy#index" }
 
         get "/test_rate_limit", headers: { "Host" => "example.com" }
         get "/test_rate_limit", headers: { "Host" => "example.com" }
@@ -178,7 +178,7 @@ class RateLimitTest < ActionDispatch::IntegrationTest
 
   test "distinct names in the same controller do not collide" do
     with_routing do |set|
-      set.draw { get "/test_named", to: "rate_limit_short_name#index" }
+      set.draw { get "/test_named", to: "edit/org/rate_limit_short_name#index" }
 
       get "/test_named", headers: { "Host" => "example.com" }
 
@@ -193,8 +193,8 @@ class RateLimitTest < ActionDispatch::IntegrationTest
   test "shared scope is honored across controllers" do
     with_routing do |set|
       set.draw do
-        get "/test_scope_one", to: "rate_limit_shared_scope_one#index"
-        get "/test_scope_two", to: "rate_limit_shared_scope_two#index"
+        get "/test_scope_one", to: "edit/org/rate_limit_shared_scope_one#index"
+        get "/test_scope_two", to: "edit/org/rate_limit_shared_scope_two#index"
       end
 
       get "/test_scope_one", headers: { "Host" => "example.com" }
@@ -212,9 +212,9 @@ class RateLimitTest < ActionDispatch::IntegrationTest
     assert_not RateLimit.const_defined?(:STORE_REGISTRY, false)
     assert_not RateLimit.const_defined?(:SKIP_DEFAULT_CLASSES, false)
 
-    controller = RateLimitDummyController.new
+    controller = Edit::Org::RateLimitDummyController.new
 
-    assert_not_respond_to RateLimitDummyController, :has_custom_rate_limit!
+    assert_not_respond_to Edit::Org::RateLimitDummyController, :has_custom_rate_limit!
     assert_not_respond_to controller, :check_default_rate_limit, true
     assert_not_respond_to controller, :handle_rate_limit_exceeded!, true
   end

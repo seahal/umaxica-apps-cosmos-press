@@ -12,18 +12,19 @@ source-of-truth: current-repository-evidence
 confidentiality: internal-vendor-shareable
 ---
 
-> **Current-contract supersession (2026-09-23):** This package was assembled before the accepted
-> Base/Auth authority decision. Its historical Acme-only, Sign, and shared-RP descriptions must not
-> be treated as current implementation requirements. The active Rails contract is
-> `adr/base-auth-ceremony-and-seven-rp-boundary.md`: Base is the sole physical OIDC
-> IdP/Authorization Server, Auth is ceremony-only, and first-party browser RPs use independent
-> surface registrations with `/sign` and `/oidc/callback`. The package remains useful as historical
-> vendor-review context until its individual inventories are refreshed.
+> **Historical package (2026-11-10):** This package was assembled before the accepted Base/Auth
+> authority decision and the later Press surface hard reset. Its Acme, Sign, Base, Core, Palm, Tech,
+> Visa and Warp route descriptions are historical and must not be treated as current Press
+> implementation requirements. The active local route inventory is in `README.md`; the active
+> external Edit OIDC boundary is in `docs/security/refresh-token-rotation.md`. The package remains
+> only as historical vendor-review context.
+
+<!-- Previous supersession record retained for provenance: 2026-09-23. -->
 
 # Purpose
 
-This package is the stable vendor-facing documentation set for Umaxica identity and control-plane
-behavior as evidenced by the current repository.
+This is a historical vendor-facing documentation set for the former Umaxica identity and
+control-plane architecture. It is not evidence of current Press routes or capabilities.
 
 # Distribution Warning
 
@@ -33,7 +34,7 @@ behavior as evidenced by the current repository.
 - Vendor-facing authority is defined by `01_responsibility_matrix.md` and
   `13_normative-baseline.md`.
 
-# Scope
+# Historical Scope
 
 It explains the current identity control plane, route ownership, ceremony boundaries,
 cookie/session/token ownership, failure taxonomy, social linking policy, threat model, and review
@@ -76,7 +77,7 @@ Primary evidence used for this package:
 - `adr/acme-sign-core-base-port-boundary.md`
 - `adr/frontend-architecture-toolchain.md`
 
-# Current Decisions
+# Decisions Captured at Package Creation
 
 - Acme is the only IdP / Authorization Server.
 - Sign is an RP gateway and ceremony UI, not the token or session authority.
@@ -116,7 +117,8 @@ Primary evidence used for this package:
 
 # Documentation Status
 
-Draft vendor package, grounded in current repository evidence.
+Historical draft vendor package; current behavior is defined by the active route inventory and
+repository code.
 
 # Security and Secret Handling Warning
 

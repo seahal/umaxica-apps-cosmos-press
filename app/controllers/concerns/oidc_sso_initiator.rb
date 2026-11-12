@@ -10,22 +10,12 @@ module OidcSsoInitiator
   # refused at the callback. This is the intended behavior, not a limit to raise.
   OIDC_PENDING_FLOW_LIMIT = 1
 
-  def authenticate!
-    if logged_in?
-      SignRiskEnforcer.call(current_resource)
-      return
-    end
+  public
 
+  def authenticate!
+    return if logged_in?
     return render(json: { error: "Unauthorized" }, status: :unauthorized) if request.format.json?
 
-    SignRiskEmitter.emit(
-      "auth_required",
-      ip: request&.remote_ip,
-      user_agent: request&.user_agent,
-      request_id: request&.request_id,
-      path: request&.fullpath,
-      method: request&.request_method,
-    )
     redirect_to_oidc_authorization_url(sign_in_url_with_target(encoded_pt(request.fullpath)))
   end
 
@@ -37,19 +27,50 @@ module OidcSsoInitiator
   # D-151: the RP target travels as a path-only `target_link_uri` (no query).
   def sign_in_url_with_target(pt)
     target = RpTargetLinkUri.normalize(pt.present? ? URI.parse(decode_pt(pt)).path : nil)
-    query = { ri: RequestContextContract.normalize_region(params[:ri]), target_link_uri: target }
+    query = { ri: oidc_request_region, target_link_uri: target }
     "/sign?#{query.compact.to_query}"
   rescue URI::InvalidURIError
-    "/sign?#{{ ri: RequestContextContract.normalize_region(params[:ri]) }.compact.to_query}"
+    "/sign?#{{ ri: oidc_request_region }.compact.to_query}"
   end
 
   private
 
+  def oidc_request_region
+    RequestContextContract.normalize_region(params[:ri])
+  end
+
+  def normalize_oidc_prompt(value)
+    tokens = value.to_s.split
+    return nil if tokens.empty?
+    return tokens.first if tokens.one? && %w(login none create).include?(tokens.first)
+
+    raise ArgumentError, "prompt is not supported"
+  end
+
+  def normalize_oidc_max_age(value)
+    return nil if value.blank?
+
+    normalized =
+      if value.is_a?(Integer)
+        value
+      elsif value.to_s.match?(/\A\d+\z/)
+        value.to_i
+      else
+        raise ArgumentError
+      end
+    raise ArgumentError, "max_age must be a non-negative integer" if normalized.negative?
+
+    normalized
+  rescue ArgumentError, TypeError
+    raise ArgumentError, "max_age must be a non-negative integer"
+  end
+
   def initiate_oidc_session!(target_link_uri: nil, prompt: nil, max_age: nil)
-    prompt = OidcAuthorizeRequestResolver.normalize_prompt(prompt)
-    max_age = OidcAuthorizeRequestResolver.normalize_max_age(max_age)
+    oidc_request_region
+    prompt = normalize_oidc_prompt(prompt)
+    max_age = normalize_oidc_max_age(max_age)
     verifier = SecureRandom.urlsafe_base64(48)
-    challenge = Base64.urlsafe_encode64(Digest::SHA256.digest(verifier), padding: false)
+    challenge = OidcPkce.challenge_for(verifier)
     nonce = SecureRandom.urlsafe_base64(32)
     state, jti = OidcStateJwt.issue(
       client_id: oidc_client_id,
@@ -89,10 +110,10 @@ module OidcSsoInitiator
   def oidc_redirect_decision(url)
     decision = oidc_acme_service_origin.decision_for_authorize_url(url, request: request)
     return decision unless decision.direct?
-    # Edit's RP ceremony is a separate review slice; preserve its existing admission decision.
-    return decision if %w(edit-org-ww tech-org-ww).include?(oidc_client_id)
+    # Edit is the only first-party browser RP retained by this application.
+    return decision if oidc_client_id == "edit-org-ww"
 
-    # A shared registrable domain does not merge RP and Base trust boundaries.
+    # A shared registrable domain does not merge RP and authority trust boundaries.
     decision.with(kind: :jump, reason_code: "jump_authorize_handoff")
   end
 
@@ -106,13 +127,9 @@ module OidcSsoInitiator
       state: state,
       nonce: nonce,
       scope: "openid profile",
-      # The authorization endpoint skips region normalization, so it can only carry the region the
-      # initiating request already resolved. Without this the ceremony reaches the credential
-      # gateway region-less and every URL built from it downstream loses the region too.
-      # `RequestContextContract` is used directly rather than `current_region_identifier` because
-      # this concern is also included on controllers that do not mix in `PreferenceGlobal`.
-      ri: RequestContextContract.normalize_region(params[:ri]),
-    }
+      # Region is supplied by this request; missing input does not select a preference.
+      ri: oidc_request_region,
+    }.compact
     query[:prompt] = prompt if prompt.present?
     query[:max_age] = max_age if max_age.present?
     oidc_acme_service_origin.authorization_endpoint(query: query)
@@ -152,8 +169,7 @@ module OidcSsoInitiator
     oidc_back_channel_url(oidc_acme_service_origin.token_endpoint)
   end
 
-  # Server-to-server calls to the OP (token, UserInfo) reach this same Rails process. Locally the
-  # public HTTPS origin is served by the tunnel, not by this host, so the call goes to the local port.
+  # The OP belongs to Access. The outbound boundary preserves its registered external origin.
   def oidc_back_channel_url(public_endpoint)
     OutboundHttp::LocalBackChannel.url(public_endpoint)
   end
@@ -234,13 +250,7 @@ module OidcSsoInitiator
 
   def oidc_redirect_surface
     case self.class.name.to_s
-    when /\ASign::App::/ then "sign_app"
-    when /\ASign::Org::/ then "sign_org"
-    when /\ACore::App::/ then "core_app"
-    when /\ACore::Org::/ then "core_org"
-    when /\ABase::App::/ then "base_app"
-    when /\ABase::Org::/ then "base_org"
-    when /\APalm::App::/ then "palm_app"
+    when /\AEdit::Org::/ then "edit_org"
     else
       self.class.name.to_s
     end

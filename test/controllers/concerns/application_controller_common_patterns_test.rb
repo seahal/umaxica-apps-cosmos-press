@@ -11,14 +11,6 @@ module Concerns
     ALL_CONTROLLER_FILES = Dir.glob(Rails.root.join("app/controllers/**/application_controller.rb").to_s)
       .reject { |f| f.include?("/vendor/") }
       .reject { |f| f.end_with?("/controllers/application_controller.rb") }
-      .reject { |f| f.include?("/sign/com/") }
-      .reject { |f| f.include?("/jump/") }
-      .reject { |f| f.include?("/palm/") }
-      # The Base developer and network faces are OIDC/OAuth Non-Participants that serve only a
-      # landing page, so they carry no actor/session lifecycle. See
-      # adr/oidc-oauth-participation-allowlist-and-non-participant-surfaces.md.
-      .reject { |f| f.include?("/base/dev/") }
-      .reject { |f| f.include?("/base/net/") }
       .sort
     CONTROLLER_FILES =
       ALL_CONTROLLER_FILES.index_with do |file|
@@ -45,57 +37,6 @@ module Concerns
       end
     end
 
-    test "all application controllers include an actor lifecycle" do
-      CONTROLLER_FILES.each_value do |controller|
-        content = controller[:content]
-        controller_name = controller[:name]
-
-        assert(
-          content.include?("ActorSupport") || content.include?("ComAnonymousActorContext"),
-          "#{controller_name} should include ActorSupport or ComAnonymousActorContext",
-        )
-      end
-    end
-
-    test "all application controllers include Session" do
-      CONTROLLER_FILES.each_value do |controller|
-        content = controller[:content]
-        controller_name = controller[:name]
-
-        assert_includes content, "Session",
-                        "#{controller_name} should include Session"
-      end
-    end
-
-    test "all application controllers include Finisher" do
-      CONTROLLER_FILES.each_value do |controller|
-        content = controller[:content]
-        controller_name = controller[:name]
-
-        assert_includes content, "Finisher",
-                        "#{controller_name} should include Finisher"
-      end
-    end
-
-    test "all application controllers have cleanup action" do
-      pattern = %r{
-        (after_action|append_after_action)\s+:(purge_current|finish_request)
-        |
-        (prepend_around_action|around_action)\s+:(with_actor_lifecycle|with_anonymous_context_lifecycle)
-    }x
-
-      CONTROLLER_FILES.each_value do |controller|
-        content = controller[:content]
-        controller_name = controller[:path_name]
-
-        assert_match(
-          pattern,
-          content,
-          "#{controller_name} should have cleanup action",
-        )
-      end
-    end
-
     test "application controllers do not register removed default rate limit callback" do
       CONTROLLER_FILES.each_value do |controller|
         content = controller[:content]
@@ -106,51 +47,15 @@ module Concerns
       end
     end
 
-    test "all application controllers set current context before reset flash" do
-      CONTROLLER_FILES.each_value do |controller|
-        content = controller[:content]
-        controller_name = controller[:path_name]
+    test "Edit org authenticates locally and authorizes through the verified RP principal" do
+      controller = CONTROLLER_FILES.values.find { |entry| entry[:path_name] == "edit::org" }
 
-        assert_match(
-          /before_action :(set_current_context|set_anonymous_context)\s+before_action :reset_flash/,
-          content,
-          "#{controller_name} should set current context before reset flash",
-        )
+      assert_not_nil controller, "expected the retained Edit org application controller"
+      %w(BrowserRpAuthentication BrowserRpSafeRequestRefresh BrowserRpUnsafeRequestRefresh
+         ActionPolicy::Controller).each do |concern|
+        assert_includes controller[:content], concern, "edit::org should include #{concern}"
       end
-    end
-
-    test "application controllers with user auth include required concerns" do
-      user_controllers =
-        CONTROLLER_FILES.values.select do |controller|
-          controller[:content].include?("AuthenticationClient")
-        end
-
-      user_controllers.each do |controller|
-        content = controller[:content]
-        controller_name = controller[:path_name]
-
-        assert_includes content, "AuthorizationClient",
-                        "#{controller_name} should include AuthorizationClient when using AuthenticationClient"
-        assert_includes content, "VerificationClient",
-                        "#{controller_name} should include VerificationClient when using AuthenticationClient"
-      end
-    end
-
-    test "application controllers with staff auth include required concerns" do
-      staff_controllers =
-        CONTROLLER_FILES.values.select do |controller|
-          controller[:content].include?("AuthenticationOperator")
-        end
-
-      staff_controllers.each do |controller|
-        content = controller[:content]
-        controller_name = controller[:path_name]
-
-        assert_includes content, "AuthorizationOperator",
-                        "#{controller_name} should include AuthorizationOperator when using AuthenticationOperator"
-        assert_includes content, "VerificationOperator",
-                        "#{controller_name} should include VerificationOperator when using AuthenticationOperator"
-      end
+      assert_includes controller[:content], "authorize :user, through: :current_resource"
     end
 
     # The com realm was retired (WU-4); no application controller may reintroduce a visitor
@@ -184,15 +89,6 @@ module Concerns
 
     # Wedge: every full-lifecycle surface controller must reflect the request locale.
     # Regression guard against the com/org surfaces silently dropping set_locale again.
-    test "all lifecycle application controllers reflect locale" do
-      lifecycle_controllers.each do |controller|
-        assert_match(
-          /before_action :set_locale$/,
-          controller[:content],
-          "#{controller[:path_name]} should run set_locale (locale drift guard)",
-        )
-      end
-    end
 
     # Wedge: the retired session-limit placeholder must not reintroduce a controller guard.
     test "lifecycle application controllers do not register the retired restricted-session guard" do
@@ -210,22 +106,7 @@ module Concerns
       end
     end
 
-    # Wedge: app-surface controllers (AuthenticationClient) must reflect the request
-    # timezone alongside locale. Regression guard against auth/app losing set_timezone.
-    test "app surface lifecycle controllers reflect timezone" do
-      app_controllers =
-        lifecycle_controllers.select { |controller| controller[:path_name].end_with?("::app") }
-
-      assert_operator app_controllers.length, :>=, 3,
-                      "expected multiple app-surface lifecycle controllers"
-
-      app_controllers.each do |controller|
-        assert_match(
-          /before_action :set_timezone$/,
-          controller[:content],
-          "#{controller[:path_name]} should run set_timezone (timezone drift guard)",
-        )
-      end
-    end
+    # Edit is the retained application surface with a full actor lifecycle; content surfaces render
+    # published documents and do not carry browser preference state.
   end
 end

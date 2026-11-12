@@ -1,7 +1,8 @@
 # Sign-out
 
-These are acceptance requirements for the APP, COM and ORG OP/RP surfaces. They describe expected
-behavior, not evidence that a deployment has passed acceptance.
+The local Press sign-out surface is Edit org. Visa-side requirements below describe its external
+OIDC provider contract; those routes and authority state are not hosted by this application. These
+criteria describe expected behavior, not evidence that a deployment has passed acceptance.
 
 - SIGNOUT-1: A current-session OP logout stops the current Visa device session, every root row in
   its rotation lineage and every grant under that device. Each root has its own

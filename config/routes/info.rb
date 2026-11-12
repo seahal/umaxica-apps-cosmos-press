@@ -7,8 +7,6 @@ scope module: :info, as: :info do
   constraints host: [Rails.configuration.x.boot_config.fetch(:hosts).info_service.host, "info.app.localhost",
                      "info.umaxica.app",].compact do
     scope module: :app, as: :app do
-      root to: "roots#index"
-
       # Deployment identifier endpoint.
       resource :revision, only: :show, format: false
 
@@ -44,8 +42,6 @@ scope module: :info, as: :info do
   constraints host: [Rails.configuration.x.boot_config.fetch(:hosts).info_corporate.host, "info.com.localhost",
                      "info.umaxica.com",].compact do
     scope module: :com, as: :com do
-      root to: "roots#index"
-
       # Deployment identifier endpoint.
       resource :revision, only: :show, format: false
 
@@ -81,8 +77,6 @@ scope module: :info, as: :info do
   constraints host: [Rails.configuration.x.boot_config.fetch(:hosts).info_staff.host, "info.org.localhost",
                      "info.umaxica.org",].compact do
     scope module: :org, as: :org do
-      root to: "roots#index"
-
       # Deployment identifier endpoint.
       resource :revision, only: :show, format: false
 

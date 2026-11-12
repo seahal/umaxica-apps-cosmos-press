@@ -9,9 +9,9 @@ class HelpRouteContractTest < ActionDispatch::IntegrationTest
   HELP_COM_HOST = ENV.fetch("PRIVATE_HELP_CORPORATE_URL")
   HELP_ORG_HOST = ENV.fetch("PRIVATE_HELP_STAFF_URL")
   PRIVATE_ORIGIN_HOSTS = {
-    "help.app.localhost" => "help/app/roots",
-    "help.com.localhost" => "help/com/roots",
-    "help.org.localhost" => "help/org/roots",
+    "help.app.localhost" => "unknown_hosts",
+    "help.com.localhost" => "unknown_hosts",
+    "help.org.localhost" => "unknown_hosts",
   }.freeze
 
   test "help private origin hosts route to the matching surface" do
@@ -19,7 +19,7 @@ class HelpRouteContractTest < ActionDispatch::IntegrationTest
       recognized = Rails.application.routes.recognize_path("http://#{host}/", method: :get)
 
       assert_equal controller, recognized[:controller]
-      assert_equal "index", recognized[:action]
+      assert_equal "show", recognized[:action]
     end
   end
 
@@ -29,8 +29,8 @@ class HelpRouteContractTest < ActionDispatch::IntegrationTest
       method: :get,
     )
 
-    assert_equal "help/app/roots", recognized[:controller]
-    assert_equal "index", recognized[:action]
+    assert_equal "unknown_hosts", recognized[:controller]
+    assert_equal "show", recognized[:action]
 
     recognized = Rails.application.routes.recognize_path(
       "http://#{HELP_APP_HOST}/health",
@@ -104,8 +104,8 @@ class HelpRouteContractTest < ActionDispatch::IntegrationTest
       method: :get,
     )
 
-    assert_equal "help/com/roots", recognized[:controller]
-    assert_equal "index", recognized[:action]
+    assert_equal "unknown_hosts", recognized[:controller]
+    assert_equal "show", recognized[:action]
 
     recognized = Rails.application.routes.recognize_path(
       "http://#{HELP_COM_HOST}/health",
@@ -179,8 +179,8 @@ class HelpRouteContractTest < ActionDispatch::IntegrationTest
       method: :get,
     )
 
-    assert_equal "help/org/roots", recognized[:controller]
-    assert_equal "index", recognized[:action]
+    assert_equal "unknown_hosts", recognized[:controller]
+    assert_equal "show", recognized[:action]
 
     recognized = Rails.application.routes.recognize_path(
       "http://#{HELP_ORG_HOST}/health",

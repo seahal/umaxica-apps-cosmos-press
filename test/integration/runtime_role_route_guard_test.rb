@@ -7,9 +7,11 @@ require "test_helper"
 class RuntimeRoleRouteGuardTest < ActionDispatch::IntegrationTest
   self.fixture_table_names = []
 
-  test "a role process refuses another role's page before any callback" do
-    with_runtime_role("op-base-app") do
-      get base_app_identity_birthdate_url(ri: "jp", host: ENV.fetch("PUBLIC_BASE_SERVICE_URL"))
+  test "the Edit RP process refuses another surface controller before any callback" do
+    host = Rails.configuration.x.boot_config.fetch(:hosts).info_service.host
+    with_runtime_role("rp-edit-org-ww") do
+      host! host
+      get "/health"
     end
 
     assert_response :not_found
@@ -17,34 +19,38 @@ class RuntimeRoleRouteGuardTest < ActionDispatch::IntegrationTest
     assert_nil response.headers["Set-Cookie"]
   end
 
-  test "a role process serves a shared path" do
-    with_runtime_role("rp-base-app-ww") do
-      get base_app_api_v0_health_url(host: ENV.fetch("PUBLIC_BASE_SERVICE_URL"))
+  test "an RP role process serves the shared unknown-host response" do
+    with_runtime_role("rp-edit-org-ww") do
+      host! "base.app.localhost"
+      get "/"
     end
 
-    assert_response :ok
+    assert_response :not_found
+    assert_equal({ "error" => "unknown_host" }, response.parsed_body)
   end
 
-  test "the owning role reaches its own page" do
-    with_runtime_role("rp-base-app-ww") do
-      get base_app_identity_birthdate_url(ri: "jp", host: ENV.fetch("PUBLIC_BASE_SERVICE_URL"))
+  test "the Edit RP role reaches its own page" do
+    with_runtime_role("rp-edit-org-ww") do
+      host! Rails.configuration.x.boot_config.fetch(:hosts).edit_staff.host
+      get "/"
     end
 
-    # Unauthenticated: the page's own authentication answers, not the role guard.
     assert_not_equal 404, response.status
   end
 
-  # R5-WU19: a closed cell keeps only its protocol receivers and health reachable.
-  test "a closed RP cell refuses its browser pages and still serves its back-channel logout receiver" do
-    host = ENV.fetch("PUBLIC_BASE_SERVICE_URL")
-    with_runtime_role("rp-base-app-ww", admission: "closed") do
-      get "/accounts", params: { ri: "jp" }, headers: { "Host" => host }
+  # R5-WU19: a closed cell keeps only its protocol receiver and health reachable.
+  test "a closed Edit RP refuses browser entry and still reaches its back-channel logout receiver" do
+    host = Rails.configuration.x.boot_config.fetch(:hosts).edit_staff.host
+    with_runtime_role("rp-edit-org-ww", admission: "closed") do
+      host! host
+      get "/sign", params: { ri: "jp" }
 
       assert_response :not_found
 
-      post "/oidc/closures", headers: { "Host" => host }
+      post "/oidc/closures", params: { logout_token: "not-a-jwt" }, headers: { "User-Agent" => "" }
 
-      assert_not_equal 404, response.status
+      assert_response :bad_request
+      assert_equal "no-store", response.headers["Cache-Control"]
     end
   end
 

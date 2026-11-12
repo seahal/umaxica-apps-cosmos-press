@@ -4,14 +4,6 @@ require "test_helper"
 
 class RpLiveSessionUniquenessTest < ActiveSupport::TestCase
   CELLS = [
-    [RpBaseAppSession, RpBaseAppOpSessionBinding, RpBaseAppIdentityBinding, RpBaseAppPrincipal],
-    [RpBaseOrgSession, RpBaseOrgOpSessionBinding, RpBaseOrgIdentityBinding, RpBaseOrgPrincipal],
-    [RpCoreAppSession, RpCoreAppOpSessionBinding, RpCoreAppIdentityBinding, RpCoreAppPrincipal],
-    [RpCoreOrgSession, RpCoreOrgOpSessionBinding, RpCoreOrgIdentityBinding, RpCoreOrgPrincipal],
-    [RpWarpAppSession, RpWarpAppOpSessionBinding, RpWarpAppIdentityBinding, RpWarpAppPrincipal],
-    [RpWarpOrgSession, RpWarpOrgOpSessionBinding, RpWarpOrgIdentityBinding, RpWarpOrgPrincipal],
-    [RpPalmAppSession, RpPalmAppOpSessionBinding, RpPalmAppIdentityBinding, RpPalmAppPrincipal],
-    [RpTechOrgSession, RpTechOrgOpSessionBinding, RpTechOrgIdentityBinding, RpTechOrgPrincipal],
     [RpEditOrgSession, RpEditOrgOpSessionBinding, RpEditOrgIdentityBinding, RpEditOrgPrincipal],
   ].freeze
 

@@ -1,0 +1,22 @@
+<% content_for :page_title, t("sign.shared.sign_out.title") %>
+
+<div class="mx-auto flex w-full max-w-md flex-col gap-4">
+  <h1 class="text-2xl font-semibold text-fg sm:text-3xl"><%= t("sign.shared.sign_out.title") %></h1>
+
+  <% if sign_out_active_context_present? %>
+    <p class="text-base text-fg-muted"><%= t("sign.shared.sign_out.confirm_description") %></p>
+    <%= form_with url: sign_out_post_path, method: :post do %>
+    <%= submit_tag t("sign.shared.sign_out.button"), class: "min-h-12 rounded-md bg-danger px-4 py-2 text-base font-medium text-danger-fg" %>
+      <noscript><p class="text-base text-fg-muted"><%= t("sign.shared.sign_out.confirm_description") %></p></noscript>
+    <% end %>
+    <%= button_to t("actions.cancel"),
+                  sign_out_post_path,
+                  method: :delete,
+                  class: "min-h-12 rounded-md border border-control px-4 py-2 text-base font-medium text-fg" %>
+  <% else %>
+    <p class="text-base text-fg-muted"><%= t("sign.shared.sign_out.already_signed_out") %></p>
+  <% end %>
+
+  <p><%= link_to t("sign.shared.sign_out.home_link"), sign_out_home_path,
+        class: "text-base text-link underline underline-offset-4 hover:underline" %></p>
+</div>

@@ -3,7 +3,7 @@
 
 # ActorValuesContext is the immutable value object that carries one request's
 # resolved actor state. It is the canonical Actor context type: the controller
-# /authentication pipeline resolves authentication, authorization, preference,
+# /authentication pipeline resolves authentication, authorization,
 # selection, and step-up, builds (or merges into) an ActorValuesContext, and
 # pushes it into Actor via Actor.install_context!.
 #
@@ -32,7 +32,6 @@ class ActorValuesContext < Data.define(
   :authn,
   :authz,
   :configuration,
-  :preferences,
   :selection,
   :step_up,
   :trace_id,
@@ -49,6 +48,8 @@ class ActorValuesContext < Data.define(
   ROLE_TYPES = %i(client operator).freeze
 
   class << self
+    public
+
     # The safe baseline context for unbound paths: BareController, jobs,
     # mailers, tests, and any request before the lifecycle installs state.
     def empty
@@ -64,7 +65,6 @@ class ActorValuesContext < Data.define(
         authn: Actor::Authentication::NULL,
         authz: Actor::Authz::NULL,
         configuration: Actor::Configuration::NULL,
-        preferences: Actor::Preference::NULL,
         selection: Actor::SelectedContext::NULL,
         step_up: Actor::StepUp::NULL,
         trace_id: nil,
@@ -97,11 +97,25 @@ class ActorValuesContext < Data.define(
   # Validate the enum axes at construction so invalid values fail fast rather
   # than silently flowing through policies and logs.
   def initialize(tld:, surface:, transport:, channel:, **rest)
+    raise GovernanceUnavailableError, "Preference data is unavailable" if rest.key?(:preferences)
+
     validate_axis!(:actor_type, rest.fetch(:actor_type), ACTOR_TYPES)
     validate_axis!(:tld, tld, TLDS, allow_nil: true)
     validate_axis!(:surface, surface, SURFACES)
     validate_axis!(:transport, transport, TRANSPORTS)
     validate_axis!(:channel, channel, CHANNELS)
+    super
+  end
+
+  public
+
+  def preferences
+    raise GovernanceUnavailableError, "Preference data is unavailable"
+  end
+
+  def with(**changes)
+    raise GovernanceUnavailableError, "Preference data is unavailable" if changes.key?(:preferences)
+
     super
   end
 

@@ -13,8 +13,8 @@ class RedirectsPathTargetResolverSecurityTest < ActiveSupport::TestCase
       "/%2f%2fevil.example",
       "/\\evil.example",
       "/%5c%5cevil.example",
-      "/auth/logout?return_to=https://evil.example",
-      "/auth/step_up?return_to=https://evil.example",
+      "/sign/out?return_to=https://evil.example",
+      "/publishing/docs/app/entries?return_to=https://evil.example",
     ].each do |payload|
       result = RedirectsPathTargetResolver.call(payload, source: :security_fuzz)
 
@@ -36,10 +36,17 @@ class RedirectsPathTargetResolverSecurityTest < ActiveSupport::TestCase
     end
   end
 
-  test "redirect rejection has a durable event name at authentication pt call sites" do
-    source = Rails.root.join("app/controllers/concerns/authentication_redirects.rb").read
+  test "rejects path targets without a rooted path and rejects fragments or malformed URI syntax" do
+    [
+      ["?next=one", "blank_path"],
+      ["dashboard", "relative_path"],
+      ["/dashboard#section", "fragment"],
+      ["/[", "invalid_uri"],
+    ].each do |value, expected_reason|
+      result = RedirectsPathTargetResolver.call(value, source: :security_boundary)
 
-    assert_includes source, "path_target.rejected"
-    assert_includes source, "log_signed_target_rejection"
+      assert_not_predicate result, :ok?, value
+      assert_equal expected_reason, result.failure_reason, value
+    end
   end
 end

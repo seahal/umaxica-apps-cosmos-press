@@ -4,8 +4,8 @@ require_relative "../migration_support/publishing_schema"
 
 class SeedPublishingVocabularies < ActiveRecord::Migration[8.2]
   DEFINITIONS = [
-    ["category", "single_hierarchical", "Category"],
-    ["tag", "multiple_ordered_flat", "Tag"],
+    %w(category single_hierarchical Category),
+    %w(tag multiple_ordered_flat Tag),
   ].freeze
 
   def up
@@ -25,11 +25,7 @@ class SeedPublishingVocabularies < ActiveRecord::Migration[8.2]
   end
 
   def down
-    safety_assured do
-      PublishingSchema::FAMILIES.each do |surface, audience|
-        table = "publishing_#{surface}_#{audience}_vocabularies"
-        execute("DELETE FROM #{table} WHERE key IN ('category', 'tag')")
-      end
-    end
+    # Vocabulary identities survive retirement and may already own historical assignments.
+    raise ActiveRecord::IrreversibleMigration, "publishing vocabularies are retired by archiving, never deleted"
   end
 end

@@ -96,3 +96,16 @@ Accepted, and stated plainly rather than minimised:
 - `.agents/harnesses/rules/generic/no-test-only-code.mdc` — the converse prohibition: test concerns
   must not leak into application code
 - `adr/diagnostic-surfaces-performance-coverband-swagger.md` — the work that prompted this
+
+## Amendment (2026-11-09): diagnostic tool retirement
+
+The diagnostic-surface inventory above records the state when this ADR was accepted. The
+`rails_performance` and `rails_db` gems and their development routes have since been removed under
+the owner-directed operator-tool retirement backlogs. Their former environment-construction tests
+and setup assertions are historical examples, not current tools to verify.
+
+`MountedEngineInvariantTest` was updated with those removals: the Rails DB constant is no longer in
+the unauthenticated-engine inventory, while `/rails/db` and `/rails/performance` remain forbidden
+mount paths. Its remaining engine guards and application behavior tests stay in scope. The decision
+here remains that environment construction is verified by running the environment and recording
+evidence, not by tests executed in another environment.

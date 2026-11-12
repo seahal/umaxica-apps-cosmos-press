@@ -13,6 +13,8 @@ module Publishing
 
         validates :term_path_snapshot, exclusion: { in: [nil] }
 
+        validates :vocabulary_id, uniqueness: { scope: :entry_version_id }, on: :create
+
         def self.expected_kind = Publishing::TaxonomyKind::SINGLE_HIERARCHICAL
       end
     end

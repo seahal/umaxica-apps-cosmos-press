@@ -11,11 +11,13 @@ These are durable requirements, not current verification results.
   code units; the issue TTL is positive and at most 30 seconds. A returned JWT over 8,192 bytes is
   refused before parsing; `exp - iat` above 30 seconds is refused, and the 5-second clock skew never
   extends it. Nothing is truncated to fit.
-- JUMP-3: Of the 169 ordered pairs of the thirteen nodes, the 20 pairs of the return graph are
-  allowed and the other 149 are refused.
+- JUMP-3: Press has no local Jump issuer namespace. Edit remains an OIDC assertion client without
+  Jump issuance authority, and the deployment's return policy refuses sibling-repository edges.
+  Gateway protocol fixture tests may resolve exact fixture identities while retaining real
+  directed-edge checks; they do not establish a deployed Press acceptance edge.
 - JUMP-4: Duplicate `rt`, `rt[]` and nested forms and duplicated single-value parameters are
-  refused; query order and `%20` / `+` / `%2B` are compared without converting the URL to a Hash.
-  A return URL whose path starts with `//` is refused before it can become a protocol-relative
+  refused; query order and `%20` / `+` / `%2B` are compared without converting the URL to a Hash. A
+  return URL whose path starts with `//` is refused before it can become a protocol-relative
   redirect.
 - JUMP-5: A returned token is refused for a bad signature, `alg`, `typ`, unknown or revoked `kid`,
   issuer, audience, `src`, times, and unknown, missing or wrongly typed claims. `rpl: "reuse"` is
@@ -25,3 +27,5 @@ These are durable requirements, not current verification results.
 
 Sources: [Jump handoff contract](../../adr/jump-directed-rails-handoff-contract.md),
 [Jump redirector](../../adr/secure-jump-link-redirector.md).
+
+Press ownership: [surface URL dependencies](../../specs/press-surface-url-dependencies/spec.md).

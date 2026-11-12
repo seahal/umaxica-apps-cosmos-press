@@ -8,10 +8,16 @@ coding agents. Product-user prose belongs in [manuals](../manuals/README.md).
 - [Runtime compatibility](reference/agent-runtime-compatibility.md): shared guidance and vendor
   adapters.
 - [Durable checklists](checklists/README.md): behavior that must keep working.
+- [Test strategy](test.md): current Rails and JavaScript verification commands.
 - [Risk management](risk-management/README.md): actual risks, responses and ownership.
 - [Spec lifecycle](../specs/README.md): accepted changes, evidence and closure.
 - [Runbooks](runbooks/README.md): operator procedures for key rotation, rollout, provisioning and
   incident response.
+- [Current surface view inventory](reference/ui-view-inventory.md): retained Rails views and CSS.
+- [Content surface matrix](architecture/content-surface-matrix.md): Docs, Help, Info and News by
+  host and audience.
+- [Edit RP boundary](architecture/base-auth-seven-rp-boundary.md): the only local browser RP and its
+  external providers.
 - [Development environment setup](operations/development-environment-setup.md) (draft): ordered
   steps from a fresh clone to a running local environment, including external sign-in providers.
 - [AWS production service inventory](operations/aws-production-service-inventory.md) (planning):
@@ -45,7 +51,8 @@ Current content-model references:
   OIDC connection rows.
 - `adr/member-client-membership-organization-decomposition-before-placement.md` establishes the
   decomposition-first rule before any placement migration for that cluster.
-- `docs/architecture/acme-sign-core-base-port.md`
+- `docs/architecture/acme-sign-core-base-port.md` is a historical architecture pointer; use
+  `README.md` for current route ownership.
 - `docs/architecture/sns-subject-resource-grill.md`
 - `docs/architecture/sns-subject-resource-decision-record.md` records the deferred Avatar/SNS
   boundary; it is not part of the current Persona/Organization authority implementation.
@@ -58,14 +65,12 @@ Current content-model references:
 - `docs/architecture/database-boundaries.md`
 - `docs/architecture/flat-ruby-source-layout.md`
 - `docs/architecture/controller-boundaries.md`
-- `docs/architecture/dashboard-navigation.md`
 - `docs/architecture/controller-lifecycle.md`
 - `docs/architecture/avatar-account-bridge.md`
 - `docs/architecture/docs-help-news-content-boundary.md`
 - `docs/architecture/i18n.md`
 - `docs/architecture/preference.md`
 - `docs/security/session-limit.md`
-- `docs/security/authentication-remediation.md`
 - `docs/security/action-policy-conventions.md`
 - `docs/security/credential-gateway.md`
 - `docs/security/ceremony-grant-result.md`
@@ -73,14 +78,11 @@ Current content-model references:
 - `docs/security/withdrawal-privacy-erasure.md`
 - `docs/security/step-up-ceremony-delegation.md`
 - `docs/security/webauthn-rp-id-origin-boundary.md`
-- `docs/security/social-callback-boundary.md`
 - `docs/security/logout-session-management.md`
-- `docs/security/inertia-history-and-props.md`
 - `docs/security/preference-settings-authority.md`
 - `docs/architecture/sign-settings-to-acme-identity.md`
 - `docs/security/downstream-token-authority.md`
 - `docs/security/redirect-vs-ceremony-result.md`
-- `docs/qa/identity-authority-regression-checklist.md`
 - `docs/security/credential-abuse-rate-limits.md`
 - `docs/security/public-entrypoints.md`
 - `docs/security/chain_seal.md`
@@ -93,21 +95,16 @@ Current content-model references:
   structured data; it is not an implementation contract.
 - `docs/operations/external-scan-cadence.md`
 - `docs/architecture/controller-boundaries.md`
-- `docs/security/turnstile.md`
 - `docs/security/authentication-assurance-levels.md`
 - `docs/security/step-up-mfa-status.md`
 - `docs/security/mfa-reset-account-recovery.md`
-- `docs/security/sign-in-sequence.md`
-- `docs/security/authentication-capacity-admission.md`
 - `docs/security/sign-in-first-registration-handoff.md`
-- `docs/security/sign-up-sequence.md`
 - `docs/security/passkey-lifecycle-and-audit.md`
 - `docs/security/app-com-withdrawal-timing.md`
 - `docs/security/logout-sequence.md`
 - `docs/security/refresh-token-rotation.md`
 - `docs/security/identifier-hmac-emergency-rotation.md`
 - `docs/security/cookie-domain-scope.md`
-- `docs/security/social-login-provider-scope.md`
 - `docs/security/session-reset-policy.md`
 - `docs/security/sign-withdrawal-and-membership.md`
 - `docs/policy/signup-eligibility.md`
@@ -116,7 +113,6 @@ Current content-model references:
 - `docs/operations/development-host-port-exposure.md`
 - `docs/operations/postgresql-version-tracking.md`
 - `docs/operations/cloudflare-private-origin.md`
-- `docs/operations/core-nextjs-zero-cookie-edge-contract.md`
 - `docs/dictionary/README.md`
 - `docs/dictionary/access-terms.md`
 - `docs/dictionary/alphabet.md`

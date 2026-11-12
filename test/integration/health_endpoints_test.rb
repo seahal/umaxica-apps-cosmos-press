@@ -13,85 +13,13 @@ require "test_helper"
 class HealthEndpointsTest < ActionDispatch::IntegrationTest
   SURFACES = [
     {
-      host: ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost"),
-      controller: "auth/app/healths",
-      liveness_controller: "auth/app/health/livenesses",
-      readiness_controller: "auth/app/health/readinesses",
-      startup_controller: "auth/app/health/startups",
-      json_controller: "auth/app/api/v0/healths",
-      profile: Health::Profiles::SignApp,
-    },
-    {
-      host: ENV.fetch("PRIVATE_AUTH_STAFF_URL", "sign.org.localhost"),
-      controller: "auth/org/healths",
-      liveness_controller: "auth/org/health/livenesses",
-      readiness_controller: "auth/org/health/readinesses",
-      startup_controller: "auth/org/health/startups",
-      json_controller: "auth/org/api/v0/healths",
-      profile: Health::Profiles::SignOrg,
-    },
-    {
-      host: ENV.fetch("PUBLIC_BASE_SERVICE_URL", "base.app.localhost"),
-      controller: "base/app/healths",
-      liveness_controller: "base/app/health/livenesses",
-      readiness_controller: "base/app/health/readinesses",
-      startup_controller: "base/app/health/startups",
-      json_controller: "base/app/api/v0/healths",
-      profile: Health::Profiles::App,
-    },
-    {
-      host: ENV.fetch("PUBLIC_BASE_CORPORATE_URL", "base.com.localhost"),
-      controller: "base/com/healths",
-      liveness_controller: "base/com/health/livenesses",
-      readiness_controller: "base/com/health/readinesses",
-      startup_controller: "base/com/health/startups",
-      json_controller: "base/com/api/v0/healths",
-      profile: Health::Profiles::Com,
-    },
-    {
-      host: ENV.fetch("PUBLIC_BASE_STAFF_URL", "base.org.localhost"),
-      controller: "base/org/healths",
-      liveness_controller: "base/org/health/livenesses",
-      readiness_controller: "base/org/health/readinesses",
-      startup_controller: "base/org/health/startups",
-      json_controller: "base/org/api/v0/healths",
-      profile: Health::Profiles::Org,
-    },
-    {
-      host: ENV.fetch("PUBLIC_EDIT_STAFF_URL", "edit.org.localhost"),
+      host: ENV.fetch("PUBLIC_EDIT_STAFF_URL"),
       controller: "edit/org/healths",
       liveness_controller: "edit/org/health/livenesses",
       readiness_controller: "edit/org/health/readinesses",
       startup_controller: "edit/org/health/startups",
       json_controller: "edit/org/api/v0/healths",
-      profile: Health::Profiles::Org,
-    },
-    {
-      host: ENV.fetch("PRIVATE_BASE_NETWORK_URL", "base.net.localhost"),
-      controller: "base/net/healths",
-      liveness_controller: "base/net/health/livenesses",
-      readiness_controller: "base/net/health/readinesses",
-      startup_controller: "base/net/health/startups",
-      json_controller: "base/net/api/v0/healths",
-      profile: Health::Profiles::App,
-    },
-    {
-      host: ENV.fetch("PRIVATE_BASE_DEVELOPER_URL", "base.dev.localhost"),
-      controller: "base/dev/healths",
-      liveness_controller: "base/dev/health/livenesses",
-      readiness_controller: "base/dev/health/readinesses",
-      startup_controller: "base/dev/health/startups",
-      json_controller: "base/dev/api/v0/healths",
-      profile: Health::Profiles::App,
-    },
-    {
-      host: ENV.fetch("PUBLIC_PALM_SERVICE_URL"),
-      controller: "palm/app/healths",
-      liveness_controller: "palm/app/health/livenesses",
-      readiness_controller: "palm/app/health/readinesses",
-      startup_controller: "palm/app/health/startups",
-      json_controller: "palm/app/api/v0/healths",
-      profile: Health::Profiles::App,
+      profile: Health::Profiles::EditOrg,
     },
     {
       host: ENV.fetch("PRIVATE_HELP_SERVICE_URL"),
@@ -201,75 +129,11 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
       json_controller: "info/org/api/v0/healths",
       profile: Health::Profiles::Org,
     },
-    {
-      host: ENV.fetch("PUBLIC_CORE_SERVICE_URL", ENV.fetch("PUBLIC_CORE_SERVICE_URL", "core.app.localhost")),
-      controller: "core/app/healths",
-      liveness_controller: "core/app/health/livenesses",
-      readiness_controller: "core/app/health/readinesses",
-      startup_controller: "core/app/health/startups",
-      json_controller: "core/app/api/v0/healths",
-      profile: Health::Profiles::App,
-    },
-    {
-      host: ENV.fetch("PUBLIC_CORE_STAFF_URL", ENV.fetch("PUBLIC_CORE_STAFF_URL", "core.org.localhost")),
-      controller: "core/org/healths",
-      liveness_controller: "core/org/health/livenesses",
-      readiness_controller: "core/org/health/readinesses",
-      startup_controller: "core/org/health/startups",
-      json_controller: "core/org/api/v0/healths",
-      profile: Health::Profiles::Org,
-    },
-    {
-      host: ENV.fetch("PRIVATE_CORE_NETWORK_URL", "core.net.localhost"),
-      controller: "core/net/healths",
-      liveness_controller: "core/net/health/livenesses",
-      readiness_controller: "core/net/health/readinesses",
-      startup_controller: "core/net/health/startups",
-      json_controller: "core/net/api/v0/healths",
-      profile: Health::Profiles::App,
-    },
-    {
-      host: ENV.fetch("PRIVATE_CORE_DEVELOPER_URL", "core.dev.localhost"),
-      controller: "core/dev/healths",
-      liveness_controller: "core/dev/health/livenesses",
-      readiness_controller: "core/dev/health/readinesses",
-      startup_controller: "core/dev/health/startups",
-      json_controller: "core/dev/api/v0/healths",
-      profile: Health::Profiles::App,
-    },
-    {
-      host: ENV.fetch("PUBLIC_WARP_SERVICE_URL", "warp.app.localhost"),
-      controller: "warp/app/healths",
-      liveness_controller: "warp/app/health/livenesses",
-      readiness_controller: "warp/app/health/readinesses",
-      startup_controller: "warp/app/health/startups",
-      json_controller: "warp/app/api/v0/healths",
-      profile: Health::Profiles::App,
-    },
-    {
-      host: ENV.fetch("PUBLIC_WARP_CORPORATE_URL", "warp.com.localhost"),
-      controller: "warp/com/healths",
-      liveness_controller: "warp/com/health/livenesses",
-      readiness_controller: "warp/com/health/readinesses",
-      startup_controller: "warp/com/health/startups",
-      json_controller: "warp/com/api/v0/healths",
-      profile: Health::Profiles::Com,
-    },
-    {
-      host: ENV.fetch("PUBLIC_WARP_STAFF_URL", "warp.org.localhost"),
-      controller: "warp/org/healths",
-      liveness_controller: "warp/org/health/livenesses",
-      readiness_controller: "warp/org/health/readinesses",
-      startup_controller: "warp/org/health/startups",
-      json_controller: "warp/org/api/v0/healths",
-      profile: Health::Profiles::Org,
-    },
   ].freeze
 
   PROBES = %w(liveness readiness startup).freeze
 
   EDGE_NAMESPACE_HOSTS = {
-    "core.app.localhost" => "core/app",
     "docs.app.localhost" => "docs/app",
     "help.app.localhost" => "help/app",
     "info.app.localhost" => "info/app",
@@ -278,7 +142,6 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
     "help.com.localhost" => "help/com",
     "info.com.localhost" => "info/com",
     "news.com.localhost" => "news/com",
-    "core.org.localhost" => "core/org",
     "docs.org.localhost" => "docs/org",
     "help.org.localhost" => "help/org",
     "info.org.localhost" => "info/org",
@@ -347,7 +210,7 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
   end
 
   test "GET /health is a text/plain seven-line aggregate, never HTML or JSON, with no polling" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
 
     get "/health"
 
@@ -357,7 +220,7 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
     assert_not_equal "application/json", response.media_type
     assert_match(
       Regexp.new(
-        "\\Atitle: Health status\\nnamespace: auth/app\\nstatus: \\w+\\nstartup: \\w+\\n" \
+        "\\Atitle: Health status\\nnamespace: info/app\\nstatus: \\w+\\nstartup: \\w+\\n" \
         "liveness: \\w+\\nreadiness: \\w+\\ntimestamp: [^\\n]+Z\\n\\z",
       ),
       response.body,
@@ -390,7 +253,7 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
   end
 
   test "text probes render \"ok\\n\" regardless of Accept header, and reject a format suffix" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
 
     PROBES.each do |probe|
       [nil, "text/html", "*/*", "application/json"].each do |accept|
@@ -418,7 +281,7 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
   end
 
   test "liveness remains dependency free" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
 
     Health::ReadinessCheck.stub(:call, ->(_profile:) { raise RuntimeError, "readiness loaded" }) do
       # Valkey is not represented here: the removal of the generic REDIS_CLIENT
@@ -436,19 +299,19 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
   end
 
   test "readiness does not raise prosopite n plus one errors" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
 
     assert_health_request_has_no_prosopite_n_plus_one("/health/readiness")
   end
 
   test "health snapshot does not raise prosopite n plus one errors" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
 
     assert_health_request_has_no_prosopite_n_plus_one("/health")
   end
 
   test "startup remains dependency light" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
 
     Health::Checks::Database.stub(:new, ->(*) { raise RuntimeError, "database check built" }) do
       get "/health/startup"
@@ -458,20 +321,8 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
     assert_equal "ok\n", response.body
   end
 
-  test "app readiness ignores org-only dependencies" do
-    host! ENV.fetch("PUBLIC_BASE_SERVICE_URL", "base.app.localhost")
-
-    assert_readiness_does_not_build(OpBaseOrgRecord)
-  end
-
-  test "sign readiness ignores acme-only dependencies" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
-
-    assert_readiness_does_not_build(AppRpRecord)
-  end
-
   test "new database base classes do not affect existing surfaces by default" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
 
     new_record_base = Class.new(ApplicationRecord)
 
@@ -479,7 +330,7 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
   end
 
   test "probe status codes come from result status" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
 
     assert_probe_status(:ok, :success)
     assert_probe_status(:degraded_acceptable, :success)
@@ -491,7 +342,7 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
   # recovered, so every health response has to be uncacheable - including the ones that are not
   # a successful probe render.
   test "no health response may be stored by a cache" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
 
     get "/health"
 
@@ -512,12 +363,12 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
   end
 
   test "a failing probe and a refused machine format are uncacheable too" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
 
     unready = Health::CheckResult.new(
       check: :readiness,
       status: :unready,
-      surface: Health::Profiles::SignApp.surface_label,
+      surface: Health::Profiles::App.surface_label,
     )
 
     Health::ReadinessCheck.stub(:call, unready) do
@@ -536,11 +387,11 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
   end
 
   test "probe responses omit topology and exception details" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
     result = Health::CheckResult.new(
       check: :readiness,
       status: :unready,
-      surface: Health::Profiles::SignApp.surface_label,
+      surface: Health::Profiles::App.surface_label,
       dependencies: { "database" => "failed" },
     )
 
@@ -635,7 +486,7 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
   end
 
   test "GET /api/v0/health.json refuses a non-JSON Accept with an empty 406" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
 
     ["text/html", "text/plain"].each do |accept|
       get "/api/v0/health.json", headers: { "Accept" => accept }
@@ -647,7 +498,7 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
   end
 
   test "GET /api/v0/health.json is 200 on pass and 503 on fail, and a readiness outage keeps liveness passing" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
 
     stub_healthy do
       get "/api/v0/health.json", headers: { "Accept" => "application/json" }
@@ -657,7 +508,7 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
     assert_equal "pass", response.parsed_body.fetch("status")
 
     unready = Health::CheckResult.new(
-      check: :readiness, status: :unready, surface: Health::Profiles::SignApp.surface_label,
+      check: :readiness, status: :unready, surface: Health::Profiles::App.surface_label,
     )
 
     Health::ReadinessCheck.stub(:call, unready) do
@@ -674,12 +525,12 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
   end
 
   test "GET /api/v0/health.json body leaks no internal detail" do
-    host! ENV.fetch("PRIVATE_AUTH_SERVICE_URL", "auth.app.localhost")
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
 
     result = Health::CheckResult.new(
       check: :readiness,
       status: :unready,
-      surface: Health::Profiles::SignApp.surface_label,
+      surface: Health::Profiles::App.surface_label,
       dependencies: { "database" => "failed" },
     )
 
@@ -688,7 +539,7 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
     end
 
     # Rails.root is `/app` in containerized CI; the health JSON namespace is
-    # `auth/app`, which contains that substring. Forbid path leaks with a
+    # `info/app`, which contains that substring. Forbid path leaks with a
     # trailing separator / quoted absolute path instead of the bare root.
     forbidden = [
       "secret_key_base", "git", "AppPrincipalRecord", "PG::",
@@ -787,7 +638,7 @@ class HealthEndpointsTest < ActionDispatch::IntegrationTest
     result = Health::CheckResult.new(
       check: :readiness,
       status: status,
-      surface: Health::Profiles::SignApp.surface_label,
+      surface: Health::Profiles::App.surface_label,
     )
 
     Health::ReadinessCheck.stub(:call, result) do

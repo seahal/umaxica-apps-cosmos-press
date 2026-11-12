@@ -346,3 +346,13 @@ as a dashboard tab that 404s, and a new one simply never appears.
 - `adr/valkey-nonprod-logical-db-topology.md` — the logical database layout extended here
 - `adr/public-private-url-boundaries.md` — the `PUBLIC_`/`PRIVATE_` naming
 - `docs/architecture/cloudflare-request-paths.md` — how a request reaches these hosts
+
+## Amendment (2026-11-10)
+
+rails_performance is removed (owner): its containment depended on copied gem internals, it fails the
+Herb migration, and request performance moves to OpenTelemetry. See
+`docs/backlog/2026-11-10-remove-rails-performance.md`. Coverband and Swagger are unchanged.
+
+The earlier references to `rails_db` describe the operator-tool set at the time of this ADR. The
+Rails DB console has since also been removed under `docs/backlog/2026-11-10-remove-rails-db.md`; it
+is not part of the current development environment.

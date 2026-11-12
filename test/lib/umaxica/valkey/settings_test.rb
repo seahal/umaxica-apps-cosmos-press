@@ -21,6 +21,8 @@ class UmaxicaValkeySettingsTest < ActiveSupport::TestCase
     assert_equal 5, settings.auth_state.db
     assert_equal "redis://valkey-kvs:6379/5", settings.auth_state.url
     assert_not_predicate settings.cache, :memory?
+    assert_equal settings.cache, settings[:cache]
+    assert_equal 13, settings.coverband.db
   end
 
   test "test uses MemoryStore for cache and even KVS databases for rate-limit and auth-state" do
@@ -117,6 +119,18 @@ class UmaxicaValkeySettingsTest < ActiveSupport::TestCase
     assert_not_kind_of ActiveSupport::Cache::NullStore, Rails.cache
     assert_equal 6, Umaxica::Valkey::Settings.current.auth_state.db
     assert_equal 4, Umaxica::Valkey::Settings.current.rate_limit.db
+  end
+
+  test "responsibility namespace accessors keep auth-state families separate" do
+    assert_equal "auth_state:admission:run-1:w0", Umaxica::Valkey::Namespaces.admission(
+      suite_run_id: "run-1",
+      worker_id: "w0",
+    )
+    assert_equal "auth_state:rp_refresh:run-1", Umaxica::Valkey::Namespaces.rp_refresh(suite_run_id: "run-1")
+    assert_equal "otp-verification:run-1:test-1", Umaxica::Valkey::Namespaces.otp_verification(
+      suite_run_id: "run-1",
+      test_id: "test-1",
+    )
   end
 
   test "parallel worker namespaces do not collide and cleanup stays inside the worker prefix" do

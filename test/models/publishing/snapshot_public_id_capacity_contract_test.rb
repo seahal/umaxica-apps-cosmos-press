@@ -269,7 +269,7 @@ module Publishing
 
         connection = snapshot_class.lease_connection
         table = connection.quote_table_name(snapshot_class.table_name)
-        columns = snapshot_class.column_names - ["id"]
+        columns = snapshot_class.column_names - %w(id position_snapshot)
         quoted_columns = columns.map { |column| connection.quote_column_name(column) }.join(", ")
         original = stored.attributes
 

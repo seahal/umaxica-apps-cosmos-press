@@ -36,7 +36,10 @@ deletion, secret rotation or production authority.
   stable, app/com/org digests differ, and Email keys do not substitute for Telephone keys.
 - Required names are `{APP,COM,ORG}_EMAIL_ADDRESS_HMAC_KEY` and
   `{APP,COM,ORG}_TELEPHONE_NUMBER_HMAC_KEY`. Model or explicit realm selects them, not request host.
-  Missing required keys fail closed without old global SALT fallback or secret-bearing errors.
+  Missing required keys fail closed without old global SALT fallback or secret-bearing errors. In
+  Press, the four APP/ORG lookup keys come only from Rails credentials; environment values cannot
+  supply missing or blank credentials. See the
+  [owner decision](../backlog/2026-11-10-secrets-from-credentials-only.md).
 - Exercise an authorized isolated com-Telephone maintenance case: app/org and Email are unaffected;
   ordinary roles cannot use maintenance to alter finalized owner/PII/binding facts. No real secret
   changes are authorized by this criterion.

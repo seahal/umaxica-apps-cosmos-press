@@ -11,7 +11,8 @@ module Publishing
     # revision. A collision on it means another promotion won the race and its version can be
     # handed back. A collision on any other unique index of the same table -- the per-entry
     # sequence, the public id -- is a genuine failure and must not be swallowed as a lost race,
-    # so the rescue below matches this name rather than any `RecordNotUnique`.
+    # so the DB rescue matches this name and the model rescue accepts only the
+    # version's sole entry_revision_id uniqueness error.
     def self.idempotency_index_name(entry_class)
       "uidx_#{entry_class::SURFACE}_#{entry_class::AUDIENCE}_ver_on_revision"
     end
@@ -60,10 +61,20 @@ module Publishing
       copy_taxonomy_assignments(version)
       copy_media_usages(version)
       version
+    rescue ActiveRecord::RecordInvalid => e
+      raise unless revision_uniqueness_error?(e)
+
+      verify_complete!(entry.versions.find_by!(entry_revision_id: revision.id))
     rescue ActiveRecord::RecordNotUnique => e
       raise unless idempotency_violation?(e, self.class.idempotency_index_name(entry.class))
 
       verify_complete!(entry.versions.find_by!(entry_revision_id: revision.id))
+    end
+
+    def revision_uniqueness_error?(error)
+      error.record.instance_of?(cell.fetch(:version)) &&
+        error.record.errors.attribute_names == [:entry_revision_id] &&
+        error.record.errors.details.fetch(:entry_revision_id).all? { |detail| detail.fetch(:error) == :taken }
     end
 
     # Only a collision on the revision idempotency index means another promotion

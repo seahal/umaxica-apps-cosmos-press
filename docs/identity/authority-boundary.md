@@ -1,5 +1,10 @@
 # Identity Authority Boundary
 
+> **Current Press boundary (2026-11-10):** The migration material below is historical. The current
+> repository serves only its own Press surfaces; it does not host local Auth, Base, Core, Palm,
+> Tech, Visa or Warp routes. Edit's OIDC providers remain external dependencies. Use
+> [README.md](../../README.md) and [subdomains](../reference/subdomains.md) for current ownership.
+
 > **Current Rails contract note (2026-10-24):** The migration context in this document is retained
 > for historical reference. Its `acme/www` and `sign/id` authority descriptions do not supersede the
 > current Rails OIDC contract in `adr/visa-op-host.md`: Visa is the sole physical IdP/AS, Auth is a

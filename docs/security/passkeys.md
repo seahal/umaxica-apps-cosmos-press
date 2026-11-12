@@ -1,10 +1,13 @@
 # Passkeys
 
-Current behavior of Passkeys (WebAuthn) on APP (`auth.umaxica.app`) and ORG (`auth.umaxica.org`)
-Auth hosts and the Base management pages. COM is an anonymous surface: it serves no Passkey ceremony
-and no identity management page. Decisions live in the ADRs in section (f); this page describes the
-code as of 2026-10-29, after WU-3 of the 2026-10 authentication cycle retired the com credential and
-session routes. Mechanically checked invariants stay in
+> **Route boundary update (2026-11-10):** Local Auth and Base passkey sign-in, registration, and
+> management routes were retired. Edit ORG retains its OIDC relying-party sign-in, callback,
+> interruption, and sign-out completion routes; it does not expose the former local passkey
+> ceremonies. The route matrix and behavior below record the former Auth/Base surface for history.
+> Passkey models and history remain untouched for the separate model/database cleanup step.
+
+The remainder describes the retired local Passkey routes and preserved model-level contracts. It is
+not a current route or HTTP behavior contract. Mechanically checked invariants stay in
 [WebAuthn security invariants](webauthn-security-invariants.md); RP ID and Origin rules in
 [WebAuthn RP ID and Origin boundary](webauthn-rp-id-origin-boundary.md).
 

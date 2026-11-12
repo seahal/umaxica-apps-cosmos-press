@@ -26,19 +26,18 @@ authority source for the new tables.
 ## Approved owner-authority decision (2026-09-23)
 
 After each resource-family cutover, the concrete ownership table for that family is the sole owner
-authority. The approved mappings are `Client -> Persona/Enterprise`, `Visitor -> Individual/Company`,
-and `Operator -> Agent/Bureau`. Identity bindings, assignments, memberships, administrator
-relations, legacy owner fields, and legacy `Organization` hierarchy data are migration evidence
-only. Legacy `Organization` is not `Bureau`, and no lifecycle transition promotes a member or
-administrator to owner.
+authority. The approved mappings are `Client -> Persona/Enterprise`,
+`Visitor -> Individual/Company`, and `Operator -> Agent/Bureau`. Identity bindings, assignments,
+memberships, administrator relations, legacy owner fields, and legacy `Organization` hierarchy data
+are migration evidence only. Legacy `Organization` is not `Bureau`, and no lifecycle transition
+promotes a member or administrator to owner.
 
-The ownership fact is retained independently from authority eligibility. Suspended principals do
-not exercise an existing relation; inactive/discarded/deleted principals and inactive/retained
-resources are not automatically adopted as new authority candidates. Candidate mapping is
-deterministic: exactly one explicitly valid candidate may map, while zero, ambiguous, inactive-only,
-cross-surface, membership-only, administrator-only, legacy-only, and contradictory candidates are
-rejected or held for manual review/ownerless disposition. No first/last/oldest/newest tie-breaker is
-allowed.
+The ownership fact is retained independently from authority eligibility. Suspended principals do not
+exercise an existing relation; inactive/discarded/deleted principals and inactive/retained resources
+are not automatically adopted as new authority candidates. Candidate mapping is deterministic:
+exactly one explicitly valid candidate may map, while zero, ambiguous, inactive-only, cross-surface,
+membership-only, administrator-only, legacy-only, and contradictory candidates are rejected or held
+for manual review/ownerless disposition. No first/last/oldest/newest tie-breaker is allowed.
 
 An existing ownership row records an ownership fact only. It is not sufficient evidence that the
 principal may currently exercise authority: the cutover guard separately requires the owner to be
@@ -115,14 +114,13 @@ same unit, and replaying the same pair is idempotent. It is not a runtime author
 `AuthorityOwnerFamilyCutoverOperation` is the separate family-level boundary: it rechecks the
 read-only guard under a resource-table lock and creates one immutable surface-local singleton
 marker. That marker is the persisted point of no return; backfill is rejected afterwards and
-recovery is forward-only.
-`AuthorityOwnerFamilyBackfillOperation` validates a complete explicitly reviewed mapping for one
-resource family, rejects duplicate resource entries, and applies the batch atomically. A rejected
-row rolls back earlier rows from that batch, while replaying the same complete mapping is
-idempotent. It remains a pre-cutover migration operation: it does not infer owners, switch
-authorization consumers, or permit rollback after a family marker has been established.
-The read-only `authority:cutover_guard` task evaluates all six families and emits a readiness report
-without changing ownership, lifecycle, authorization consumers, or cutover state.
+recovery is forward-only. `AuthorityOwnerFamilyBackfillOperation` validates a complete explicitly
+reviewed mapping for one resource family, rejects duplicate resource entries, and applies the batch
+atomically. A rejected row rolls back earlier rows from that batch, while replaying the same
+complete mapping is idempotent. It remains a pre-cutover migration operation: it does not infer
+owners, switch authorization consumers, or permit rollback after a family marker has been
+established. The read-only `authority:cutover_guard` task evaluates all six families and emits a
+readiness report without changing ownership, lifecycle, authorization consumers, or cutover state.
 
 ## Ownership and creation contract
 
@@ -142,13 +140,12 @@ actor and owner to be the same concrete principal, require the fixed surface sta
 `login_allowed?`, and `access_enabled?`, require an active matching RP binding for Persona
 resources, enforce the adopted 10 Persona / 2 Organization owned resource limits, and use fixed
 concrete classes. The selector bootstrap calls these creators only for newly created resources with
-an eligible principal, so those resources receive their ownership and `active` lifecycle rows in
-the same surface-local transaction. Withdrawal, inactive, or access-restricted legacy bootstrap
-flows retain their legacy graph construction until family cutover. Existing resources remain
-migration candidates; bootstrap does not infer or repair their legacy authority. This is
-creation-path integration, not an authorization cutover: the family gate, reviewed backfill,
-consumer switch, and runtime connection rollback proof remain prerequisites for changing
-authorization reads.
+an eligible principal, so those resources receive their ownership and `active` lifecycle rows in the
+same surface-local transaction. Withdrawal, inactive, or access-restricted legacy bootstrap flows
+retain their legacy graph construction until family cutover. Existing resources remain migration
+candidates; bootstrap does not infer or repair their legacy authority. This is creation-path
+integration, not an authorization cutover: the family gate, reviewed backfill, consumer switch, and
+runtime connection rollback proof remain prerequisites for changing authorization reads.
 
 The bootstrap also acquires the existing surface-local authority lock for the complete graph
 transaction. This serializes concurrent bootstrap calls for one principal before the account and
@@ -177,8 +174,8 @@ membership and delegation contract.
 
 The owner-specific quota consumer reads through `AuthorityOwnerResourceScopeQuery`. This query
 accepts only the configured surface-local principal and resource family, and never falls back to an
-identity binding, assignment, membership, administrator relation, or legacy `Organization` row.
-The owner-specific `AccountPolicy` is also staged on the same boundary: before its concrete family
+identity binding, assignment, membership, administrator relation, or legacy `Organization` row. The
+owner-specific `AccountPolicy` is also staged on the same boundary: before its concrete family
 marker it preserves the existing legacy contract, while after the marker it requires the explicit
 ownership relation, eligible principal, and active resource lifecycle. It does not consult the
 legacy identity binding after cutover. `OrganizationPolicy` and the selector/switcher candidate
@@ -197,13 +194,13 @@ transaction before routes are exposed.
 
 ## Lifecycle, encryption, and migration status
 
-The adopted lifecycle state is stored in six concrete, surface-local lifecycle tables rather than
-by reinterpreting principal retention columns. New resources created through the six authored
-creator operations receive an explicit `active` row atomically; existing resources remain
-unresolved until an explicitly reviewed backfill state is supplied. The scrub inventory, grant
-operations, transfer routes, irreversible discard, asynchronous scrubbing, encrypted-name
-backfill, and old-authority retirement remain blocked by the conflict ledger until their separate
-data shape and isolated tests are complete.
+The adopted lifecycle state is stored in six concrete, surface-local lifecycle tables rather than by
+reinterpreting principal retention columns. New resources created through the six authored creator
+operations receive an explicit `active` row atomically; existing resources remain unresolved until
+an explicitly reviewed backfill state is supplied. The scrub inventory, grant operations, transfer
+routes, irreversible discard, asynchronous scrubbing, encrypted-name backfill, and old-authority
+retirement remain blocked by the conflict ledger until their separate data shape and isolated tests
+are complete.
 
 Before cutover, the deployment runbook must provide:
 
@@ -219,29 +216,24 @@ Before cutover, the deployment runbook must provide:
 
 The Phase 2 code guarantees static model/table separation, a concrete unexposed creation contract,
 an explicit reviewed-owner backfill slice, and a fail-closed family cutover gate for isolated
-pre-deployment verification. It does not
-claim that existing data has an owner, that all six families have been backfilled, that the new
-tables are the current authorization source, or that production cutover is safe. Those claims
-require the lifecycle, consumer, migration, and deployment gates recorded in `conflict.md` and the
-integrated plan.
+pre-deployment verification. It does not claim that existing data has an owner, that all six
+families have been backfilled, that the new tables are the current authorization source, or that
+production cutover is safe. Those claims require the lifecycle, consumer, migration, and deployment
+gates recorded in `conflict.md` and the integrated plan.
 
 ## Legacy org invitation admission hold
 
-Legacy `OrganizationInvitation.organization_id` does not identify a Bureau or BureauUnit.
-The old acceptance path ignored this target and invoked default bootstrap, creating an unrelated
-Bureau. Organization IDs and Bureau IDs are independent; numeric equality establishes no mapping.
+Legacy `OrganizationInvitation.organization_id` does not identify a Bureau or BureauUnit. The old
+acceptance path ignored this target and invoked default bootstrap, creating an unrelated Bureau.
+Organization IDs and Bureau IDs are independent; numeric equality establishes no mapping.
 
-`OrgOperatorLifecycleRequestCreate` refuses new JOIN requests, `OrgInvitationService.create`
-refuses issuance (including approved legacy lifecycle requests), and
-`OrgOperatorLifecycleInvitationAcceptance` validates the existing code and then returns an explicit
-migration refusal before any Principal, RP Account, Identity or Persona graph write. The Auth org
-invitation GET/POST routes remain available; POST renders the refusal inline. Missing, invalid,
-consumed and expired codes retain their validation failures. Stored invitations remain unchanged.
-The low-level invitation validation/consumption primitives remain available for retained records;
-they do not grant membership or authorize admission.
+The former org invitation route, lifecycle request services, issuance service, and acceptance
+service were removed during the 2026-11-10 Press surface reset. The `OrganizationInvitation` model
+and its low-level validation/consumption methods remain for stored rows, but no local application
+route or service calls them. They do not grant membership or authorize admission.
 
 Admission remains unavailable until an accepted contract identifies the target Bureau and Unit,
-authorizes issuance through current authority, defines role/grant mapping, separates new registration
-from authenticated existing-user participation, and specifies idempotent recovery across
-`op_base_org` and `org_zenith`. Do not restore default bootstrap as a substitute for that contract.
-See [the open consolidation spec](../../specs/org-organization-consolidation/spec.md).
+authorizes issuance through current authority, defines role/grant mapping, separates new
+registration from authenticated existing-user participation, and specifies idempotent recovery
+across `op_base_org` and `org_zenith`. Do not restore default bootstrap as a substitute for that
+contract. See [the open consolidation spec](../../specs/org-organization-consolidation/spec.md).

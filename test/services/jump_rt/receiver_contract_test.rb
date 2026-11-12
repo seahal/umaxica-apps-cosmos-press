@@ -15,6 +15,14 @@ class JumpRtReceiverContractTest < ActiveSupport::TestCase
     ).freeze,
   }.freeze
 
+  # These pinned gateway protocol fixtures use a fixed foreign graph. Resolve only those
+  # literal identities here; the real directed-edge policy and all crypto checks still run.
+  # Press's actual empty local registry is exercised without doubles in return_policy_test.
+  FIXTURE_ORIGIN_NAMESPACES = {
+    "https://auth.umaxica.app" => "AUTH_APP",
+    "https://www.umaxica.app" => "BASE_APP",
+  }.freeze
+
   self.fixture_table_names = []
 
   setup do
@@ -53,13 +61,16 @@ class JumpRtReceiverContractTest < ActiveSupport::TestCase
         }
         token = JWT.encode(payload, @private_key, "ES384", { typ: "JWT", kid: "jump-test" })
 
-        result = JumpRtReturnVerifier.call(
-          token: token,
-          request_url: url_case.fetch("request_url").gsub("returned", token),
-          request_base_url: "https://www.umaxica.app",
-          fetcher: -> { { "keys" => [@public_jwk] } },
-          now: @now,
-        )
+        result =
+          JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+            JumpRtReturnVerifier.call(
+              token: token,
+              request_url: url_case.fetch("request_url").gsub("returned", token),
+              request_base_url: "https://www.umaxica.app",
+              fetcher: -> { { "keys" => [@public_jwk] } },
+              now: @now,
+            )
+          end
 
         assert_equal url_case.fetch("accepted"), result.success?, result.error
         assert_equal "invalid_url", result.error unless url_case.fetch("accepted")
@@ -91,8 +102,6 @@ class JumpRtReceiverContractTest < ActiveSupport::TestCase
         "0db02b9412487931465a81e5e292e7bc6f0ca3eb06a1296e558348772cdadb9a",
       "jump_production_graph_0_4_0.json" =>
         "3e93ca422c35be5bb034d797ae61ddc9d0befcfd431ba12e3e859a43611588ab",
-      "jump_app_org_candidate_graph.json" =>
-        "1f9f68bf600cc1c018684ffbd5382c4a94d3cb57c8f1767fd957061257fbc179",
       "jump_receiver_contract.json" =>
         "7f884dcc348ff61cd94643b4dfbc0c5e27caa21fbf570abed81084b59471339e",
     }
@@ -102,16 +111,5 @@ class JumpRtReceiverContractTest < ActiveSupport::TestCase
 
       assert_equal expected_sha256, Digest::SHA256.file(path).hexdigest, filename
     end
-  end
-
-  test "Tech is outside the Jump issuer and navigation graph" do
-    graph = JSON.parse(Rails.root.join("test/fixtures/files/jump_app_org_candidate_graph.json").read)
-
-    assert_raises(JumpRtConfigurationError) do
-      JumpRtSurface.namespace_for_controller("Tech::Org::Sign::EntriesController")
-    end
-    assert_raises(JumpRtConfigurationError) { JumpRtSurface.normalize_namespace("TECH_ORG") }
-    assert_empty graph.fetch("nodes").keys.grep(/tech/i)
-    assert_empty graph.fetch("edges").flatten.grep(/tech/i)
   end
 end

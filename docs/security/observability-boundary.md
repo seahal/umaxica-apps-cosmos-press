@@ -101,10 +101,9 @@ Rails.event.record(...)
 Those methods were custom application logging shims and are not part of the current logging
 contract.
 
-DBSC registration advertisements, registration success and challenge issuance use fixed structured
-application log events. Neither session identifiers nor challenges are included, even as truncated
-prefixes; HTTP-header presence logs retain field names only. See
-[the DBSC header boundary](../architecture/dbsc.md#http-header-boundary).
+The local DBSC registration and verification endpoints were retired on 2026-11-10. The retained
+response-refusal boundary filters legacy DBSC header names if an upstream response contains them;
+there is no current DBSC registration or challenge logging path.
 
 ActionMailer raw message content is not application logging data. The shared Rails configuration
 sets `config.action_mailer.logger = nil`, which leaves delivery, delivery jobs, interceptors and
@@ -224,13 +223,13 @@ Technical OpenTelemetry correlation is independent of product analytics consent.
 remove, or fabricate a `trace_id` or `span_id` supplied by a valid OpenTelemetry context.
 
 ActionMailer telemetry is an explicit pre-export allowlist. With the installed ActionMailer
-instrumentation, delivery spans retain only the non-secret mailer attribute and process spans
-retain only the mailer and action. Addresses, subject, arguments, body, MIME, OTPs, tokens and
-unknown future payload keys are excluded before the exporter. The Rails span scrubber remains a
-secondary in-process control: every `email.*` span attribute other than `email.x_mailer`, and
-every `args` attribute, is removed if it reaches that boundary. The development Alloy processor
-remains a second downstream deletion boundary. This local policy does not assert that a production
-collector or retention topology exists.
+instrumentation, delivery spans retain only the non-secret mailer attribute and process spans retain
+only the mailer and action. Addresses, subject, arguments, body, MIME, OTPs, tokens and unknown
+future payload keys are excluded before the exporter. The Rails span scrubber remains a secondary
+in-process control: every `email.*` span attribute other than `email.x_mailer`, and every `args`
+attribute, is removed if it reaches that boundary. The development Alloy processor remains a second
+downstream deletion boundary. This local policy does not assert that a production collector or
+retention topology exists.
 
 ## Layer 2: Audit And Security Events
 
@@ -315,9 +314,9 @@ The repository already shows:
 This means the repository can support separation, but the product analytics layer is not yet fully
 defined.
 
-The authentication security-event emitter follows this boundary: it writes a sanitized Chronicle
-row using the existing security retention policy and may additionally write a redacted application
-log for operational correlation. The log line is never treated as the authoritative audit record.
+The authentication security-event emitter follows this boundary: it writes a sanitized Chronicle row
+using the existing security retention policy and may additionally write a redacted application log
+for operational correlation. The log line is never treated as the authoritative audit record.
 Provider delivery acceptance, delivery outcome, retry, and permanent failure remain distinct facts.
 The existing SMS transport records enqueue, provider acceptance, and provider failure facts in
 Chronicle without recipient or message content. The OTP email adapters record successful email
@@ -348,7 +347,7 @@ dropped.
 | Class             | Event Patterns                                                                                                                                                                                                               | Rationale                                                 |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | Authentication    | `auth.*`, `authentication.*`, `authorization.*`, `session.*`, `social_auth.*`, `sign.social.omniauth*`, `user.token.*`, `staff.token.*`, `user.occurrence.*`, `staff.occurrence.*`, `otp.*`, `webauthn.*`, `sign.webauthn.*` | Service delivery, fraud detection, audit accountability   |
-| Security          | `rate_limit.*`, `telephone.verification.rate_limited`, `turnstile.*`, `captcha.*`, `security.*`, `redirect.blocked`, `redirect.invalid_url`, `sign.risk.*`                                                                   | Abuse prevention, bot mitigation, platform integrity      |
+| Security          | `rate_limit.*`, `telephone.verification.rate_limited`, `captcha.*`, `security.*`, `redirect.blocked`, `redirect.invalid_url`, `sign.risk.*`                                                                                  | Abuse prevention, bot mitigation, platform integrity      |
 | Incident Response | `health_check.*`, `exception.*`, `unhandled_exception`, `error.unhandled`, `preference.*.error`, `preference.*.rotation_error`                                                                                               | Reliability monitoring, incident investigation, debugging |
 | Contact           | `contact.submission.*`                                                                                                                                                                                                       | Confirm delivery of user-initiated contact                |
 

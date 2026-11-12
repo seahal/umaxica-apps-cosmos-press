@@ -240,3 +240,16 @@ gh repo view
 - `docs/operations/container-engine-podman-notes.md` — rootless Podman and SELinux behaviour.
 - `docs/hld.md` — the environment-variable catalog and the `.env` boundary.
 - `docs/reference/repository-language-policy.md` — language rules for repository prose.
+
+## Identifier lookup HMAC keys
+
+The four APP/ORG email and telephone lookup keys are repository-specific values in the encrypted
+development and test credentials. They are read through `Rails.app.credentials` only; environment
+variables do not provide a fallback. The pinned Rails `Rails.app.creds` combines ENV and
+credentials, so these four keys deliberately bypass that combined API. Generate each value
+independently with `SecureRandom.hex(32)` or stronger entropy, and never display or record it.
+Development and test use separate values.
+
+After changing development lookup keys, existing lookup digests are stale until recalculated. Follow
+the [development backfill procedure](../runbooks/development-identifier-blind-index-backfill.md),
+including owner approval before database writes. Keep identifier writes stopped during this gap.

@@ -1,5 +1,10 @@
 # Avatar organization ownership acceptance
 
+> **Route boundary update (2026-11-10):** Base APP/ORG avatar transfer controllers and routes were
+> removed. This accepted checklist records prior public transport expectations and is not evidence
+> of a currently served transfer workflow. Avatar models, operations, and migrations remain for the
+> separate model/database decision; do not infer their retirement from this route change.
+
 Authority: approved A00–A16 and D-1–D-11 strategic decisions. The existing
 [ownership spec](../../specs/avatar-organization-ownership/spec.md) retains historical findings and
 rejected options; its Binding-only Grants, residual idempotency gap and shared-DB cleanup proposals

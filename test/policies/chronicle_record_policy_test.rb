@@ -108,23 +108,23 @@ class ChronicleRecordPolicyTest < ActiveSupport::TestCase
   end
 
   test "actor_payload extracts actor info" do
-    client = clients(:one)
+    client = RpEditOrgPrincipal.new(id: 381)
     payload = ChronicleRecordPolicy.actor_payload(client)
 
-    assert_equal "Client", payload[:actor_type]
+    assert_equal "RpEditOrgPrincipal", payload[:actor_type]
     assert_predicate payload[:actor_id], :present?
   end
 
   test "subject_payload extracts subject info" do
-    client = clients(:one)
+    client = RpEditOrgPrincipal.new(id: 381)
     payload = ChronicleRecordPolicy.subject_payload(client)
 
-    assert_equal "Client", payload[:subject_type]
+    assert_equal "RpEditOrgPrincipal", payload[:subject_type]
     assert_predicate payload[:subject_id], :present?
   end
 
   test "log_payload builds complete payload" do
-    client = clients(:one)
+    client = RpEditOrgPrincipal.new(id: 381)
     payload = ChronicleRecordPolicy.log_payload(
       event: "test.event",
       event_uuid: "abc-123",
@@ -139,13 +139,13 @@ class ChronicleRecordPolicyTest < ActiveSupport::TestCase
     assert_equal "abc-123", payload[:event_uuid]
     assert_equal "req-456", payload[:request_id]
     assert_equal "test.action", payload[:action]
-    assert_equal "Client", payload[:actor_type]
-    assert_equal "Client", payload[:subject_type]
+    assert_equal "RpEditOrgPrincipal", payload[:actor_type]
+    assert_equal "RpEditOrgPrincipal", payload[:subject_type]
   end
 
   test "log_payload includes error info" do
     error = RuntimeError.new("Something broke")
-    client = clients(:one)
+    client = RpEditOrgPrincipal.new(id: 381)
     payload = ChronicleRecordPolicy.log_payload(
       event: "test.error",
       event_uuid: "abc-123",

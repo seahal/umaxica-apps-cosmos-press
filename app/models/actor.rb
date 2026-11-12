@@ -5,7 +5,7 @@
 # ActorValuesContext snapshot.
 #
 # It is push-based: the controller/authentication pipeline resolves
-# authentication, authorization, preference, selection, and step-up, then calls
+# authentication, authorization, selection, and step-up, then calls
 # Actor.install_context!. Actor never rebuilds auth state from the request and
 # never performs token decode, DB lookup, transparent refresh, DPoP/DBSC
 # verification, preference hydration, or policy-user construction. It is a
@@ -26,6 +26,8 @@ class Actor < ActiveSupport::CurrentAttributes
   end
 
   class << self
+    public
+
     CONTEXT_KEY_ALIASES = { actor: :subject }.freeze
 
     delegate :account, to: :context
@@ -143,10 +145,12 @@ class Actor < ActiveSupport::CurrentAttributes
       update(configuration: value)
     end
 
-    def preferences = context.preferences || Actor::Preference::NULL
+    def preferences
+      raise GovernanceUnavailableError, "Preference data is unavailable"
+    end
 
-    def preferences=(value)
-      update(preferences: value)
+    def preferences=(_value)
+      raise GovernanceUnavailableError, "Preference data is unavailable"
     end
 
     def selection = context.selection || Actor::SelectedContext::NULL
@@ -222,7 +226,7 @@ class Actor < ActiveSupport::CurrentAttributes
     def normalize_context_value(key, value)
       case key
       when :preferences
-        value || Actor::Preference::NULL
+        raise GovernanceUnavailableError, "Preference data is unavailable"
       when :authn
         value || Actor::Authentication::NULL
       when :authz

@@ -5,21 +5,10 @@ require "test_helper"
 
 class ReferenceDefaultsTest < ActiveSupport::TestCase
   DEFAULT_MODELS = [
-    AreaOccurrenceStatus,
-    VisitorOccurrenceStatus,
-    DomainOccurrenceStatus,
-    EmailOccurrenceStatus,
-    IpOccurrenceStatus,
-    JwtOccurrenceStatus,
-    OperatorPreferenceRegionOption,
-    TelephoneOccurrenceStatus,
-    ClientOccurrenceStatus,
-    ClientEmailStatus,
-
-    ClientPreferenceLanguageOption,
-    ClientPreferenceRegionOption,
-    ClientStatus,
-    ZipOccurrenceStatus,
+    ClientChronicleEvent,
+    ClientChronicleLevel,
+    OperatorChronicleEvent,
+    OperatorChronicleLevel,
   ].freeze
 
   test "reference models ensure their fixed ids exist" do

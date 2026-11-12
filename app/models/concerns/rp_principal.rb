@@ -12,4 +12,12 @@ module RpPrincipal
 
   # A local principal has no canonical lifecycle; disablement is the cell's own stop.
   def deactivated? = disabled_at.present?
+
+  def actor_type
+    case self.class::REALM
+    when "app" then :client
+    when "org" then :operator
+    else raise ArgumentError, "unsupported RP principal realm: #{self.class::REALM.inspect}"
+    end
+  end
 end

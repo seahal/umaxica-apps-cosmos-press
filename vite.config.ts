@@ -1,25 +1,13 @@
 import { fileURLToPath } from "node:url";
 
-import inertia from "@inertiajs/vite";
 import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import RubyPlugin from "vite-plugin-ruby";
 
 const srcRoot = fileURLToPath(new URL("./src", import.meta.url));
 
 export default defineConfig({
-  plugins: [
-    RubyPlugin(),
-    tailwindcss(),
-    inertia(),
-    // Native React Compiler via oxc-transform-react (experimental). Babel is not used.
-    react({
-      compiler: {
-        logDiagnostics: true,
-      },
-    }),
-  ],
+  plugins: [RubyPlugin(), tailwindcss()],
   server: {
     // Development is also reached through the public app/com/org hostnames. Keep Vite's
     // DNS-rebinding protection enabled while allowing only domains owned by this deployment.

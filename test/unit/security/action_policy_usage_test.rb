@@ -8,99 +8,15 @@ class ActionPolicyUsageTest < ActiveSupport::TestCase
   self.fixture_table_names = []
 
   SURFACE_AUTHORIZATION_CONTEXTS = {
-    Auth::App::ApplicationController => { actor: :current_actor, user: :current_policy_user },
-    Auth::Org::ApplicationController => { actor: :current_actor, user: :current_policy_user },
-    Base::App::ApplicationController => { actor: :current_actor, user: :current_policy_user },
-    Base::Org::ApplicationController => { actor: :current_actor, user: :current_policy_user },
-    Core::App::ApplicationController => { actor: :current_actor, user: :current_policy_user },
-    Core::Org::ApplicationController => { actor: :current_actor, user: :current_policy_user },
-    Warp::App::ApplicationController => { actor: :current_actor, user: :current_policy_user },
-    Warp::Org::ApplicationController => { actor: :current_actor, user: :current_policy_user },
+    Edit::Org::ApplicationController => {
+      user: :current_resource,
+      access_token_claims: :current_verified_access_token_claims,
+    },
   }.freeze
 
   MUTATION_ACTIONS = %w(create update destroy).freeze
 
   PRIVATE_MUTATION_AUTHORIZATION_EXCEPTIONS = [
-    # R5-WU12/14/15: these Base Self-RP mutations relay to their HTTPS domain owner, which applies
-    # the existing policy (authorize!) itself; the relay records that owner decision via
-    # AvatarRemoteResultPolicy / MembershipRemoteResultPolicy inside its relay helper.
-    "app/controllers/base/app/avatar_ownership_transfers_controller.rb#create",
-    "app/controllers/base/app/avatars_controller.rb#create",
-    "app/controllers/base/app/avatars_controller.rb#update",
-    "app/controllers/base/app/group_avatar_memberships_controller.rb#create",
-    "app/controllers/base/app/group_avatar_memberships_controller.rb#destroy",
-    "app/controllers/base/app/group_avatar_memberships_controller.rb#update",
-    "app/controllers/base/app/groups_controller.rb#create",
-    "app/controllers/base/app/groups_controller.rb#destroy",
-    "app/controllers/base/app/groups_controller.rb#update",
-    "app/controllers/base/app/organizations/memberships_controller.rb#create",
-    "app/controllers/base/app/organizations/memberships_controller.rb#destroy",
-    "app/controllers/base/app/organizations/memberships_controller.rb#update",
-    "app/controllers/base/org/avatar_ownership_transfers_controller.rb#create",
-    "app/controllers/base/org/avatars_controller.rb#destroy",
-    "app/controllers/base/org/avatars_controller.rb#update",
-    "app/controllers/base/org/iam/grants/revocations_controller.rb#create",
-    "app/controllers/base/org/iam/grants_controller.rb#create",
-    "app/controllers/base/org/support/clients/revocations_controller.rb#create",
-    "app/controllers/base/org/support/enforcement_cases/appeal_reviews_controller.rb#create",
-    "app/controllers/base/org/support/enforcement_cases/approvals_controller.rb#create",
-    "app/controllers/base/org/support/enforcement_cases/releases_controller.rb#create",
-    "app/controllers/base/org/support/enforcement_cases_controller.rb#create",
-    # Sign/settings ceremony endpoints are protected by ceremony state, provider ownership,
-    # WebAuthn/passkey challenge state, or recovery/removal sequence gates rather than a durable
-    # domain record policy at the controller action boundary.
-    "app/controllers/auth/app/settings/apples_controller.rb#create",
-    "app/controllers/auth/app/settings/apples_controller.rb#destroy",
-    "app/controllers/auth/app/settings/googles_controller.rb#create",
-    "app/controllers/auth/app/settings/googles_controller.rb#destroy",
-    "app/controllers/auth/app/settings/removals_controller.rb#create",
-
-    # Sign-in verification and cancellation ceremony endpoints are guarded by active flow,
-    # checkpoint, and verification state rather than standalone mutable resource records.
-    "app/controllers/auth/app/sign/in/checks_controller.rb#destroy",
-    "app/controllers/auth/app/sign/in/checks_controller.rb#update",
-    "app/controllers/auth/app/verification/emails_controller.rb#create",
-    "app/controllers/auth/app/verification/emails_controller.rb#update",
-    # Scoped verification endpoints authorize the admitted actor through their ceremony context;
-    # the mutation applies to ceremony state rather than a standalone resource record.
-    "app/controllers/auth/app/verification/passkeys_controller.rb#create",
-    "app/controllers/auth/app/verification/redeliveries_controller.rb#create",
-    "app/controllers/auth/app/verification/totps_controller.rb#create",
-    "app/controllers/auth/org/sign/in/checks_controller.rb#destroy",
-    "app/controllers/auth/org/sign/in/checks_controller.rb#update",
-
-    # Identity registration and credential ceremony endpoints are sequence-bound controllers.
-    # They create or complete pending identity artifacts scoped to the authenticated actor.
-    "app/controllers/base/app/identity/emails/redeliveries_controller.rb#create",
-    "app/controllers/base/app/identity/emails/registrations_controller.rb#create",
-    "app/controllers/base/app/identity/emails/registrations_controller.rb#update",
-    "app/controllers/base/app/identity/mfa/challenges_controller.rb#update",
-    "app/controllers/base/app/identity/telephones/registrations_controller.rb#create",
-    "app/controllers/base/app/identity/telephones/registrations_controller.rb#update",
-    "app/controllers/base/app/identity/telephones_controller.rb#create",
-    "app/controllers/base/org/identity/emails/registrations_controller.rb#create",
-    "app/controllers/base/org/identity/emails/registrations_controller.rb#update",
-    "app/controllers/base/org/identity/rotations_controller.rb#create",
-    "app/controllers/base/org/identity/telephones/registrations_controller.rb#create",
-    "app/controllers/base/org/identity/telephones/registrations_controller.rb#update",
-    "app/controllers/base/org/identity/telephones_controller.rb#create",
-
-    # Session and revocation endpoints scope queries through the current actor's sessions or
-    # support emergency revocation concern before mutating; keep these explicit until converted.
-    "app/controllers/base/app/identity/revocations/others_controller.rb#create",
-    "app/controllers/base/app/identity/revocations_controller.rb#create",
-    "app/controllers/base/app/identity/sessions_controller.rb#destroy",
-    "app/controllers/base/org/identity/revocations/others_controller.rb#create",
-    "app/controllers/base/org/identity/revocations_controller.rb#create",
-    "app/controllers/base/org/identity/sessions_controller.rb#destroy",
-
-    # Selector/switcher updates validate the requested account/organization/avatar combination
-    # through AcmeSelectableContext and persist only an already-authorized context selection.
-    "app/controllers/base/app/selectors_controller.rb#update",
-    "app/controllers/base/app/switchers_controller.rb#update",
-    "app/controllers/base/org/selectors_controller.rb#update",
-    "app/controllers/base/org/switchers_controller.rb#update",
-
     # The Publishing CMS's 36 per-cell controllers each declare only their cell's identity
     # (PUBLISHING_SURFACE, PUBLISHING_AUDIENCE, ENTRY_CLASS) and delegate every action to a
     # shared concern (PublishingManagementEntriesActions,
@@ -183,7 +99,7 @@ class ActionPolicyUsageTest < ActiveSupport::TestCase
     "app/controllers/edit/org/publishing/news/org/entries/archives_controller.rb#destroy",
   ].freeze
 
-  test "authenticated surface controllers use Action Policy with explicit actor context" do
+  test "authenticated Press controllers use Action Policy with explicit local principal context" do
     SURFACE_AUTHORIZATION_CONTEXTS.each do |controller_class, expected_context|
       assert_includes controller_class.ancestors,
                       ActionPolicy::Controller,
@@ -191,7 +107,7 @@ class ActionPolicyUsageTest < ActiveSupport::TestCase
       assert_equal(
         expected_context,
         controller_class.instance_variable_get(:@authorization_targets),
-        "#{controller_class.name} must configure Action Policy actor and compatibility user contexts",
+        "#{controller_class.name} must authorize through its request-local verified RP principal",
       )
     end
   end

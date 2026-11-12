@@ -2,28 +2,13 @@
 
 require "test_helper"
 
-# R5-WU17 role ingress boundary: every routed controller has exactly one owning runtime role, and a
-# role process serves only its own controllers.
+# A process may serve only the application surfaces assigned to its runtime role.
 class RuntimeRoleRouteOwnershipTest < ActiveSupport::TestCase
   self.fixture_table_names = []
 
-  # Framework engines are not application surfaces; a role process does not serve them. The
-  # inertia_rails DevTools routes are drawn in every environment but only match in development;
-  # the test below shows they are unreachable here.
-  FRAMEWORK_PREFIXES = %w(rails/ active_storage/ action_mailbox/ turbo/ inertia_rails/devtools/).freeze
-
-  test "inertia_rails DevTools routes are unreachable outside development" do
-    assert_raises(ActionController::RoutingError) do
-      Rails.application.routes.recognize_path("/_inertia/devtools/entries")
-    end
-    assert_raises(ActionController::RoutingError) do
-      Rails.application.routes.recognize_path("/_inertia/devtools/entries/1")
-    end
-  end
-
-  test "every routed application controller has an owning role" do
+  test "every routed application controller has an owner" do
     unowned =
-      routed_controllers.reject { |path| path.start_with?(*FRAMEWORK_PREFIXES) }.filter_map do |path|
+      routed_controllers.filter_map do |path|
         RuntimeRole.route_owner(path)
         nil
       rescue RuntimeRole::UnownedRoute
@@ -33,124 +18,70 @@ class RuntimeRoleRouteOwnershipTest < ActiveSupport::TestCase
     assert_empty unowned
   end
 
-  test "every owning role is a known runtime role" do
-    owners =
-      routed_controllers.reject { |path| path.start_with?(*FRAMEWORK_PREFIXES) }.map do |path|
-        RuntimeRole.route_owner(path)
-      end.uniq - [RuntimeRole::ANY_ROLE]
-
-    assert_empty owners - RuntimeRole::ALL
-  end
-
-  test "Base identity and credential pages belong to the realm RP" do
-    assert_equal "rp-base-app-ww", RuntimeRole.route_owner("base/app/identity/birthdates")
-    assert_equal RuntimeRole::ANY_ROLE, RuntimeRole.route_owner("base/com/roots")
-    assert_equal "rp-base-org-ww", RuntimeRole.route_owner("base/org/identity/secret_credentials")
-    assert_equal "op-base-app", RuntimeRole.route_owner("base/app/ceremony_binding_confirmations")
-    assert_equal "op-base-org", RuntimeRole.route_owner("visa/org/oauth/tokens")
-  end
-
-  test "Visa roots and logout completion and credential endpoints are OP owned in every realm" do
-    # two.md WU-3: the corporate Visa host no longer routes, so it owns no protocol controller.
-    %w(app org).each do |realm|
-      %w(roots oidc/logouts/completions edge/v0/token/checks edge/v0/token/refreshes).each do |path|
-        controller = "visa/#{realm}/#{path}"
-
-        assert_equal "op-base-#{realm}", RuntimeRole.route_owner(controller)
-        assert RuntimeRole.serves?(controller, "op-base-#{realm}")
-        assert_not RuntimeRole.serves?(controller, "rp-base-#{realm}-ww")
-      end
+  test "content and Edit controllers belong to their active owners" do
+    %w(docs help info news).each do |surface|
+      assert_equal "domain-publishing", RuntimeRole.route_owner("#{surface}/org/roots")
     end
-  end
 
-  test "Base Self-RP entry, callback, Refresh, logout receiver and relay pages belong to the Base cell" do
-    assert_equal "rp-base-app-ww", RuntimeRole.route_owner("base/app/sign/entries")
-    assert_equal RuntimeRole::ANY_ROLE, RuntimeRole.route_owner("base/com/preferences")
-    assert_equal "rp-base-org-ww", RuntimeRole.route_owner("base/org/oidc/closures")
-    assert_equal "rp-base-app-ww", RuntimeRole.route_owner("base/app/avatars")
-    assert_equal "rp-base-app-ww", RuntimeRole.route_owner("base/app/actor_support")
-    assert_equal "rp-base-org-ww", RuntimeRole.route_owner("base/org/actor_support")
-  end
-
-  test "Visa sensitive admission receipts belong to the realm OP" do
-    %w(app org).each do |realm|
-      controller = "visa/#{realm}/api/v0/sensitive_admission_sessions"
-
-      assert_equal "op-base-#{realm}", RuntimeRole.route_owner(controller)
-      assert RuntimeRole.serves?(controller, "op-base-#{realm}")
-      assert_not RuntimeRole.serves?(controller, "rp-base-#{realm}-ww")
-    end
-  end
-
-  test "domain owner APIs belong to their domain authority" do
-    assert_equal "domain-avatar", RuntimeRole.route_owner("base/app/api/v0/avatar/avatars")
-    assert_equal "domain-publishing", RuntimeRole.route_owner("base/org/api/v0/publishing/entries")
-    assert_equal "domain-org", RuntimeRole.route_owner("base/org/api/v0/support/accounts")
-  end
-
-  test "RP families map to their own cell" do
-    assert_equal "rp-core-org-jp", RuntimeRole.route_owner("core/org/roots")
-    assert_equal "rp-warp-org-jp", RuntimeRole.route_owner("warp/org/roots")
-    assert_equal "rp-palm-app-jp", RuntimeRole.route_owner("palm/app/roots")
     assert_equal "rp-edit-org-ww", RuntimeRole.route_owner("edit/org/roots")
-    assert_equal "rp-tech-org-ww", RuntimeRole.route_owner("tech/org/roots")
-    assert_equal "auth-org", RuntimeRole.route_owner("auth/org/sign/in/emails")
-    assert_equal RuntimeRole::ANY_ROLE, RuntimeRole.route_owner("warp/com/roots")
-    assert_raises(RuntimeRole::UnownedRoute) { RuntimeRole.route_owner("auth/com/sign/in/emails") }
-    assert_raises(RuntimeRole::UnownedRoute) { RuntimeRole.route_owner("visa/com/oauth/authorize") }
-    assert_raises(RuntimeRole::UnownedRoute) { RuntimeRole.route_owner("core/com/roots") }
+    assert_equal "domain-publishing", RuntimeRole.route_owner("edit/org/api/v0/publishing/entries")
+    assert_equal RuntimeRole::ANY_ROLE, RuntimeRole.route_owner("unknown_hosts")
   end
 
-  test "a prefix matches whole path segments only" do
-    # `identities` is its own entry; `identityx` shares the characters of `identity` but no segment.
-    assert_equal "rp-base-app-ww", RuntimeRole.route_owner("base/app/identities")
-    assert_raises(RuntimeRole::UnownedRoute) { RuntimeRole.route_owner("base/app/identityx") }
+  test "retired controller families have no runtime owner" do
+    %w(auth base core palm tech visa warp).each do |family|
+      assert_raises(RuntimeRole::UnownedRoute) { RuntimeRole.route_owner("#{family}/org/roots") }
+    end
   end
 
-  test "an unknown family or empty path is unowned" do
-    assert_raises(RuntimeRole::UnownedRoute) { RuntimeRole.route_owner("unknown/app/roots") }
-    assert_raises(RuntimeRole::UnownedRoute) { RuntimeRole.route_owner("") }
+  test "the Edit RP process serves its own open surface and closed protocol routes" do
+    with_browser_admission("open") do
+      assert RuntimeRole.serves?("edit/org/roots", "rp-edit-org-ww")
+      assert RuntimeRole.serves?("edit/org/oidc/closures", "rp-edit-org-ww")
+      assert_not RuntimeRole.serves?("edit/org/roots", "domain-publishing")
+    end
+
+    with_browser_admission("closed") do
+      assert RuntimeRole.serves?("edit/org/oidc/closures", "rp-edit-org-ww")
+      assert RuntimeRole.serves?("edit/org/healths", "rp-edit-org-ww")
+      assert_not RuntimeRole.serves?("edit/org/roots", "rp-edit-org-ww")
+    end
   end
 
-  test "a role serves its own controllers and shared paths, and nothing else" do
-    ENV["UMAXICA_RP_BROWSER_ADMISSION"] = "open"
-
-    assert RuntimeRole.serves?("core/app/roots", "rp-core-app-jp")
-    assert RuntimeRole.serves?("base/app/healths", "rp-core-app-jp")
-    assert_not RuntimeRole.serves?("core/org/roots", "rp-core-app-jp")
-    assert RuntimeRole.serves?("base/app/identity/birthdates", "rp-base-app-ww")
-    assert_not RuntimeRole.serves?("base/app/ceremony_binding_confirmations", "rp-base-app-ww")
-    assert_not RuntimeRole.serves?("base/app/avatars", "op-base-app")
-    assert_not RuntimeRole.serves?("unknown/app/roots", "op-base-app")
+  test "the shared process serves assigned routes but refuses retired families" do
+    assert RuntimeRole.serves?("docs/app/roots", RuntimeRole::SHARED)
+    assert RuntimeRole.serves?("edit/org/roots", RuntimeRole::SHARED)
+    assert_not RuntimeRole.serves?("base/app/roots", RuntimeRole::SHARED)
+    assert_not RuntimeRole.serves?("unknown/app/roots", RuntimeRole::SHARED)
   end
 
-  test "a closed RP cell serves only its back-channel logout receiver and health" do
-    ENV["UMAXICA_RP_BROWSER_ADMISSION"] = "closed"
-
-    assert RuntimeRole.serves?("base/app/oidc/closures", "rp-base-app-ww")
-    assert RuntimeRole.serves?("base/app/healths", "rp-base-app-ww")
-    assert_not RuntimeRole.serves?("base/app/avatars", "rp-base-app-ww")
-    assert_not RuntimeRole.serves?("core/app/oidc/callbacks", "rp-core-app-jp")
+  test "an Edit RP cell resolves only its own cell and key namespaces" do
+    assert_equal "rp_edit_org", RuntimeRole.cell_connection("rp-edit-org-ww")
+    assert_equal [
+      "OIDC_CLIENT_EDIT_ORG_WW_PRIVATE_KEY",
+      "JWT_EDIT_ORG_PRIVATE_KEY",
+    ], RuntimeRole.rp_private_env_names("rp-edit-org-ww")
   end
 
   test "an RP cell refuses to guess its browser admission" do
-    ENV["UMAXICA_RP_BROWSER_ADMISSION"] = "ajar"
-
-    assert_raises(RuntimeRole::UnknownRole) { RuntimeRole.serves?("core/app/roots", "rp-core-app-jp") }
-    ENV.delete("UMAXICA_RP_BROWSER_ADMISSION")
-    assert_raises(KeyError) { RuntimeRole.serves?("core/app/roots", "rp-core-app-jp") }
+    with_browser_admission("ajar") do
+      assert_raises(RuntimeRole::UnknownRole) do
+        RuntimeRole.serves?("edit/org/roots", "rp-edit-org-ww")
+      end
+    end
   end
-
-  test "the shared transitional role serves every controller, including unowned ones" do
-    assert RuntimeRole.serves?("base/app/identity/birthdates", RuntimeRole::SHARED)
-    assert RuntimeRole.serves?("unknown/app/roots", RuntimeRole::SHARED)
-  end
-
-  teardown { ENV.delete("UMAXICA_RP_BROWSER_ADMISSION") }
 
   private
 
   def routed_controllers
     Rails.application.routes.routes.filter_map { |route| route.defaults[:controller] }.uniq
+  end
+
+  def with_browser_admission(value)
+    previous = ENV["UMAXICA_RP_BROWSER_ADMISSION"]
+    ENV["UMAXICA_RP_BROWSER_ADMISSION"] = value
+    yield
+  ensure
+    previous.nil? ? ENV.delete("UMAXICA_RP_BROWSER_ADMISSION") : ENV["UMAXICA_RP_BROWSER_ADMISSION"] = previous
   end
 end

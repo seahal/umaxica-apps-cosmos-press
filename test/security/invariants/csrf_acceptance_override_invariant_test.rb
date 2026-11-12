@@ -52,18 +52,13 @@ class CsrfAcceptanceOverrideInvariantTest < ActiveSupport::TestCase
     assert_equal PERMITTED_SKIPS, counts
   end
 
-  test "the scan covers Ruby sources in app and lib" do
-    assert_operator begin
-      SCANNED.flat_map { |fv5003| Rails.root.glob("#{fv5003}/**/*.rb") }
-        .map { |fv5002| fv5002.relative_path_from(Rails.root).to_s }
-    end.size, :>, 1000
-    assert(
-      begin
-        SCANNED.flat_map { |fv5001| Rails.root.glob("#{fv5001}/**/*.rb") }
-          .map { |fv5000| fv5000.relative_path_from(Rails.root).to_s }
-      end.any? { |path| path.start_with?("lib/") },
-    )
-  end
+  test "the scan covers both application and library Ruby sources" do
+    paths =
+      SCANNED.flat_map { |root| Rails.root.glob("#{root}/**/*.rb") }
+        .map { |path| path.relative_path_from(Rails.root).to_s }
 
-  private
+    assert_includes paths, "app/controllers/edit/org/application_controller.rb"
+    assert_includes paths, "lib/observability_span_scrubber.rb"
+    assert_equal Rails.root.glob("{app,lib}/**/*.rb").size, paths.size
+  end
 end

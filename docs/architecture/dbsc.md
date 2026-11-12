@@ -1,92 +1,18 @@
 # Device Bound Session Credentials (DBSC)
 
-> **Partially superseded by Identity Authority inversion:** The DBSC vocabulary in this document
-> remains useful only where it does not assign session or token authority to `sign/id`. `acme/www`
-> is the Session, Token, Account, Preference, Authorization, and downstream-token Authority.
-> `sign/id` is ceremony-only. Existing sign-side physical tables/models do not imply sign-side
-> authority.
+This checkout no longer serves a DBSC registration or verification endpoint. The DBSC route and
+controller stack, registration and proof-verification services, HTTP header parsers, and persistence
+adapter were removed in the Press surface hard reset on 2026-11-10.
 
-This document covers authentication-token DBSC only. Preference DBSC and Preference refresh
-credentials are retired; see [Preference architecture](preference.md). Their removal does not
-change authentication-token DBSC or refresh behavior.
+Existing client and operator token models, their DBSC columns, status references, and migrations
+remain in the repository. `DbscBindable` still reads those persisted values and validates the
+session identifier's uniqueness. No current route issues a DBSC challenge or writes a DBSC
+registration. The downgrade helper was also removed with the registration workflow. Those stored
+models and migrations are retained for the separately authorized database/model cleanup step.
 
-## Specification
+The presence of those persisted columns does not mean browser cookies are currently bound to a
+device key. This document records repository behavior; it makes no claim about deployed data or
+browser interoperability.
 
-The DBSC implementation in this application is based on the W3C Web Application Security Working
-Group specification:
-
-- **W3C DBSC Specification**: <https://w3c.github.io/webappsec-dbsc/>
-
-## Purpose
-
-DBSC binds session cookies to a device-specific key pair. Even if a session cookie is stolen, it
-cannot be used on a different device because the server requires proof-of-possession of the private
-key that is bound to the session.
-
-## Implementation
-
-The server-side DBSC implementation lives in flat `app/services/dbsc_*.rb` files:
-
-| File                                        | Purpose                                               |
-| ------------------------------------------- | ----------------------------------------------------- |
-| `app/services/dbsc_registration_service.rb` | Registers a device key pair and binds it to a session |
-| `app/services/dbsc_verification_service.rb` | Verifies device proof-of-possession on requests       |
-| `app/services/dbsc_record_adapter.rb`       | Persistence adapter for DBSC state                    |
-
-Token tables (`user_tokens`, `staff_tokens`) store DBSC-related columns:
-
-- `dbsc_public_key` (JSONB) — the device's public key
-- `dbsc_challenge` — challenge value for registration
-- `dbsc_session_id` — session binding identifier
-
-## HTTP Header Boundary
-
-The header syntax follows sections 9.1–9.4 of the
-[W3C DBSC Editor's Draft](https://w3c.github.io/webappsec-dbsc/) inspected on 2026-10-22
-(draft dated 2026-09-08), and [RFC 9651](https://www.rfc-editor.org/rfc/rfc9651.html).
-This is a draft protocol; the checks below establish server behavior, not browser interoperability.
-
-`DbscHeaderParser` accepts a quoted Structured Field String, decodes escaped quotes and
-backslashes, and ignores syntactically valid item parameters. It rejects unquoted values,
-malformed escapes, control characters, non-ASCII strings, lists and trailing input.
-Controllers parse HTTP fields exactly once. The registration/verification services and
-`DbscProofVerifier` receive decoded strings, not HTTP field syntax.
-
-The token refresh endpoint compares the decoded identifier with the existing record before issuing
-a challenge. A missing record returns 401, malformed identifier syntax
-returns 400, and an unknown or unregistered identifier returns 403 without changing the challenge
-or setting a cookie. `Sec-Secure-Session-Id` is preferred over existing alternate field names.
-`DbscHeaderSerializer` quotes and escapes every registration/challenge string separately; the
-challenge response uses the stored identifier. Valid challenge responses remain 403.
-
-DBSC operational logs contain fixed event names and request paths, never session identifiers,
-proofs, challenges or their prefixes. Proof `iat` values are type-checked and compared as numeric
-epoch seconds before they can cause an out-of-range time conversion.
-
-This header hardening does not change DBSC lifecycle states, persistence, controller ownership,
-JWT algorithms or proof freshness policy. It does not establish conformance of the entire DBSC
-implementation to every provision of the current draft.
-
-## Relationship to DPoP
-
-DBSC and DPoP (RFC 9449) serve similar purposes (proof-of-possession) but target different flows:
-
-| Mechanism | Flow                                | Binding target                     |
-| --------- | ----------------------------------- | ---------------------------------- |
-| DBSC      | Browser cookie-based sessions       | Session cookie bound to device key |
-| DPoP      | API access via Authorization header | Access token bound to client key   |
-
-DBSC is the active browser-session binding mechanism. DPoP remains available for
-Authorization-header token binding where an explicitly reviewed flow chooses it.
-
-## VisitorAccount Token Strategy
-
-See `docs/architecture/dpop.md` § VisitorAccount Token Strategy for the full matrix of token
-transport and binding mechanisms across all client types (Rails HTML, Next.js, iOS / Android).
-
-## Related
-
-- `docs/architecture/dpop.md` — DPoP specification, implementation, and client token strategy
-- `adr/engine-isolate-namespace-adoption.md` — engine architecture
-- GitHub #731 — DPoP server-side support
-- GitHub #733 — OIDC standard endpoints
+For current token-binding behavior, see [DPoP](dpop.md). For the retained DBSC state fields and
+references, use the model/database inventory in the surface hard-reset evidence.

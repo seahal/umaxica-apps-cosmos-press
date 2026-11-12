@@ -41,7 +41,7 @@ module OidcRpSignEntry
   end
 
   def neutral_sign_form_url
-    url_for(only_path: true, ri: RequestContextContract.normalize_region(params[:ri]))
+    url_for(only_path: true, ri: oidc_request_region)
   end
 
   # D-151: GET /sign keeps the protected page's path as a hidden field for POST /sign.

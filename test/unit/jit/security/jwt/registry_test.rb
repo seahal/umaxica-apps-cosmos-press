@@ -52,51 +52,6 @@ module Jit
           end
         end
 
-        test "com preference public keyset works without a private key" do
-          public_only_key = OpenSSL::PKey::EC.generate("secp384r1")
-          jwk = JitSecurityJwtRegistry.export_public_jwk(public_only_key, kid: "com-public-only")
-          with_registry_inputs(
-            "PREFERENCE_COM_JWT_ACTIVE_KID" => "com-public-only",
-            "PREFERENCE_COM_JWT_PRIVATE_KEYSET" => nil,
-            "PREFERENCE_COM_JWT_PUBLIC_KEYSET" => JSON.generate(keys: [jwk]),
-            "PREFERENCE_COM_JWT_ISSUER" => "https://www.umaxica.com",
-            "PREFERENCE_COM_JWT_AUDIENCE" => "com",
-          ) do
-            issuer = JitSecurityJwtRegistry.reload!.fetch("preference_com")
-
-            assert_nil issuer.current_key.private_key
-            assert_predicate issuer.public_key_for("com-public-only"), :present?
-            snapshot = {
-              "theme" => "system",
-              "language" => "ja",
-              "timezone" => "Asia/Tokyo",
-              "currency" => "jpy",
-              "date_format" => "iso",
-              "time_format" => "24",
-              "motion" => "standard",
-              "density" => "standard",
-              "page_size" => "20",
-            }
-            now = Time.current
-            claims = {
-              "iss" => "https://www.umaxica.com",
-              "sub" => "row",
-              "aud" => "com",
-              "iat" => now.to_i,
-              "exp" => now.to_i + 400.days.to_i,
-              "jti" => "generation",
-              "preferences" => snapshot,
-            }
-            token = JWT.encode(claims, public_only_key, "ES384", { kid: "com-public-only", typ: "JWT" })
-
-            assert_predicate SecurityJwtPreferenceTokenCodec.decode(token, host: "www.umaxica.com"), :present?
-            assert_nil SecurityJwtPreferenceTokenCodec.encode(
-              snapshot, host: "www.umaxica.com", preference_type: "ComPreference", issued_at: now,
-                        public_id: "row", jti: "generation",
-            )
-          end
-        end
-
         test "loads configured Base OIDC client assertion issuer" do
           with_registry_inputs(
             "OIDC_CLIENT_BASE_APP_ACTIVE_KID" => "oidc-base-app-kid",
@@ -138,6 +93,10 @@ module Jit
 
             assert_includes kids, "auth-kid"
             assert_includes kids, "auth-legacy-kid"
+            jwk = JitSecurityJwtJwksService.jwk_set.fetch(:keys).first
+
+            assert JitSecurityJwtJwksService.normalized_public_jwk(jwk)
+            assert_nil JitSecurityJwtJwksService.normalized_public_jwk({ "kid" => "invalid" })
           end
         end
 
@@ -186,7 +145,7 @@ module Jit
           with_registry_inputs("JWT_AUTH_APP_PUBLIC_KEYSET" => "not-json") do
             error = assert_raises(JitSecurityJwtRegistry::ConfigurationError) { JitSecurityJwtRegistry.reload! }
 
-            assert_match(/surface:AUTH_APP public JWKS contains invalid JSON/, error.message)
+            assert_match(/JWT_AUTH_APP_PUBLIC_KEYSET contains invalid JSON/, error.message)
           end
         end
 
@@ -324,36 +283,9 @@ module Jit
           assert_match(/active key "auth-kid" is missing from JWKS/, error.message)
         end
 
-        test "every Jump issuer record carries the PUBLIC_* issuer origin that Jump RTs sign as" do
-          with_registry_inputs do
-            issuers = JitSecurityJwtRegistry.reload!
-
-            JumpRtSurface::ISSUER_NAMESPACES.each do |namespace|
-              assert_equal JumpRtSurface.issuer_origin(namespace), issuers.fetch("surface:#{namespace}").issuer,
-                           namespace
-            end
-          end
-        end
-
         test "a non-Jump surface record keeps its fixed issuer metadata" do
           with_registry_inputs do
             assert_equal "https://www.umaxica.app", JitSecurityJwtRegistry.reload!.fetch("surface:ACME_APP").issuer
-          end
-        end
-
-        test "an unsafe Jump issuer origin fails registry configuration at boot instead of at request time" do
-          with_registry_inputs("PUBLIC_BASE_SERVICE_URL" => "base.app.localhost") do
-            error = assert_raises(JitSecurityJwtRegistry::ConfigurationError) { JitSecurityJwtRegistry.reload! }
-
-            assert_match(/PUBLIC_BASE_SERVICE_URL/, error.message)
-          end
-        end
-
-        test "a missing Jump issuer origin fails registry configuration" do
-          with_registry_inputs("PUBLIC_PALM_SERVICE_URL" => nil) do
-            error = assert_raises(JitSecurityJwtRegistry::ConfigurationError) { JitSecurityJwtRegistry.reload! }
-
-            assert_match(/PUBLIC_PALM_SERVICE_URL is required/, error.message)
           end
         end
 
@@ -467,7 +399,7 @@ module Jit
 
         def clear_unused_registry_namespace_env(env)
           JitSecurityJwtRegistry::SURFACE_NAMESPACES.each do |namespace|
-            next if JumpRtSurface::ISSUER_NAMESPACES.include?(namespace)
+            next if env.key?("JWT_#{namespace}_ACTIVE_KID")
 
             env["JWT_#{namespace}_ACTIVE_KID"] = nil
             env["JWT_#{namespace}_PUBLIC_KEYSET"] = nil

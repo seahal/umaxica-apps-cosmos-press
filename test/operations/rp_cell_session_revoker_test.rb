@@ -5,10 +5,10 @@ require "test_helper"
 class RpCellSessionRevokerTest < ActiveSupport::TestCase
   self.fixture_table_names = []
 
-  ISSUER = "https://www.umaxica.app"
+  ISSUER = "https://www.umaxica.org"
 
   setup do
-    @cell = RpCellBinding.fetch("rp_core_app")
+    @cell = RpCellBinding.fetch("rp_edit_org")
     @key = OpenSSL::PKey::EC.generate("secp384r1")
   end
 
@@ -16,9 +16,9 @@ class RpCellSessionRevokerTest < ActiveSupport::TestCase
     session = enroll("sid-1")
 
     assert_equal :revoked, revoke(payload("sid-1"))
-    assert_not_nil RpCoreAppOpSessionBinding.find_by!(sid: "sid-1").revoked_at
+    assert_not_nil RpEditOrgOpSessionBinding.find_by!(sid: "sid-1").revoked_at
     assert_not_nil session.reload.revoked_at
-    assert_equal 1, RpCoreAppEventReceipt.count
+    assert_equal 1, RpEditOrgEventReceipt.count
   end
 
   test "a duplicate delivery of the same event is a success without a second receipt" do
@@ -26,7 +26,7 @@ class RpCellSessionRevokerTest < ActiveSupport::TestCase
     revoke(payload("sid-1"))
 
     assert_equal :duplicate, revoke(payload("sid-1"))
-    assert_equal 1, RpCoreAppEventReceipt.count
+    assert_equal 1, RpEditOrgEventReceipt.count
   end
 
   test "a logout for a never-seen sid leaves a tombstone that a late callback cannot reopen" do
@@ -43,7 +43,7 @@ class RpCellSessionRevokerTest < ActiveSupport::TestCase
     assert_predicate verify(token(payload("sid-1"))), :success?
     assert_not_predicate verify(token(payload("sid-1").merge("nonce" => "n"))), :success?
     assert_not_predicate verify(token(payload("sid-1").except("events"))), :success?
-    assert_not_predicate verify(token(payload("sid-1").merge("aud" => ["warp-app-jp"]))), :success?
+    assert_not_predicate verify(token(payload("sid-1").merge("aud" => ["other-client"]))), :success?
     assert_not_predicate verify(token(payload("sid-1").merge("iss" => "https://evil.test"))), :success?
     assert_not_predicate verify(token(payload("sid-1"), typ: "JWT")), :success?
     assert_not_predicate verify(token(payload("sid-1"), key: OpenSSL::PKey::EC.generate("secp384r1"))), :success?
@@ -51,7 +51,7 @@ class RpCellSessionRevokerTest < ActiveSupport::TestCase
   end
 
   test "logout selects the cell writer when entered from a reading role" do
-    RpCoreAppRecord.connected_to(role: :reading) do
+    RpEditOrgRecord.connected_to(role: :reading) do
       assert_equal :revoked, RpCellSessionRevoker.call(
         cell: @cell, payload: { "iss" => ISSUER,
                                 "sid" => "writer-sid",
@@ -60,8 +60,8 @@ class RpCellSessionRevokerTest < ActiveSupport::TestCase
       )
     end
 
-    assert_not_nil RpCoreAppOpSessionBinding.find_by!(sid: "writer-sid").revoked_at
-    assert_equal 1, RpCoreAppEventReceipt.count
+    assert_not_nil RpEditOrgOpSessionBinding.find_by!(sid: "writer-sid").revoked_at
+    assert_equal 1, RpEditOrgEventReceipt.count
   end
 
   private
@@ -78,7 +78,7 @@ class RpCellSessionRevokerTest < ActiveSupport::TestCase
 
   def verify(logout_token)
     OidcOpLogoutTokenVerifier.new(
-      logout_token:, client_id: "core-app-jp", issuer: ISSUER,
+      logout_token:, client_id: "edit-org-ww", issuer: ISSUER,
       jwks_client: OidcOpJwksClient.new(
         jwks_uri: "#{ISSUER}/.well-known/jwks.json",
         fetcher: -> { { "keys" => [JitSecurityJwtJwk.export_public(@key, kid: "k1")] } },
@@ -95,7 +95,7 @@ class RpCellSessionRevokerTest < ActiveSupport::TestCase
     now = Time.current.to_i
     {
       "iss" => ISSUER,
-      "aud" => ["core-app-jp"],
+      "aud" => ["edit-org-ww"],
       "iat" => now,
       "exp" => now + 120,
       "jti" => "jti-#{sid}",

@@ -6,6 +6,8 @@
 module PublishingEncryptedContent
   extend ActiveSupport::Concern
 
+  BODY_SHAPE_ERROR = "must be a JSON object"
+
   # FIXME: Violates Umaxica/NoConcernInclusionHooks; move the declarations in this block into each class that includes this concern.
   included do
     serialize :body, coder: JSON
@@ -18,15 +20,18 @@ module PublishingEncryptedContent
     validates :content_digest, length: { is: 64 }, format: { with: /\A[0-9a-f]+\z/ }, on: :create
 
     validates :title, presence: true
-    validates :schema_version, numericality: { greater_than: 0, only_integer: true }
+    validates :schema_version,
+              numericality: { greater_than: 0, less_than_or_equal_to: 2_147_483_647, only_integer: true }
+    # Rails exclusion checks array elements; only scalar nil belongs to this requiredness check.
+    validates :body, exclusion: { in: [nil], message: BODY_SHAPE_ERROR }, if: -> { body.nil? }
     validate :body_must_be_json_object
   end
 
   private
 
   def body_must_be_json_object
-    return if body.is_a?(Hash)
+    return if body.nil? || body.is_a?(Hash)
 
-    errors.add(:body, "must be a JSON object")
+    errors.add(:body, BODY_SHAPE_ERROR)
   end
 end

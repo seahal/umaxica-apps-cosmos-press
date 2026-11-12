@@ -26,11 +26,13 @@ class XperRetiredHostsTest < ActionDispatch::IntegrationTest
     [:get, "/sitemap.xml", {}],
   ].freeze
 
-  SURFACE_CONTROLLER_NAMESPACES = %w(
-    auth base core docs edit guid help info news palm warp xper
-  ).freeze
+  RETAINED_INFO_REQUESTS = REQUESTS.reject { |_method, path, _options|
+    %w(/ /robots.txt /sitemap.xml).include?(path)
+  }.freeze
 
-  RETAINED_HOST = "base.app.localhost"
+  SURFACE_CONTROLLER_NAMESPACES = %w(
+    docs edit help info news xper
+  ).freeze
 
   test "retired Xper hosts do not reach any surface controller" do
     RETIRED_HOSTS.each do |host|
@@ -49,12 +51,14 @@ class XperRetiredHostsTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "a retained Base host still owns the same endpoint paths" do
-    REQUESTS.each do |method, path, options|
-      host!(RETAINED_HOST)
+  test "a retained Info host still owns the same endpoint paths" do
+    retained_host = ENV.fetch("PRIVATE_INFO_SERVICE_URL")
+
+    RETAINED_INFO_REQUESTS.each do |method, path, options|
+      host!(retained_host)
       public_send(method, path, **options)
 
-      assert_match(/\Abase\/app\//, request.path_parameters.fetch(:controller))
+      assert_match(/\Ainfo\/app\//, request.path_parameters.fetch(:controller))
       assert_response :success
     end
   end

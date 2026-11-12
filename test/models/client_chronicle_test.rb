@@ -43,14 +43,15 @@
 require "test_helper"
 
 class ClientChronicleTest < ActiveSupport::TestCase
-  fixtures :clients, :operators, :client_chronicle_events, :client_chronicle_levels, :client_statuses
+  fixtures :client_chronicle_events, :client_chronicle_levels
 
   def setup
-    @user = clients(:one)
+    @subject_id = "381"
     @audit_event = ClientChronicleEvent.find(ClientChronicleEvent::LOGIN_SUCCESS)
     @level = ClientChronicleLevel.find_or_create_by!(id: ClientChronicleLevel::INFO)
+    @actor = @level
     @audit = ClientChronicle.create!(
-      user: @user,
+      subject_id: @subject_id, subject_type: "Client", actor: @actor,
       user_chronicle_level: @level,
       user_chronicle_event: @audit_event,
       timestamp: Time.current,
@@ -81,7 +82,7 @@ class ClientChronicleTest < ActiveSupport::TestCase
 
   test "requires user_chronicle_event" do
     audit = ClientChronicle.new(
-      user: @user,
+      subject_id: @subject_id, subject_type: "Client", actor: @actor,
     )
 
     # Defaults to NOTHING, so it should be valid
@@ -90,7 +91,7 @@ class ClientChronicleTest < ActiveSupport::TestCase
 
   test "validates foreign key constraint on event_id" do
     audit = ClientChronicle.new(
-      user: @user,
+      subject_id: @subject_id, subject_type: "Client", actor: @actor,
       event_id: 9999,
       timestamp: Time.current,
     )
@@ -109,75 +110,45 @@ class ClientChronicleTest < ActiveSupport::TestCase
     assert_predicate association, :polymorphic?
   end
 
-  test "can be created with a Client as actor" do
-    actor_user = clients(:one)
+  test "a kept local record can be the polymorphic actor" do
     audit = ClientChronicle.create!(
-      user: @user,
-      user_chronicle_event: @audit_event,
-      actor: actor_user,
+      subject_id: @subject_id, subject_type: "Client",
+      user_chronicle_event: @audit_event, actor: @actor,
     )
 
-    assert_equal actor_user.id, audit.actor_id
-    assert_equal "Client", audit.actor_type
-    assert_equal actor_user, audit.actor
+    assert_equal @actor.id, audit.actor_id
+    assert_equal @actor.class.name, audit.actor_type
+    assert_equal @actor, audit.actor
   end
 
-  test "can be created with an Operator as actor" do
-    actor_staff = operators(:one)
-    audit = ClientChronicle.create!(
-      user: @user,
-      user_chronicle_event: @audit_event,
-      actor: actor_staff,
+  test "required actor validation explicitly refuses unavailable historical authority" do
+    audit = ClientChronicle.new(
+      subject_id: @subject_id, subject_type: "Client",
+      user_chronicle_event: @audit_event, actor_id: 381, actor_type: "Client",
     )
+    error = assert_raises(DependencyUnavailableError) { audit.valid? }
 
-    assert_equal actor_staff.id, audit.actor_id
-    assert_equal "Operator", audit.actor_type
-    assert_equal actor_staff, audit.actor
-  end
-
-  test "Client and Operator can both be actors in different audits" do
-    actor_user = clients(:one)
-    actor_staff = operators(:one)
-
-    # Multiple audits for the same user can have different actors
-    ClientChronicle.create!(
-      user: @user,
-      user_chronicle_event: @audit_event,
-      actor: actor_user,
-    )
-
-    ClientChronicle.create!(
-      user: @user,
-      user_chronicle_event: @audit_event,
-      actor: actor_staff,
-    )
-
-    # Retrieve multiple audits related to the same Client
-    user_actors = @user.client_chronicles.where(actor_type: "Client")
-    staff_actors = @user.client_chronicles.where(actor_type: "Operator")
-
-    assert_not_empty user_actors
-    assert_not_empty staff_actors
+    assert_kind_of NameError, error.cause
   end
 
   # Additional tests for helper methods
   test "user helper method returns user" do
-    assert_equal @user, @audit.user
+    assert_raises(GovernanceUnavailableError) { @audit.user }
   end
 
   test "user_id helper method returns user id" do
-    assert_equal @user.id.to_s, @audit.user_id
+    assert_equal @subject_id, @audit.user_id
   end
 
   test "user helpers return nil for non user subjects" do
-    audit = ClientChronicle.new(subject_id: @user.id.to_s, subject_type: "Staff")
+    audit = ClientChronicle.new(subject_id: @subject_id, subject_type: "Staff")
 
-    assert_nil audit.user
+    assert_raises(GovernanceUnavailableError) { audit.user }
     assert_nil audit.user_id
   end
 
   test "event validation skips blank event id" do
-    audit = ClientChronicle.new(user: @user, event_id: nil)
+    audit = ClientChronicle.new(subject_id: @subject_id, subject_type: "Client", actor: @actor, event_id: nil)
 
     audit.send(:event_id_must_exist)
 
@@ -190,20 +161,17 @@ class ClientChronicleTest < ActiveSupport::TestCase
 
   test "set_timestamp defaults to current time" do
     audit = ClientChronicle.new(user_chronicle_event: @audit_event)
-    audit.user = @user
+    audit.assign_attributes(subject_id: @subject_id, subject_type: "Client", actor: @actor)
     audit.save!
 
     assert_not_nil audit.timestamp
   end
 
-  test "actor defaults to subject user if blank" do
-    audit = ClientChronicle.create!(
-      user: @user,
-      user_chronicle_event: @audit_event,
-      actor: nil,
-    )
+  test "defaulting a historical actor requires unavailable identity authority" do
+    audit = ClientChronicle.new(subject_id: @subject_id, subject_type: "Client")
 
-    assert_equal @user.id, audit.actor_id
+    assert_raises(DependencyUnavailableError) { audit.valid? }
+    assert_equal 381, audit.actor_id
     assert_equal "Client", audit.actor_type
   end
 end

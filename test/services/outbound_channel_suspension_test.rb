@@ -21,6 +21,12 @@ class OutboundChannelSuspensionTest < ActiveSupport::TestCase
     assert_not OutboundChannelSuspension.new(flipper: StubFlipper.new({})).suspended?(:promotional_email)
   end
 
+  test "the class entry point applies the configured channel switch" do
+    flipper = StubFlipper.new(outbound_sms_suspended: true)
+
+    assert OutboundChannelSuspension.suspended?(:sms, flipper:)
+  end
+
   test "an enabled feature suspends only its own channel" do
     suspension = OutboundChannelSuspension.new(flipper: StubFlipper.new(outbound_sms_suspended: true))
 

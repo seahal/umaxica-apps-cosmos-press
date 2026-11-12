@@ -215,19 +215,10 @@ the installer-owned keys in `tmp/local_jwt_keysets.json` (kid `development-<name
 `JWT_<NAMESPACE>_*` environment value that does not match that store fails boot, so no other key
 material can be injected locally.
 
-Issuer identity comes from the existing surface setting for the namespace (`PUBLIC_AUTH_*_URL`,
-`PUBLIC_BASE_*_URL`, `PUBLIC_CORE_*_URL`, `PUBLIC_WARP_*_URL`, `PUBLIC_PALM_SERVICE_URL`). For live
-Jump each such setting must be a public HTTPS root origin; localhost, private ingress and IP
-literals fail registry configuration at boot and raise `JumpRtConfigurationError` at issuance and on
-return verification. `Rails.env` does not change the identity, so development may use a canonical
-origin such as `https://www.umaxica.app`. In that case the JWKS at that origin must publish the
-development kid, and the development private key then signs as the canonical issuer with full
-authority; the `development` marker in the kid does not limit it. Otherwise expose a distinct
-origin's Rails JWKS route and browser return through public HTTPS ingress, and register the exact
-issuer, JWKS and kid in Hono separately. Verify DNS, TLS, JWKS accessibility from Jump and the
-published kid before use. An Access login page in front of JWKS does not constitute a fetchable
-keyset. No deployment, trust registration, secret provisioning or key rotation is performed by this
-Rails change.
+Press has no local Jump issuer surface after the repository split. Its issuer catalog is empty;
+foreign namespace URL inputs are not provisioned here, and attempts to issue a local Jump RT fail
+explicitly. The gateway return verifier and its cryptographic checks remain separate. Protocol
+fixture tests do not establish that Press accepts any foreign return edge in deployment.
 
 Edit remains an OIDC assertion client, not a Jump issuer; its OIDC keys and registration are
 independent from this surface key runbook.

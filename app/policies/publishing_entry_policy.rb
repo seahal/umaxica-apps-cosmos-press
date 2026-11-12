@@ -1,20 +1,8 @@
 # typed: false
 # frozen_string_literal: true
 
-# Authorization for the staff Publishing CMS.
-#
-# The CMS reads and writes content for all twelve cells, so the record it is
-# asked about is an entry from one of twelve classes, or the operator itself
-# for the collection actions. None of those distinctions change the answer:
-# what the CMS requires is a staff operator whose account is currently in
-# force. Cell separation is a routing and query concern -- each controller
-# names one `ENTRY_CLASS` and the query never crosses it -- not something a
-# policy can restate without duplicating it.
-#
-# `active?` is the same predicate `AuthenticationOperator#active_operator?`
-# uses: an operator who has withdrawn, is closing, is suspended, or has been
-# terminated keeps a valid session until it expires, and must not be able to
-# publish with it.
+# A local RP credential establishes authentication, not Governance publishing permission.
+# Keep mutations closed until the authoritative permission and author identity are available.
 class PublishingEntryPolicy < ApplicationPolicy
   def index? = staff_operator_in_force?
 
@@ -29,6 +17,9 @@ class PublishingEntryPolicy < ApplicationPolicy
   private
 
   def staff_operator_in_force?
-    user.is_a?(Operator) && user.active?
+    return false unless user.is_a?(RpEditOrgPrincipal)
+    return false if user.deactivated?
+
+    raise GovernanceUnavailableError, "Publishing authorization and author identity require Governance"
   end
 end

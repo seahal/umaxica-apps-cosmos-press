@@ -53,12 +53,10 @@ class RedirectsJumpGatewayUrlTest < ActiveSupport::TestCase
     assert_equal "token_too_large", result.failure_reason
   end
 
-  test "accepts rails issued jwt" do
-    token = JumpRtIssuer.call(namespace: "AUTH_APP", url: "https://www.umaxica.app/dashboard", dst: "internal")
-    result = RedirectsJumpGatewayUrl.call(token)
-
-    assert_predicate result, :ok?
-    assert_equal token, Rack::Utils.parse_query(URI.parse(result.value).query).fetch("rt")
+  test "Press does not issue Jump RTs for foreign surfaces" do
+    assert_raises(JumpRtConfigurationError) do
+      JumpRtIssuer.call(namespace: "AUTH_APP", url: "https://www.umaxica.app/dashboard", dst: "internal")
+    end
   end
 
   test "a plain http gateway origin is refused even in a local environment" do

@@ -19,7 +19,7 @@ Shrine.plugin(:determine_mime_type, analyzer: :marcel)
 Shrine.plugin(:validation_helpers)
 Shrine.plugin(:default_storage)
 
-# Per-boundary storages are resolved lazily by name, e.g. :avatar_store. A
+# Per-boundary storages are resolved lazily by name, e.g. :publishing_store. A
 # resolver returning nil makes Shrine.find_storage raise Shrine::MissingStorage,
 # so an unregistered boundary fails closed instead of falling back to a shared
 # namespace.

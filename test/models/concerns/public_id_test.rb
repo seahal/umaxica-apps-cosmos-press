@@ -45,6 +45,7 @@ class PublicIdTest < ActiveSupport::TestCase
 
     assert_not_nil dummy_instance.public_id
     assert_equal "testpublicid123456789", dummy_instance.public_id
+    assert_equal "testpublicid123456789", dummy_instance.to_param
   end
 
   test "generated public_id has correct length" do

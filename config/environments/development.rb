@@ -9,8 +9,8 @@ Rails.application.configure do
   # Make code changes take effect immediately without server restart.
   config.enable_reloading = true
 
-  # Live DOM reloaders mutate forms in-place and break third-party challenge
-  # widgets such as Cloudflare Turnstile. Keep them opt-in for public dev hosts.
+  # Live DOM reloaders mutate forms in-place and can break interactive widgets.
+  # Keep them opt-in for public dev hosts.
   config.hotwire.spark.enabled = ENV["HOTWIRE_SPARK_ENABLED"] == "true"
 
   # Do not eager load code on boot.
@@ -50,6 +50,9 @@ Rails.application.configure do
     url: valkey.cache.url,
     namespace: cache_namespace,
     error_handler: Umaxica::Valkey::StoreErrorHandler.lambda_for("cache"),
+    # Not Marshal: a value written into Valkey must never deserialize into code on read
+    # (docs/runbooks/valkey-protection.md).
+    serializer: :message_pack,
   }
   rate_limit_namespace = [
     valkey.rate_limit.namespace,
@@ -61,6 +64,9 @@ Rails.application.configure do
       url: valkey.rate_limit.url,
       namespace: rate_limit_namespace,
       error_handler: Umaxica::Valkey::StoreErrorHandler.lambda_for("rate_limit"),
+      # Not Marshal: a value written into Valkey must never deserialize into code on read
+      # (docs/runbooks/valkey-protection.md).
+      serializer: :message_pack,
     )
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
@@ -157,16 +163,10 @@ Rails.application.configure do
   # Enable DNS rebinding protection for hosts used in route constraints.
   boot_hosts = Rails.configuration.x.boot_config.fetch(:hosts)
   boot_config_hosts = [
-    boot_hosts.sign_origins,
-    boot_hosts.core_origins,
-    boot_hosts.tech_staff,
-    boot_hosts.base_origins,
-    boot_hosts.palm_service,
     boot_hosts.docs_origins,
     boot_hosts.news_origins,
     [boot_hosts.help_service, boot_hosts.help_corporate, boot_hosts.help_staff],
     boot_hosts.info_origins,
-    boot_hosts.guid_service,
     boot_hosts.edit_staff,
   ].flatten
   boot_config_hosts.map!(&:host)
@@ -181,42 +181,19 @@ Rails.application.configure do
   # authentication and authorization remain authoritative behind it.
   # See docs/architecture/cloudflare-request-paths.md.
   localhost_tunnel_hosts = %w(
-    auth.app.localhost:3000
-    auth.com.localhost:3000
-    auth.org.localhost:3000
-    base.app.localhost:3000
-    base.org.localhost:3000
-    base.com.localhost:3000
-    base.net.localhost:3000
-    base.dev.localhost:3000
     info.com.localhost:3000
     info.org.localhost:3000
     info.app.localhost:3000
     help.com.localhost:3000
     help.org.localhost:3000
     help.app.localhost:3000
-    core.com.localhost:3000
-    core.org.localhost:3000
-    core.app.localhost:3000
-    core.net.localhost:3000
-    core.dev.localhost:3000
-    core.dev.localhost:3001
     docs.com.localhost:3000
     docs.org.localhost:3000
     docs.app.localhost:3000
     news.com.localhost:3000
     news.org.localhost:3000
     news.app.localhost:3000
-    warp.com.localhost:3000
-    warp.com.localhost:3001
-    warp.org.localhost:3000
-    warp.org.localhost:3001
-    warp.app.localhost:3000
-    warp.app.localhost:3001
-    palm.app.localhost:3000
-    guid.net.localhost:3000
     edit.org.localhost:3000
-    tech.org.localhost:3000
     mission.core.dev.localhost:3000
     mission.core.dev.localhost:3001
     flipper.core.dev.localhost:3000
@@ -225,8 +202,6 @@ Rails.application.configure do
     blazer.core.dev.localhost:3001
     pghero.core.dev.localhost:3000
     pghero.core.dev.localhost:3001
-    performance.core.dev.localhost:3000
-    performance.core.dev.localhost:3001
     coverband.core.dev.localhost:3000
     coverband.core.dev.localhost:3001
     swagger.core.dev.localhost:3000
@@ -241,33 +216,14 @@ Rails.application.configure do
   # cloudflared. Both are read from the environment rather than hardcoded so compose.yaml
   # stays the single source of hostnames; a new tunnel hostname is added there, not here.
   env_host_keys = %w(
-    PRIVATE_BASE_CORPORATE_URL
-    PRIVATE_BASE_SERVICE_URL
-    PRIVATE_BASE_STAFF_URL
-    PRIVATE_VISA_CORPORATE_URL
-    PRIVATE_VISA_SERVICE_URL
-    PRIVATE_VISA_STAFF_URL
-    PRIVATE_BASE_NETWORK_URL
-    PRIVATE_BASE_DEVELOPER_URL
-    PRIVATE_AUTH_CORPORATE_URL
-    PRIVATE_AUTH_SERVICE_URL
-    PRIVATE_AUTH_STAFF_URL
-    PRIVATE_CORE_SERVICE_URL
-    PRIVATE_CORE_STAFF_URL
-    PRIVATE_CORE_CORPORATE_URL
-    PRIVATE_CORE_DEVELOPER_URL
-    PRIVATE_PALM_SERVICE_URL
     PRIVATE_INFO_SERVICE_URL
     PRIVATE_INFO_STAFF_URL
     PRIVATE_INFO_CORPORATE_URL
-    PRIVATE_GUID_SERVICE_URL
     PRIVATE_EDIT_STAFF_URL
-    PRIVATE_TECH_STAFF_URL
     PRIVATE_MISSION_URL
     PRIVATE_FLIPPER_URL
     PRIVATE_BLAZER_URL
     PRIVATE_PGHERO_URL
-    PRIVATE_PERFORMANCE_URL
     PRIVATE_COVERBAND_URL
     PRIVATE_SWAGGER_URL
     PRIVATE_DOCS_SERVICE_URL
@@ -279,37 +235,10 @@ Rails.application.configure do
     PRIVATE_HELP_SERVICE_URL
     PRIVATE_HELP_STAFF_URL
     PRIVATE_HELP_CORPORATE_URL
-    PUBLIC_AUTH_SERVICE_URL
-    PUBLIC_AUTH_CORPORATE_URL
-    PUBLIC_AUTH_STAFF_URL
-    PUBLIC_BASE_SERVICE_URL
-    PUBLIC_BASE_CORPORATE_URL
-    PUBLIC_BASE_STAFF_URL
-    PUBLIC_VISA_SERVICE_URL
-    PUBLIC_VISA_CORPORATE_URL
-    PUBLIC_VISA_STAFF_URL
-    PUBLIC_BASE_DEVELOPER_URL
-    PUBLIC_CORE_SERVICE_URL
-    PUBLIC_CORE_CORPORATE_URL
-    PUBLIC_CORE_STAFF_URL
-    PUBLIC_CORE_DEVELOPER_URL
-    PUBLIC_WARP_SERVICE_URL
-    PUBLIC_WARP_CORPORATE_URL
-    PUBLIC_WARP_STAFF_URL
-    PUBLIC_PALM_SERVICE_URL
     PUBLIC_INFO_SERVICE_URL
     PUBLIC_INFO_CORPORATE_URL
     PUBLIC_INFO_STAFF_URL
-    PUBLIC_GUID_SERVICE_URL
     PUBLIC_EDIT_STAFF_URL
-    PUBLIC_TECH_STAFF_URL
-    PUBLIC_MISSION_URL
-    PUBLIC_FLIPPER_URL
-    PUBLIC_BLAZER_URL
-    PUBLIC_PGHERO_URL
-    PUBLIC_PERFORMANCE_URL
-    PUBLIC_COVERBAND_URL
-    PUBLIC_SWAGGER_URL
     PUBLIC_DOCS_SERVICE_URL
     PUBLIC_DOCS_CORPORATE_URL
     PUBLIC_DOCS_STAFF_URL
@@ -325,19 +254,28 @@ Rails.application.configure do
     (boot_config_hosts + localhost_tunnel_hosts + env_hosts).compact_blank.uniq,
   )
 
-  # Local development container entry points, including the published host port 3001.
-  config.hosts.concat(%w(visa.app.localhost visa.com.localhost visa.org.localhost))
+  config.hosts.concat(
+    %w(
+      mission-press.umaxica.dev
+      flipper-press.umaxica.dev
+      blazer-press.umaxica.dev
+      pghero-press.umaxica.dev
+      coverband-press.umaxica.dev
+      swagger-press.umaxica.dev
+    ),
+  )
 
   ## file watcher
   config.file_watcher = ActiveSupport::FileUpdateChecker
 
   ## Email Settings
   config.action_mailer.delivery_method = :smtp
-  # Match the dev Auth surface private origin. `sign.app.localhost` predates the Sign ->
-  # Auth surface rename and resolves nowhere: compose.yaml publishes no `sign.*` alias and
-  # config.hosts has no such entry, so mail links built here were unreachable. Production
-  # uses boot_config's base_service host. Puma serves on 3000.
-  config.action_mailer.default_url_options = { host: "auth.app.localhost", port: 3000 }
+  # Edit mail links use the configured Base service origin, matching production.
+  mail_origin = Rails.configuration.x.boot_config.fetch(:hosts).base_service
+  default_mail_port = (mail_origin.scheme == "https") ? 443 : 80
+  mailer_url_options = { host: mail_origin.host }
+  mailer_url_options[:port] = mail_origin.port unless mail_origin.port == default_mail_port
+  config.action_mailer.default_url_options = mailer_url_options
   config.action_mailer.smtp_settings = {
     address: "email-smtp.#{ENV.fetch("AWS_SES_REGION", "ap-northeast-1")}.amazonaws.com",
     user_name: Rails.app.creds.option(:AWS_SES_SMTP_USERNAME),

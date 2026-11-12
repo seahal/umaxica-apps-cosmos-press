@@ -8,7 +8,7 @@ module Edit
         include ::HealthCheckRendering
 
         AUTHENTICATION_MODE = :bare
-        HEALTH_PROFILE = ::Health::Profiles::Org
+        HEALTH_PROFILE = ::Health::Profiles::EditOrg
 
         public
 

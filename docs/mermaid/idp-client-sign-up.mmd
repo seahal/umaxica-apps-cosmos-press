@@ -1,6 +1,5 @@
 stateDiagram-v2
-    %% APP social provider dispatch stores callback state only; it creates no Flow.
-    %% T003 is invoked only by a verified Google/Apple callback that wins the Binding lock.
+    %% SOCIAL_CALLBACK_PENDING is a retained legacy status; Press has no provider callback entry.
     %% Terminal absorption precedes TTL and requested source validation.
     %% Where the lifecycle has expires_at, overdue requests persist EXPIRED first.
     %% The owning transaction returns an expiry refusal; callers unwrap only after commit.
@@ -24,7 +23,6 @@ stateDiagram-v2
     [*] --> STARTED
     STARTED --> CONTACT_PENDING: submit_contact
     STARTED --> CREDENTIAL_PENDING: advance_sign_up_to_credential! / model map
-    STARTED --> SOCIAL_CALLBACK_PENDING: start_social_callback
     STARTED --> EXPIRED: expire
     STARTED --> CANCELLED: cancel
     STARTED --> HALTED: halt
@@ -41,9 +39,6 @@ stateDiagram-v2
     CONTACT_VERIFIED --> EXPIRED: expire
     CONTACT_VERIFIED --> CANCELLED: cancel
     CONTACT_VERIFIED --> HALTED: halt
-    SOCIAL_CALLBACK_PENDING --> CONTACT_VERIFIED: verify_sign_up_contact! / model map
-    SOCIAL_CALLBACK_PENDING --> GUARDRAIL_PENDING: advance_sign_up_to_guardrail! / model map
-    SOCIAL_CALLBACK_PENDING --> CHECKPOINT_PENDING: complete_social_callback new identity
     SOCIAL_CALLBACK_PENDING --> EXPIRED: expire
     SOCIAL_CALLBACK_PENDING --> CANCELLED: cancel
     SOCIAL_CALLBACK_PENDING --> HALTED: halt
@@ -60,6 +55,11 @@ stateDiagram-v2
     FINALIZING --> CANCELLED: cancel_sign_up! / model map only
     FINALIZING --> HALTED: halt
     CHECKPOINT_PENDING --> CHECKPOINT_PENDING: clear_requirement
+    note right of SOCIAL_CALLBACK_PENDING
+        Persisted rows remain recognizable for terminal cleanup.
+        No current Press path enters this status or advances it to a checkpoint.
+        Its model and status reference remain until the database cleanup task.
+    end note
     note right of CHECKPOINT_PENDING
         Telephone Passkey saving locks Flow before principal and rechecks
         state, expiry and gate after waiting. Ended work is refused;
@@ -81,16 +81,8 @@ stateDiagram-v2
     CANCELLED --> [*]
     HALTED --> [*]
     note right of STARTED
-        APP social provider POSTs replace browser state/provider/nonce and create no Flow.
-        Only a verified callback can enter SOCIAL_CALLBACK_PENDING. It locks the Admission
-        Binding then the Auth Ceremony, rechecks the active sign-up admission, and refuses if
-        another Flow or authentication evidence already exists. Back before callback keeps the
-        initial sign-up methods available. A sequential restart consumes the previous state in
-        its current session; concurrent starts from stale signed-cookie generations are not yet
-        serialized by a persisted Admission generation.
-        Email/Telephone/Google/Apple checkpoint Cancel retains the terminal Flow and cleanup, then
-        cancels Auth continuity and hands the parent cancellation to Visa. The RP
-        renders /sign/interruption; the progressed Auth /sign/up entry is not revisited.
+        Browser sign-up and social-provider entry are not served by Press.
+        The retained model supports terminal cleanup for rows written before this surface reset.
         Contact-entry replacement validates Turnstile, identifier and explicit consent first.
         A rejected replacement preserves the current flow and pending artifacts.
         Accepted replacement halts and cleans up the predecessor before new artifacts.

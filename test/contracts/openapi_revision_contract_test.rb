@@ -14,9 +14,9 @@ class OpenapiRevisionContractTest < ActionDispatch::IntegrationTest
   REVISION = "0123456789abcdef0123456789abcdef01234567"
 
   SURFACE_HOSTS = {
-    "app" => ENV.fetch("PRIVATE_CORE_SERVICE_URL"),
-    "com" => ENV.fetch("PUBLIC_BASE_CORPORATE_URL"),
-    "org" => ENV.fetch("PRIVATE_CORE_STAFF_URL"),
+    "app" => ENV.fetch("PRIVATE_DOCS_SERVICE_URL"),
+    "com" => ENV.fetch("PRIVATE_DOCS_CORPORATE_URL"),
+    "org" => ENV.fetch("PRIVATE_DOCS_STAFF_URL"),
   }.freeze
 
   SURFACE_HOSTS.each do |surface, host|

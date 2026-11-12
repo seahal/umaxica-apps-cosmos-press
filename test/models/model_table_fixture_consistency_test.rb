@@ -6,43 +6,14 @@ require "test_helper"
 class ModelTableFixtureConsistencyTest < ActiveSupport::TestCase
   self.fixture_table_names = []
 
-  # Concrete model renames that intentionally keep their existing physical tables.
-  # Renaming these tables requires a separate data migration.
   RETAINED_TABLE_NAMES = {
-    "ClientPersona" => "personas",
-    "OperatorOrganization" => "organizations",
-    "AppIdentityAuthenticationEvent" => "identity_authentication_events",
-    "OrgIdentityAuthenticationEvent" => "identity_authentication_events",
-    "OpAppConsumedJti" => "op_consumed_jtis",
-    "OpOrgConsumedJti" => "op_consumed_jtis",
-    "OpAppInboundEventReceipt" => "op_inbound_event_receipts",
-    "OpOrgInboundEventReceipt" => "op_inbound_event_receipts",
-    # APP and ORG have separate RP databases, so both realms intentionally use the same
-    # concise step-up table family without crossing a database ownership boundary.
-    "RpBaseAppStepUpStateStatus" => "rp_step_up_state_statuses",
-    "RpBaseAppStepUpState" => "rp_step_up_states",
-    "RpBaseAppStepUpStateTransition" => "rp_step_up_state_transitions",
-    "RpBaseAppStepUpAuditOutboxDeliveryState" => "rp_step_up_audit_outbox_delivery_states",
-    "RpBaseAppStepUpAuditOutbox" => "rp_step_up_audit_outboxes",
-    "RpBaseAppStepUpAuditOutboxAttempt" => "rp_step_up_audit_outbox_attempts",
-    "RpBaseOrgStepUpStateStatus" => "rp_step_up_state_statuses",
-    "RpBaseOrgStepUpState" => "rp_step_up_states",
-    "RpBaseOrgStepUpStateTransition" => "rp_step_up_state_transitions",
-    "RpBaseOrgStepUpAuditOutboxDeliveryState" => "rp_step_up_audit_outbox_delivery_states",
-    "RpBaseOrgStepUpAuditOutbox" => "rp_step_up_audit_outboxes",
-    "RpBaseOrgStepUpAuditOutboxAttempt" => "rp_step_up_audit_outbox_attempts",
-  }.merge(
-    RpCellBinding::CELLS.values.each_with_object({}) do |cell, mapping|
-      {
-        "#{cell.record_prefix}Principal" => "rp_principals",
-        "#{cell.record_prefix}IdentityBinding" => "rp_identity_bindings",
-        "#{cell.record_prefix}OpSessionBinding" => "rp_op_session_bindings",
-        "#{cell.record_prefix}Session" => "rp_sessions",
-        "#{cell.record_prefix}CallbackState" => "rp_callback_states",
-        "#{cell.record_prefix}EventReceipt" => "rp_event_receipts",
-      }.each { |model, table| mapping[model] = table }
-    end,
-  ).freeze
+    "RpEditOrgPrincipal" => "rp_principals",
+    "RpEditOrgIdentityBinding" => "rp_identity_bindings",
+    "RpEditOrgOpSessionBinding" => "rp_op_session_bindings",
+    "RpEditOrgSession" => "rp_sessions",
+    "RpEditOrgCallbackState" => "rp_callback_states",
+    "RpEditOrgEventReceipt" => "rp_event_receipts",
+  }.freeze
 
   test "application record table names follow model tableize convention" do
     Rails.application.eager_load!

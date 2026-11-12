@@ -1,5 +1,15 @@
 # Preference Architecture
 
+> **Current Press scope (2026-11-10):** This cross-surface preference history is not a route or
+> controller inventory. The retained Edit request lifecycle includes `PreferenceGlobal` and its
+> projection helpers; the former Auth, Base, Core, Visa and Warp preference endpoints are not hosted
+> here. Preserve the external Base domain dependency used by current preference and mail-link
+> behavior. Use [README.md](../../README.md) for local route ownership and
+> [cookie-domain-scope.md](../security/cookie-domain-scope.md) for current local cookie behavior.
+> Writer ownership described below for the former Base and Visa endpoints is historical; this
+> repository no longer serves those local write workflows, and `PreferenceWriteBoundary` was
+> removed.
+
 > **Partially superseded by Identity Authority inversion:** The preference vocabulary in this
 > document remains useful only where it does not assign preference, settings, dashboard, or session
 > authority to `sign/id`. `acme/www` is the Session, Token, Account, Preference, Authorization, and

@@ -2,17 +2,24 @@
 # frozen_string_literal: true
 
 require "test_helper"
-# require "helpers/global_test_support"
 
 class RoutingEntrypointsTest < ActiveSupport::TestCase
-  test "global routing entrypoints are loaded" do
+  test "retained Press routing entrypoints are loaded" do
     assert_nothing_raised { Rails.application.reload_routes! }
 
-    root_route = Rails.application.routes.recognize_path(
-      "http://#{ENV.fetch("PRIVATE_BASE_SERVICE_URL", "www.app.localhost")}/",
-    )
+    %w(docs help info news).each do |surface|
+      %w(app com org).each do |audience|
+        host = "#{surface}.#{audience}.localhost"
+        route = Rails.application.routes.recognize_path("http://#{host}/health", method: :get)
 
-    assert_equal "base/app/roots", root_route[:controller]
-    assert_equal "index", root_route[:action]
+        assert_equal "#{surface}/#{audience}/healths", route.fetch(:controller), host
+        assert_equal "show", route.fetch(:action), host
+      end
+    end
+
+    edit_root = Rails.application.routes.recognize_path("http://edit.org.localhost/", method: :get)
+
+    assert_equal "edit/org/roots", edit_root.fetch(:controller)
+    assert_equal "index", edit_root.fetch(:action)
   end
 end

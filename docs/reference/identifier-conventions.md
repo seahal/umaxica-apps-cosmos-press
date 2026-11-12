@@ -8,6 +8,12 @@ definitions unless revision-scoped evidence explicitly records an actual catalog
 
 ## Applying the contract
 
+> **Route boundary update (2026-11-10):** Local Auth, Base, Core, Palm, Tech, Visa and Warp
+> controller trees were retired. This reference still describes persisted identifier formats and
+> retained model data; details that cite those controllers or their removed routes describe the
+> former implementation, not a current HTTP writer. No models or migrations were removed by this
+> task.
+
 Classify by meaning and format authority before changing generation, constraints or consumers. Use
 the ADR's eight roles; column suffixes and existing UUID generation are discovery hints, not a
 verdict. Standard self-controlled non-secret issuance is NanoID-21 with varchar capacity 25.
@@ -162,20 +168,18 @@ recorded in [`V2J6`](../../evidence/2026-10-12-public-id-capacity-extension-V2J6
 
 ## Passkey values are different contracts
 
-| Table / column                                                     | Format authority / role                                                      | Disposition                                                                                                                                                                                                                                                                                             |
-| ------------------------------------------------------------------ | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| client_passkeys / visitor_passkeys / operator_passkeys.webauthn_id | Authenticator/provider credential ID; externally governed value              | Preserve actual credential encoding, comparison, unique scope and verification. Do not truncate to 25 or replace with NanoID. Document unknown bounds rather than fabricate them.                                                                                                                       |
-| Same three tables.aaguid                                           | Authenticator metadata identifier; native UUID                               | External/protocol format exception; native UUID remains appropriate. It is not the credential's row PK or management authorization.                                                                                                                                                                     |
-| clients / visitors / operators.webauthn_user_handle                | Dedicated immutable WebAuthn user handle, owned by the accepted WebAuthn ADR | Preserve the existing 32-random-byte URL-safe representation and RP binding; no PK exposure or format-only rotation. See the [user-handle ADR](../../adr/webauthn-user-handle.md).                                                                                                                      |
-| client_passkeys / visitor_passkeys.public_id                       | Owned non-secret management identity                                         | Existing PublicId issuance/consumers remain. Current 21-character capacity is not proof of the standard 25-character storage contract or DB immutability.                                                                                                                                               |
-| client_passkeys / visitor_passkeys / operator_passkeys.external_id | Self-generated UUID; its name does not establish provider format authority   | Not accepted as a permanent external exception. ORG currently uses it in management routes and step-up references. Preserve issued UUIDs and audit all consumers before an authorized bounded transition; do not silently reinterpret it as webauthn_id or create a redundant ID merely for formatting. |
+| Table / column                                                     | Format authority / role                                                      | Disposition                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| client_passkeys / visitor_passkeys / operator_passkeys.webauthn_id | Authenticator/provider credential ID; externally governed value              | Preserve actual credential encoding, comparison, unique scope and verification. Do not truncate to 25 or replace with NanoID. Document unknown bounds rather than fabricate them.                                                                                                    |
+| Same three tables.aaguid                                           | Authenticator metadata identifier; native UUID                               | External/protocol format exception; native UUID remains appropriate. It is not the credential's row PK or management authorization.                                                                                                                                                  |
+| clients / visitors / operators.webauthn_user_handle                | Dedicated immutable WebAuthn user handle, owned by the accepted WebAuthn ADR | Preserve the existing 32-random-byte URL-safe representation and RP binding; no PK exposure or format-only rotation. See the [user-handle ADR](../../adr/webauthn-user-handle.md).                                                                                                   |
+| client_passkeys / visitor_passkeys.public_id                       | Owned non-secret management identity                                         | Existing PublicId issuance/consumers remain. Current 21-character capacity is not proof of the standard 25-character storage contract or DB immutability.                                                                                                                            |
+| client_passkeys / visitor_passkeys / operator_passkeys.external_id | Self-generated UUID; its name does not establish provider format authority   | Not accepted as a permanent external exception. The former ORG management route was removed in the Press surface hard reset; preserve issued values for the separate model/database review. Do not reinterpret them as `webauthn_id` or create a redundant ID merely for formatting. |
 
-The current ORG management consumers are
-[the concrete controller](../../app/controllers/base/org/identity/passkeys_controller.rb),
-[shared management orchestration](../../app/controllers/concerns/base_identity_passkey_management.rb)
-and [OperatorPasskeyPolicy](../../app/policies/operator_passkey_policy.rb). APP/COM management
-primarily uses public_id; that fact alone does not prove external_id unused or safe to drop.
-Per-column code exception comments and a complete credential-consumer inventory remain required.
+The former ORG management route and its shared controller orchestration were removed during the
+Press surface hard reset. No local Press controller currently manages these passkey rows. The model,
+policy and migration remain pending the separate model/database decision; stored identifiers are not
+evidence that the columns can be dropped.
 
 ## Other classified areas and remaining inventory
 
@@ -213,15 +217,9 @@ focused regression coverage is in
 [`test/models/logout_transaction_test.rb`](../../test/models/logout_transaction_test.rb) and
 [`test/models/enforcement_case_public_id_test.rb`](../../test/models/enforcement_case_public_id_test.rb).
 
-`OrgNormalSignInTransaction` has a separate session-scoped `public_id` used to bind the ORG Entra
-handoff to the next passkey phase. New values use `PublicId.generate`; the value is an internal
-opaque transaction identity, not an Entra/OIDC provider value, protocol secret, nonce, CSRF token,
-PKCE value or database primary key. Existing serialized sessions remain readable, and the signed
-binding continues to enforce its existing ORG flow and phase contract. The focused boundary is
-covered by
-[`test/controllers/auth/org/in/passkeys_controller_test.rb`](../../test/controllers/auth/org/in/passkeys_controller_test.rb)
-and
-[`test/services/org_normal_sign_in_binding_codec_test.rb`](../../test/services/org_normal_sign_in_binding_codec_test.rb).
+The former `OrgNormalSignInTransaction` identifier bound an ORG Entra handoff to a passkey phase.
+That local sign-in route and binding codec were removed in the Press surface hard reset; any
+remaining transaction data is historical and no new local handoff is issued.
 
 `SignInSequenceCarrier` stores a separate surface-scoped workflow `id` in the Rails session. New
 sequence starts use `PublicId.generate`; this value is an internal workflow identity and is not a
@@ -230,26 +228,15 @@ session payloads remain readable through the compatibility reader. The public `s
 covered by
 [`test/services/sign_in/sequence_carrier_test.rb`](../../test/services/sign_in/sequence_carrier_test.rb).
 
-The pending-MFA payload created by `AuthenticationBase#set_pending_mfa!` has its own session-scoped
-workflow `public_id`. New payloads use `PublicId.generate`; the value is not a provider/protocol
-value, secret, database primary key or public API reference. The existing actor, surface, expiry and
-session-issuance fields remain authoritative, and the public APP challenge boundary covers the
-format contract in
-[`test/controllers/auth/app/in/challenges_controller_test.rb`](../../test/controllers/auth/app/in/challenges_controller_test.rb).
-
-`SocialAuth` stores `social_auth_flow_id` as a separate session-scoped link-intent correlation
-identity. New link intents use `PublicId.generate`; the value is not the OAuth `state`, provider
-value, Apple nonce, PKCE verifier, CSRF token, protocol secret, database primary key or public API
-reference. The existing intent, provider, TTL, callback-state, authorization and cleanup contracts
-remain authoritative. The public SocialAuth link integration boundary covers the NanoID-21 format in
-[`test/integration/social_auth_link_test.rb`](../../test/integration/social_auth_link_test.rb).
+The session-scoped pending-MFA payload and `SocialAuth` link-intent identifiers belonged to the
+removed local Auth sign-in and social-link routes. They are not current Rails session contracts.
 
 The `SocialCeremonyResultAdapter` reference is a short-lived Valkey receiver capability, not a
-durable resource identity. It carries no raw result code and is looked up only through its
-purpose-, surface-, flow- and generation-bound store. Its browser receiver shares the strict UUID-v4
-admission transport pattern, so existing UUID references remain readable and new format changes
-require a consumer-specific transport decision. It must not be treated as public resource IDs, substituted for the
-signed/result evidence, or resolved through a cross-surface fallback. A future bounded format
+durable resource identity. It carries no raw result code and is looked up only through its purpose-,
+surface-, flow- and generation-bound store. Its browser receiver shares the strict UUID-v4 admission
+transport pattern, so existing UUID references remain readable and new format changes require a
+consumer-specific transport decision. It must not be treated as public resource IDs, substituted for
+the signed/result evidence, or resolved through a cross-surface fallback. A future bounded format
 transition would need to update the matching receiver validation and its exact legacy reader
 together; the standard NanoID rule alone is not authority to reformat these capability values.
 

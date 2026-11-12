@@ -7,7 +7,7 @@
 # The bundle lives here rather than under `public/` because `public/` is statically served in
 # development (config/environments/development.rb sets public_file_server.enabled = true), which
 # put the full internal API description on every admitted development host with no credential.
-# The only intended reader over HTTP is Swagger UI on swagger.umaxica.dev, which reaches it
+# The only intended reader over HTTP is Press's Swagger UI on swagger-press.umaxica.dev, which reaches it
 # through rswag-api behind that host's Basic Auth (config/initializers/rswag_api.rb). Production
 # never served these files -- config/environments/production.rb sets public_file_server.enabled
 # = false -- so this closes a development exposure, not a production one.
@@ -30,8 +30,8 @@ extends:
   - recommended
 
 rules:
-  # Every surface deliberately has no root `servers`. Only the Core paths have a host that is
-  # real, public, and knowable from the repository, so `servers` is declared per Path Item.
+  # Every document deliberately has no root `servers`. A host is declared per Path Item only
+  # where it is real, public, and knowable from the repository.
   # A root default would attach a host to paths it does not serve, which is the defect
   # adr/api-versioning-and-client-conventions.md section 4 exists to prevent.
   no-empty-servers: off

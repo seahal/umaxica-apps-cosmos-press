@@ -58,7 +58,7 @@ module Security
         unregistered =
           route_constraint_env_keys.filter_map do |key|
             host = ENV[key]
-            "#{key}=#{host}" if host.present? && FqdnAvailabilityRegistry.slot_for(host).nil?
+            key if host.present? && FqdnAvailabilityRegistry.slot_for(host).nil?
           end
 
         assert_empty unregistered,
@@ -86,10 +86,10 @@ module Security
         end
       end
 
-      test "Warp slots keep their existing persisted Flipper feature names" do
-        assert_equal :fqdn_available_side_service, FqdnAvailabilityRegistry.flag_name_for(:warp_service)
-        assert_equal :fqdn_available_side_corporate, FqdnAvailabilityRegistry.flag_name_for(:warp_corporate)
-        assert_equal :fqdn_available_side_staff, FqdnAvailabilityRegistry.flag_name_for(:warp_staff)
+      test "foreign surface availability slots are absent" do
+        foreign_slots = %i(auth base core palm tech visa warp)
+
+        assert_empty FqdnAvailabilityRegistry::SLOT_NAMES & foreign_slots
       end
 
       private

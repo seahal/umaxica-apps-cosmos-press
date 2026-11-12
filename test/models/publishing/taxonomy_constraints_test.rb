@@ -44,9 +44,14 @@ module Publishing
     end
 
     test "term slug is unique per vocabulary and locale" do
-      publishing_term(vocabulary: @category, locale: "ja", slug: "guide")
+      first = publishing_term(vocabulary: @category, locale: "ja", slug: "guide")
 
-      assert_raises(ActiveRecord::RecordNotUnique) { publishing_term(vocabulary: @category, locale: "ja", slug: "guide") }
+      assert_raises(ActiveRecord::RecordInvalid) { publishing_term(vocabulary: @category, locale: "ja", slug: "guide") }
+      assert_raises(ActiveRecord::RecordNotUnique) do
+        first.class.transaction(requires_new: true) do
+          first.class.insert_all!([first.attributes.except("id").merge("public_id" => "z" * 21)])
+        end
+      end
 
       # The same slug in another locale is a different term, by design.
       assert_predicate publishing_term(vocabulary: @category, locale: "en", slug: "guide"), :persisted?
@@ -197,16 +202,21 @@ module Publishing
       first = publishing_term(vocabulary: @category, locale: "ja", slug: "first")
       second = publishing_term(vocabulary: @category, locale: "ja", slug: "second")
 
-      create_single_assignment(
+      assignment = create_single_assignment(
         entry_revision: entry.current_revision, vocabulary: @category, vocabulary_kind: @category.kind,
         taxonomy_term: first, locale: "ja",
       )
 
-      assert_raises(ActiveRecord::RecordNotUnique) do
+      assert_raises(ActiveRecord::RecordInvalid) do
         create_single_assignment(
           entry_revision: entry.current_revision, vocabulary: @category, vocabulary_kind: @category.kind,
           taxonomy_term: second, locale: "ja",
         )
+      end
+      assert_raises(ActiveRecord::RecordNotUnique) do
+        assignment.class.transaction(requires_new: true) do
+          assignment.class.insert_all!([assignment.attributes.except("id").merge("taxonomy_term_id" => second.id)])
+        end
       end
     end
 
@@ -222,10 +232,21 @@ module Publishing
           )
         end
 
-      assign.call(ruby, 0)
+      first_assignment = assign.call(ruby, 0)
 
-      assert_raises(ActiveRecord::RecordNotUnique) { assign.call(ruby, 1) }
-      assert_raises(ActiveRecord::RecordNotUnique) { assign.call(rails, 0) }
+      assert_raises(ActiveRecord::RecordInvalid) { assign.call(ruby, 1) }
+      assert_raises(ActiveRecord::RecordInvalid) { assign.call(rails, 0) }
+      [[ruby.id, 1], [rails.id, 0]].each do |term_id, position|
+        assert_raises(ActiveRecord::RecordNotUnique) do
+          first_assignment.class.transaction(requires_new: true) do
+            first_assignment.class.insert_all!(
+              [
+                first_assignment.attributes.except("id").merge("taxonomy_term_id" => term_id, "position" => position),
+              ],
+            )
+          end
+        end
+      end
       assert_predicate assign.call(rails, 1), :persisted?
     end
 

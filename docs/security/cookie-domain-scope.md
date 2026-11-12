@@ -1,82 +1,52 @@
 # Cookie Domain Scope
 
-## Current Behavior
+This repository owns Edit's relying-party cookies and the Preference cookies used by its current
+Edit request lifecycle. Auth and Visa are external providers; their cookies are owned by those
+provider hosts and are not issued or read by Press.
 
-Authentication and RP credential cookies are host-local transport slots. The cookie name
-describes the transport role, not the logical credential kind.
+## Edit RP credentials
 
-| Role                | Secure context name         | Insecure dev/test name |
-| ------------------- | --------------------------- | ---------------------- |
-| Auth access         | `__Host-auth_access`        | `auth_access`          |
-| Auth refresh        | `__Host-auth_refresh`       | `auth_refresh`         |
-| Auth DBSC / binding | `__Host-auth_dbsc`          | `auth_dbsc`            |
-| RP access           | `__Host-rp-access`          | `rp-access`            |
-| RP refresh          | `__Host-rp-refresh`         | `rp-refresh`           |
+Edit stores its external OIDC credentials in the host-only RP cookie slots:
 
-These credential cookies are host-only and use `Path=/`; secure contexts use `Secure` and the
-`__Host-` prefix. They never carry a `Domain` attribute.
+| Role                    | Production name     | Development name |
+| ----------------------- | ------------------- | ---------------- |
+| Access                  | `__Host-rp-access`  | `rp-access`      |
+| Refresh                 | `__Host-rp-refresh` | `rp-refresh`     |
+| Local RP session handle | `__Host-rp-session` | `rp-session`     |
 
-Preference transport has a separate contract:
+The cookies use `Path=/`, `HttpOnly`, and `SameSite=Lax`; they do not set `Domain`. Secure contexts
+use the `__Host-` prefix and `Secure`. Expiries for access and refresh cookies come from the OIDC
+token response. The opaque RP session cookie expires with its local RP session. The implementation
+is in `OidcRpBrowserCredentialContract` and `OidcRpCookieName`.
 
-| Role | Cookie | Scope and use |
-| --- | --- | --- |
-| Anonymous Preference JWT | `__Secure-preference` | Realm-domain scoped, `HttpOnly`, signed snapshot used for runtime reads |
-| Language display mirror | `language` | Realm-domain scoped and JavaScript-readable |
-| Experience display mirror | `__Secure-experience` | Realm-domain scoped and JavaScript-readable |
-| Consent and Web Push binding | `__Host-preference_binding` | Host-only, `HttpOnly`; proves browser ownership for bounded reads/writes |
+## Preference cookies
 
-The three shared Preference cookies are issued from the same database snapshot. APP, ORG and COM
-remain separate JWT realms even where a realm's sibling subdomains share the cookie domain. A signed
-Preference JWT does not authorize consent reads by itself; the host-only binding remains required.
-Preference refresh, Preference DBSC/assurance, actor consent mirrors and per-item Preference cookies
-are retired.
+The Edit request lifecycle also consumes the Preference projection and display mirrors:
 
-Cookie names must not include `global`, `regional`, `app`, `com`, `org`, `core`, or `palm`. Auth's
-`__Host-auth_access` and a Core RP's `__Host-rp-access` are separate cookies because the browser
-stores them per host.
+| Role                         | Cookie                      | Scope                                                          |
+| ---------------------------- | --------------------------- | -------------------------------------------------------------- |
+| Signed Preference projection | `__Secure-preference`       | Domain-scoped by the current request host                      |
+| Language display mirror      | `language`                  | Domain-scoped by the current request host; JavaScript-readable |
+| Experience display mirror    | `__Secure-experience`       | Domain-scoped by the current request host; JavaScript-readable |
+| Browser binding              | `__Host-preference_binding` | Host-only and `HttpOnly`                                       |
 
-## JavaScript-readable Preference Mirrors
+The projection and display mirrors use `Path=/`, `Secure`, and `SameSite=Lax`. The projection is
+`HttpOnly`; the display mirrors are not. The binding cookie uses `Path=/`, `Secure`, and `HttpOnly`.
+`PreferenceWriteBoundary` derives the optional domain from the request host and leaves single-label
+localhost hosts host-only. The signed projection alone does not authorize consent or Web Push reads;
+the host-only binding is required.
 
-Rails writes only the non-secret `language` and `__Secure-experience` display mirrors. They are
-apex-scoped (for example, `.umaxica.app`) for browser UI, Hono compatibility and edge rendering.
-Rails request code does not use them as authoritative Preference input. The signed JWT is the
-runtime display projection.
+These display cookies carry no session IDs, OIDC access or refresh tokens, grants, ceremony secrets,
+or authorization data. Request context such as `ri` remains in the URL.
 
-These mirrors must not carry session IDs, access tokens, refresh tokens, Preference JWTs, DBSC
-values, authorization grants, ceremony secrets, one-time tokens, raw credentials, or
-credential/session authority data. Request context such as `ri` remains in the URL and is not
-mirrored to a cookie.
+## Provider boundaries
 
-Browser-visible hosts and internal Rails/pod origins should use the `PUBLIC_` and `PRIVATE_`
-boundary vocabulary in docs and config. That keeps cookie transport discussions separate from
-host-ownership discussions.
-
-## Authority and Transport Boundaries
-
-Credential kind is enforced by issuer, audience, validator contract, client classification, and
-transport binding:
-
-- Visa is the only physical Authorization Server and token authority; Base is the browser RP.
-- Auth is ceremony-only. It does not own issuer, token, Browser Session, or RP Session authority.
-- Core/Warp/Edit RP callbacks store Visa-issued credentials in the RP cookie slots above. The exact
-  RP client ID, issuer, audience, and resource type are checked before the cookie is used.
-- `SignRefreshTokenService` is a legacy compatibility subclass; new refresh authority references
-  should use `AcmeRefreshTokenService`.
-- Legacy `core-browser` credentials are not accepted by the Core browser API as RP credentials.
-- Palm browser credentials use the common Browser RP contract with the `palm-app` audience and
-  host-only RP cookies.
-- Palm and Core RP cookie validators reject sibling RP client bindings. Palm's former native bearer
-  API is retired, and no bearer-to-browser-cookie bridge exists.
-- Auth does not issue or consume Core/Base regional browser cookies; Visa and each RP keep their
-  host-local authority and RP cookie boundaries.
-
-Because `__Host-` requires `Path=/`, authentication and RP refresh cookies are not path-restricted.
-Refresh endpoint exclusivity is a server-side transport and endpoint contract. Preference cookies
-have their own documented domain scopes and do not use Preference refresh or DBSC endpoints.
+An Auth or Visa origin is not a Press host. The browser keeps provider cookies under the provider's
+host rules; Edit uses its own RP cookie slots on the Edit host. Press does not copy provider cookies
+into its own cookie domain or treat a provider cookie as an Edit session.
 
 ## Related
 
-- `adr/cookie-domain-scope-by-surface.md` — historical cookie naming decision; its Preference
-  refresh/DBSC rows are superseded by the current Preference architecture.
-- `docs/security/refresh-token-rotation.md`
+- `adr/cookie-domain-scope-by-surface.md` — historical cross-surface decision; current local cookie
+  behavior is described above.
 - `docs/reference/subdomains.md`

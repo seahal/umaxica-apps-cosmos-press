@@ -5,20 +5,20 @@ require "test_helper"
 class RpCallbackCommitterTest < ActiveSupport::TestCase
   self.fixture_table_names = []
 
-  ISSUER = "https://www.umaxica.app"
+  ISSUER = "https://www.umaxica.org"
 
   setup do
-    @cell = RpCellBinding.fetch("rp_core_app")
+    @cell = RpCellBinding.fetch("rp_edit_org")
   end
 
   test "a first verified callback creates the principal, identity binding, anchor and one live session" do
     result = commit(subject: "subject-a", sid: "sid-1")
 
     assert_predicate result, :success?
-    anchor = RpCoreAppOpSessionBinding.find_by!(sid: "sid-1")
+    anchor = RpEditOrgOpSessionBinding.find_by!(sid: "sid-1")
 
-    assert_equal [ISSUER, "app", "core-app-jp"], [anchor.issuer, anchor.realm, anchor.client_id]
-    identity = RpCoreAppIdentityBinding.find(anchor.identity_binding_id)
+    assert_equal [ISSUER, "org", "edit-org-ww"], [anchor.issuer, anchor.realm, anchor.client_id]
+    identity = RpEditOrgIdentityBinding.find(anchor.identity_binding_id)
 
     assert_equal [result.principal.id, "subject-a"], [identity.principal_id, identity.subject]
     assert_equal anchor.id, result.session.op_session_binding_id
@@ -31,50 +31,47 @@ class RpCallbackCommitterTest < ActiveSupport::TestCase
 
     assert_predicate second, :success?
     assert_equal first.principal, second.principal
-    assert_equal 1, RpCoreAppPrincipal.count
+    assert_equal 1, RpEditOrgPrincipal.count
   end
 
   test "a second callback for an already enrolled sid is refused" do
     commit(subject: "subject-a", sid: "sid-1")
 
     assert_equal :already_enrolled, commit(subject: "subject-a", sid: "sid-1").outcome
-    assert_equal 1, RpCoreAppSession.count
+    assert_equal 1, RpEditOrgSession.count
   end
 
   test "an anchor bound to one subject never accepts another subject" do
     commit(subject: "subject-a", sid: "sid-1")
 
-    assert_no_difference ["RpCoreAppPrincipal.count", "RpCoreAppIdentityBinding.count", "RpCoreAppSession.count"] do
+    assert_no_difference ["RpEditOrgPrincipal.count", "RpEditOrgIdentityBinding.count", "RpEditOrgSession.count"] do
       assert_equal :binding_mismatch, commit(subject: "subject-b", sid: "sid-1").outcome
     end
 
     commit(subject: "subject-b", sid: "sid-2")
-    assert_no_difference ["RpCoreAppPrincipal.count", "RpCoreAppIdentityBinding.count", "RpCoreAppSession.count"] do
+    assert_no_difference ["RpEditOrgPrincipal.count", "RpEditOrgIdentityBinding.count", "RpEditOrgSession.count"] do
       assert_equal :binding_mismatch, commit(subject: "subject-b", sid: "sid-1").outcome
     end
   end
 
   test "an ORG anchor refuses a different subject without creating local records" do
-    cell = RpCellBinding.fetch("rp_core_org")
+    cell = RpCellBinding.fetch("rp_edit_org")
     arguments = {
       cell: cell, issuer: "https://www.umaxica.org", sid: "org-sid-1", absolute_expires_at: 1.hour.from_now,
     }
 
     assert_predicate RpCallbackCommitter.call(**arguments, subject: "operator-a"), :success?
 
-    assert_no_difference ["RpCoreOrgPrincipal.count", "RpCoreOrgIdentityBinding.count", "RpCoreOrgSession.count"] do
+    assert_no_difference ["RpEditOrgPrincipal.count", "RpEditOrgIdentityBinding.count", "RpEditOrgSession.count"] do
       assert_equal :already_enrolled, RpCallbackCommitter.call(**arguments, subject: "operator-a").outcome
       assert_equal :binding_mismatch, RpCallbackCommitter.call(**arguments, subject: "operator-b").outcome
     end
   end
 
-  test "every RP cell refuses a different subject for an existing anchor without local writes" do
-    %w(
-      base-app-ww core-app-jp warp-app-jp palm-app-jp
-      base-org-ww core-org-jp warp-org-jp edit-org-ww tech-org-ww
-    ).each do |client_id|
+  test "the owned Edit cell refuses a different subject for an existing anchor without local writes" do
+    %w(edit-org-ww).each do |client_id|
       cell = RpCellBinding.for_client(client_id)
-      issuer = (cell.realm == "app") ? "https://www.umaxica.app" : "https://www.umaxica.org"
+      issuer = "https://www.umaxica.org"
       models = %w(Principal IdentityBinding Session).map { |name| "#{cell.record_prefix}#{name}".constantize }
       arguments = { cell: cell, issuer: issuer, sid: "matrix-sid", absolute_expires_at: 1.hour.from_now }
 
@@ -87,16 +84,16 @@ class RpCallbackCommitterTest < ActiveSupport::TestCase
   end
 
   test "a logged-out sid is a tombstone that a late callback cannot reopen" do
-    RpCoreAppOpSessionBinding.create!(
-      issuer: ISSUER, realm: "app", client_id: "core-app-jp", sid: "sid-1",
+    RpEditOrgOpSessionBinding.create!(
+      issuer: ISSUER, realm: "org", client_id: "edit-org-ww", sid: "sid-1",
       revoked_at: Time.current,
     )
 
     result = commit(subject: "subject-a", sid: "sid-1")
 
     assert_equal :revoked, result.outcome
-    assert_equal 0, RpCoreAppSession.count
-    assert_nil RpCoreAppOpSessionBinding.find_by!(sid: "sid-1").identity_binding_id
+    assert_equal 0, RpEditOrgSession.count
+    assert_nil RpEditOrgOpSessionBinding.find_by!(sid: "sid-1").identity_binding_id
   end
 
   test "an expired unrevoked session is closed and the sid can enroll again" do
@@ -113,7 +110,7 @@ class RpCallbackCommitterTest < ActiveSupport::TestCase
     %i(issuer subject sid).each do |field|
       assert_raises(ArgumentError) { commit(:subject => "s", :sid => "x", field => "") }
     end
-    assert_equal 0, RpCoreAppOpSessionBinding.count
+    assert_equal 0, RpEditOrgOpSessionBinding.count
   end
 
   test "a subject above the identity length limit rolls back the local callback" do
@@ -121,14 +118,14 @@ class RpCallbackCommitterTest < ActiveSupport::TestCase
       assert_predicate commit(subject: "s" * length, sid: "valid-#{length}"), :success?
     end
 
-    assert_no_difference ["RpCoreAppOpSessionBinding.count", "RpCoreAppPrincipal.count",
-                          "RpCoreAppIdentityBinding.count", "RpCoreAppSession.count",] do
+    assert_no_difference ["RpEditOrgOpSessionBinding.count", "RpEditOrgPrincipal.count",
+                          "RpEditOrgIdentityBinding.count", "RpEditOrgSession.count",] do
       assert_raises(ActiveRecord::RecordInvalid) { commit(subject: "s" * 256, sid: "too-long") }
     end
   end
 
   test "callback selects its writer even when entered from a reading role" do
-    RpCoreAppRecord.connected_to(role: :reading) do
+    RpEditOrgRecord.connected_to(role: :reading) do
       result = RpCallbackCommitter.call(
         cell: @cell, issuer: ISSUER, subject: "writer-subject", sid: "writer-sid",
         absolute_expires_at: 1.hour.from_now,
@@ -152,8 +149,8 @@ class RpCallbackCommitterTest < ActiveSupport::TestCase
 
     assert_equal :revoked, result.outcome
     assert_nil result.session
-    assert_equal 1, RpCoreAppSession.count
-    assert_equal 1, RpCoreAppPrincipal.count
+    assert_equal 1, RpEditOrgSession.count
+    assert_equal 1, RpEditOrgPrincipal.count
   end
 
   test "callback checks expiry on a fresh writer clock after anchor insertion" do
@@ -165,7 +162,7 @@ class RpCallbackCommitterTest < ActiveSupport::TestCase
           observations += 1
           base + 5
         end
-      RpCoreAppRecord.stub(:database_now, clock) do
+      RpEditOrgRecord.stub(:database_now, clock) do
         result = RpCallbackCommitter.call(
           cell: @cell, issuer: ISSUER, subject: "expiry-subject", sid: "expiry-#{index}",
           absolute_expires_at: base + 5 + offset,
@@ -176,7 +173,7 @@ class RpCallbackCommitterTest < ActiveSupport::TestCase
       end
     end
 
-    assert_equal 1, RpCoreAppSession.count
+    assert_equal 1, RpEditOrgSession.count
   end
 
   test "callback reads its database clock once without Prosopite N plus one queries" do

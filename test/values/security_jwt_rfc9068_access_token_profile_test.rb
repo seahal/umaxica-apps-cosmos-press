@@ -1,32 +1,86 @@
-# typed: false
 # frozen_string_literal: true
 
 require "test_helper"
 
 class SecurityJwtRfc9068AccessTokenProfileTest < ActiveSupport::TestCase
-  test "auth access token header and required claims follow the RFC 9068 profile" do
-    token = AuthenticationToken.encode(
-      clients(:one), host: "example.com", session_public_id: "sid", resource_type: "client",
-    )
-    payload, header = JWT.decode(token, nil, false)
+  test "access token headers require the configured algorithm type and key id" do
+    valid = { "alg" => "ES384", "typ" => "at+jwt", "kid" => "key-1" }
 
-    assert_equal "at+jwt", header["typ"]
-    assert_equal "ES384", header["alg"]
-    assert_predicate header["kid"], :present?
-    %w(iss exp aud sub client_id iat jti).each do |claim|
-      assert payload.key?(claim), "missing #{claim}"
+    assert SecurityJwtRfc9068AccessTokenProfile.header_valid?(valid)
+    [
+      nil,
+      "not-a-header",
+      {},
+      valid.except("alg"),
+      valid.merge("alg" => "none"),
+      valid.merge("typ" => "JWT"),
+      valid.merge("kid" => ""),
+    ].each do |header|
+      assert_not SecurityJwtRfc9068AccessTokenProfile.header_valid?(header), header.inspect
     end
-    assert_kind_of String, payload["sub"]
-    assert_equal clients(:one).id.to_s, payload["sub"]
-    assert_equal AuthenticationJwtConfiguration.client_id("client"), payload["client_id"]
-    assert_equal AuthenticationJwtConfiguration.issuer, payload["iss"]
-    assert_equal AuthenticationJwtConfiguration.audiences("client"), payload["aud"]
-    assert_equal "authenticated domain:client read:self write:self", payload["scope"]
-    assert_nil payload["scp"]
-    assert_nil payload["typ"]
-    assert_nil payload["act"]
-    assert_equal "aal1", payload["acr"]
-    assert_equal "sid", payload["sid"]
+    assert_equal "MISSING_KID", SecurityJwtRfc9068AccessTokenProfile.header_rejection_reason(valid.except("kid"))
+    assert_equal "ALG_MISMATCH",
+                 SecurityJwtRfc9068AccessTokenProfile.header_rejection_reason(valid.merge("alg" => "RS256"))
+  end
+
+  test "access token header rejection reasons classify malformed and unsupported headers" do
+    cases = [
+      [nil, "MALFORMED_TOKEN"],
+      ["not-a-header", "MALFORMED_TOKEN"],
+      [{}, "MALFORMED_TOKEN"],
+      [{ "alg" => "" }, "MALFORMED_TOKEN"],
+      [{ "alg" => "ES384" }, "MISSING_KID"],
+      [{ "alg" => "ES384", "kid" => "" }, "MISSING_KID"],
+      [{ "alg" => "none", "kid" => "key-1" }, "ALG_NONE"],
+      [{ "alg" => "RS256", "kid" => "key-1" }, "ALG_MISMATCH"],
+      [{ "alg" => "ES384", "kid" => "key-1" }, "MISSING_TYP"],
+      [{ "alg" => "ES384", "kid" => "key-1", "typ" => "" }, "MISSING_TYP"],
+      [{ "alg" => "ES384", "kid" => "key-1", "typ" => "JWT" }, "TYP_MISMATCH"],
+    ]
+
+    cases.each do |header, expected_reason|
+      assert_equal expected_reason, SecurityJwtRfc9068AccessTokenProfile.header_rejection_reason(header),
+                   header.inspect
+    end
+  end
+
+  test "production issuer and audience identifiers reject every non-production marker class" do
+    [
+      "localhost",
+      "127.0.0.1",
+      "https://[::1]",
+      "https://issuer.example.test",
+      "development issuer",
+      "test audience",
+    ].each do |identifier|
+      error =
+        assert_raises(ArgumentError) do
+          SecurityJwtRfc9068AccessTokenProfile.assert_production_identifiers!(
+            [identifier], label: "AUTH_JWT identifiers", production: true,
+          )
+        end
+
+      assert_equal "AUTH_JWT identifiers must not include non-production identifiers: #{identifier}", error.message
+    end
+  end
+
+  test "production identifier checks allow public values and do not restrict non-production values" do
+    assert_nil SecurityJwtRfc9068AccessTokenProfile.assert_production_identifiers!(
+      ["https://issuer.example.com", "umaxica-api-app"], label: "AUTH_JWT identifiers", production: true,
+    )
+    assert_nil SecurityJwtRfc9068AccessTokenProfile.assert_production_identifiers!(
+      ["localhost"], label: "AUTH_JWT identifiers", production: false,
+    )
+  end
+
+  test "Jump RT encoding places its token type and key id in the JOSE header" do
+    private_key = OpenSSL::PKey::EC.generate("secp384r1")
+    token = SecurityJwtJumpRtTokenCodec.encode({ "sub" => "jump-redirect" }, private_key:, kid: "jump-key-1")
+    _payload, header = JWT.decode(token, nil, false)
+
+    assert_equal "ES384", header.fetch("alg")
+    assert_equal "JWT", header.fetch("typ")
+    assert_equal "jump-key-1", header.fetch("kid")
   end
 
   test "structural claim validation accepts scalar audiences and rejects invalid audience shapes" do
@@ -46,76 +100,5 @@ class SecurityJwtRfc9068AccessTokenProfileTest < ActiveSupport::TestCase
     assert_not SecurityJwtRfc9068AccessTokenProfile.claims_structurally_valid?(payload.merge("aud" => []))
     assert_not SecurityJwtRfc9068AccessTokenProfile.claims_structurally_valid?(payload.merge("aud" => ["client", 1]))
     assert_not SecurityJwtRfc9068AccessTokenProfile.claims_structurally_valid?(payload.merge("aud" => 1))
-  end
-
-  test "auth access verification rejects wrong JOSE typ, missing typ, and none alg" do
-    token = AuthenticationToken.encode(
-      clients(:one), host: "example.com", session_public_id: "sid", resource_type: "client",
-    )
-    payload, header = JWT.decode(token, nil, false)
-    key = AuthenticationJwtConfiguration.private_key
-
-    wrong_typ = JWT.encode(payload, key, "ES384", header.merge("typ" => "auth-access-token;client"))
-    missing_typ = JWT.encode(payload, key, "ES384", header.except("typ"))
-    none_alg = JWT.encode(payload, nil, "none", header.merge("alg" => "none"))
-
-    assert_nil AuthenticationToken.decode(wrong_typ, host: "example.com", resource_type: "client")
-    assert_nil AuthenticationToken.decode(missing_typ, host: "example.com", resource_type: "client")
-    assert_nil AuthenticationToken.decode(none_alg, host: "example.com", resource_type: "client")
-  end
-
-  test "auth access verification rejects expired tokens and wrong issuer or audience" do
-    token = AuthenticationToken.encode(
-      clients(:one), host: "example.com", session_public_id: "sid", resource_type: "client",
-    )
-    payload, header = JWT.decode(token, nil, false)
-    key = AuthenticationJwtConfiguration.private_key
-
-    expired = JWT.encode(payload.merge("exp" => 1.hour.ago.to_i), key, "ES384", header)
-    wrong_iss = JWT.encode(payload.merge("iss" => "urn:umaxica:other:auth"), key, "ES384", header)
-    wrong_aud = JWT.encode(payload.merge("aud" => ["not-this-resource"]), key, "ES384", header)
-
-    assert_nil AuthenticationToken.decode(expired, host: "example.com", resource_type: "client")
-    assert_nil AuthenticationToken.decode(wrong_iss, host: "example.com", resource_type: "client")
-    assert_nil AuthenticationToken.decode(wrong_aud, host: "example.com", resource_type: "client")
-  end
-
-  test "auth access verification rejects a development issuer when expecting the test issuer" do
-    token = AuthenticationToken.encode(
-      clients(:one), host: "example.com", session_public_id: "sid", resource_type: "client",
-    )
-    payload, header = JWT.decode(token, nil, false)
-    key = AuthenticationJwtConfiguration.private_key
-    foreign = JWT.encode(
-      payload.merge("iss" => "urn:umaxica:development:auth"),
-      key,
-      "ES384",
-      header,
-    )
-
-    assert_nil AuthenticationToken.decode(foreign, host: "example.com", resource_type: "client")
-  end
-
-  test "production auth audience configuration rejects localhost" do
-    error =
-      assert_raises(ArgumentError) do
-        with_env("AUTH_JWT_CLIENT_AUDIENCES" => "umaxica-api-client,app.localhost") do
-          Rails.stub(:env, ActiveSupport::StringInquirer.new("production")) do
-            AuthenticationJwtConfiguration.audiences("client")
-          end
-        end
-      end
-
-    assert_match(/non-production identifiers: app\.localhost/, error.message)
-  end
-
-  private
-
-  def with_env(vars)
-    originals = vars.keys.index_with { |key| ENV.fetch(key, nil) }
-    vars.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
-    yield
-  ensure
-    originals.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
   end
 end

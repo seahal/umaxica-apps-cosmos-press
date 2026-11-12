@@ -29,6 +29,16 @@ Hash body. `content_digest` is SHA-256 of canonical plaintext and is not a confi
 `publishing_media_files` is global. Revision/version media usages are family-owned with a single
 explicit owner FK.
 
+Media dimensions are either both unknown (`NULL`) or both positive PostgreSQL integers. The model
+and database reject partial pairs and nonpositive values. Media placement is unique by owner, role,
+field path, block path and position, with `NULLS NOT DISTINCT`: a field-only or block-only placement
+occupies its slot just as a placement with both paths does. Revision and immutable version tables
+enforce the same tuple. Direct bulk writes remain subject to these constraints. The migrations
+reject conflicting existing data rather than deleting or merging it. Schema versions range from 1
+through 2,147,483,647; media positions range from 0 through 2,147,483,647. Models reject values
+outside the existing PostgreSQL integer capacity before persistence, including when constructing
+immutable version snapshots.
+
 ## Rails controllers
 
 Each public and management controller declares `PUBLISHING_AUDIENCE`, `PUBLISHING_SURFACE`, and

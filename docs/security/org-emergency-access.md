@@ -1,5 +1,9 @@
 # Org Emergency Access (Restricted Mode)
 
+> **Historical implementation record (2026-11-10):** The local Auth, Base and Visa sign-in routes
+> and controllers were retired in the Press surface hard reset. The ceremonies and URLs below are
+> not served by this checkout; retained models and historical data are unchanged.
+
 Emergency Access is intended to provide an Entra-free way for an Operator to sign in to the org
 surface and run the resulting ORG Root session under a restricted authentication context. The
 current Auth-to-Visa implementation does not yet carry Standby through Root issuance; see

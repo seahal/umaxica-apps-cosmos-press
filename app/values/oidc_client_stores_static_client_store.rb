@@ -12,72 +12,20 @@ module OidcClientStoresStaticClientStore
       .freeze
   end
 
-  # First-party Browser RP clients use independent audiences, keys, callbacks, and RP sessions.
-  # Specs are keyed by family-realm; the exact Client ID (and its audience) comes from the trusted
-  # deployment binding, so a JP process registers core-app-jp and never a US or unsuffixed ID.
+  # Press registers only its own independent staff RP. Access owns the OP and the other
+  # repositories register their own RP callbacks; their origins are not Press configuration.
   def first_party_browser_rp_clients
     FIRST_PARTY_RP_SPECS.to_h do |family_realm, spec|
       client_id = RpDeploymentBindingValue.client_id(family_realm)
-      # Key namespace follows the exact Client ID (core-app-jp -> CORE_APP_JP); only the Base
-      # Self-RPs keep their explicit BASE_RP_* namespaces.
-      jwt_namespace = spec.fetch(:jwt_namespace) { client_id.upcase.tr("-", "_") }
-      [client_id, face_rp_client(**spec, aud: client_id, jwt_namespace:)]
+      [client_id, face_rp_client(**spec, aud: client_id, jwt_namespace: "EDIT_ORG_WW")]
     end
   end
 
   FIRST_PARTY_RP_SPECS = {
-    "core-app" => {
-      env_key: "PUBLIC_CORE_SERVICE_URL",
-      resource_type: "client",
-      name: "Core App RP",
-    },
-    "core-org" => {
-      env_key: "PUBLIC_CORE_STAFF_URL",
-      resource_type: "operator",
-      name: "Core Org RP",
-    },
-    "warp-app" => {
-      env_key: "PUBLIC_WARP_SERVICE_URL",
-      default_host: "warp.app.localhost",
-      resource_type: "client",
-      name: "Warp App RP",
-    },
-    "warp-org" => {
-      env_key: "PUBLIC_WARP_STAFF_URL",
-      default_host: "warp.org.localhost",
-      resource_type: "operator",
-      name: "Warp Org RP",
-    },
     "edit-org" => {
-      env_key: "PUBLIC_EDIT_STAFF_URL",
-      default_host: "edit.org.localhost",
+      env_key: %w(PUBLIC_EDIT_STAFF_URL PRIVATE_EDIT_STAFF_URL),
       resource_type: "operator",
       name: "Edit Org RP",
-    },
-    "palm-app" => {
-      env_key: "PUBLIC_PALM_SERVICE_URL",
-      resource_type: "client",
-      name: "Palm App RP",
-    },
-    "tech-org" => {
-      env_key: %w(PUBLIC_TECH_STAFF_URL PRIVATE_TECH_STAFF_URL),
-      resource_type: "operator",
-      name: "Tech Org RP",
-      required_operator_capability: OperatorCapabilityGrant::TECH_ACCESS,
-    },
-    "base-app" => {
-      env_key: "BASE_SERVICE_URL",
-      resource_type: "client",
-      name: "Base App Self RP",
-      jwt_namespace: "BASE_RP_APP_WW",
-      step_up_callback_path: AuthBoundaryAuthorityMap.step_up_callback_path_for("base-app-ww"),
-    },
-    "base-org" => {
-      env_key: "BASE_STAFF_URL",
-      resource_type: "operator",
-      name: "Base Org Self RP",
-      jwt_namespace: "BASE_RP_ORG_WW",
-      step_up_callback_path: AuthBoundaryAuthorityMap.step_up_callback_path_for("base-org-ww"),
     },
   }.freeze
 
@@ -184,16 +132,7 @@ module OidcClientStoresStaticClientStore
     hosts = Rails.configuration.x.boot_config.fetch(:hosts)
     host =
       case env_key
-      when "PUBLIC_AUTH_SERVICE_URL", "PRIVATE_AUTH_SERVICE_URL" then hosts.sign_service.to_s
-      when "PUBLIC_AUTH_STAFF_URL", "PRIVATE_AUTH_STAFF_URL" then hosts.sign_staff.to_s
-      when "BASE_SERVICE_URL" then hosts.base_service.to_s
-      when "BASE_STAFF_URL" then hosts.base_staff.to_s
-      when "PUBLIC_WARP_SERVICE_URL" then hosts.warp_service.to_s
-      when "PUBLIC_WARP_STAFF_URL" then hosts.warp_staff.to_s
-      when "PUBLIC_CORE_SERVICE_URL", "CORE_SERVICE_URL" then hosts.core_service.to_s
-      when "PUBLIC_CORE_STAFF_URL", "CORE_STAFF_URL" then hosts.core_staff.to_s
-      when "PUBLIC_PALM_SERVICE_URL" then hosts.palm_service.to_s
-      when "PUBLIC_TECH_STAFF_URL", "PRIVATE_TECH_STAFF_URL" then hosts.tech_staff.to_s
+      when "PUBLIC_EDIT_STAFF_URL", "PRIVATE_EDIT_STAFF_URL" then hosts.edit_staff.to_s
       else
         raise KeyError, "No boot host mapping for #{env_key} and no default host given" if default_host.blank?
 

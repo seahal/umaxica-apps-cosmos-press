@@ -15,8 +15,7 @@ class JumpRtIssuer
   TOKEN_SUBJECT = SecurityJwtJumpRtTokenCodec::TOKEN_SUBJECT
   VALID_DESTINATIONS = %w(internal).freeze
   # Defense in depth: strip redirect-target query keys from the signed URL so
-  # the gateway cannot return a request that re-enters a `pt`/`nt`/`xt`/`rt`
-  # processing path. Same list as RedirectsExternalTargetResolver.
+  # the gateway cannot return a request that re-enters a redirect-processing path.
   DANGEROUS_QUERY_KEYS = %w(redirect_uri return_to rt pt nt xt redirect_to next continue url).freeze
 
   def self.call(...)

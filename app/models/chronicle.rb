@@ -73,6 +73,20 @@ class Chronicle < ChronicleRecord
 
   before_validation :sanitize_json_payloads
 
+  public
+
+  def actor
+    super
+  rescue NameError => e
+    raise DependencyUnavailableError, "Historical actor authority is unavailable", cause: e
+  end
+
+  def subject
+    super
+  rescue NameError => e
+    raise DependencyUnavailableError, "Historical subject authority is unavailable", cause: e
+  end
+
   private
 
   def sanitize_json_payloads

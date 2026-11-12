@@ -1,141 +1,24 @@
-# typed: false
 # frozen_string_literal: true
 
 require "test_helper"
 
-# Negative verification cases for RFC 9068 auth access tokens. Each case
-# re-signs an otherwise valid token with one defect and asserts fail-closed behavior.
 class SecurityJwtAccessTokenNegativeCasesTest < ActiveSupport::TestCase
-  AUTH_HOST = "example.com"
+  self.fixture_table_names = []
 
-  # --- auth_access -----------------------------------------------------------
-
-  test "auth access rejects every algorithm other than ES384" do
-    payload, header = auth_parts
-
-    foreign_keys.each do |alg, key|
-      token = JWT.encode(payload, key, alg, header.merge("alg" => alg))
-
-      assert_nil decode_auth(token), "#{alg} must be rejected"
-    end
-  end
-
-  test "auth access rejects a token signed by another keyring" do
-    surface_token = AuthenticationToken.encode(
-      clients(:one), host: AUTH_HOST, session_public_id: "sid", resource_type: "client",
-                     jwt_issuer_id: "surface:AUTH_APP",
+  setup do
+    @client = OidcClientRegistry.find!("edit-org-ww")
+    @issuer_id = OidcIssuer.jwt_issuer_id_for_client(@client)
+    @issuer = OidcIssuer.for_client(@client)
+    @key = JitSecurityJwtRegistry.private_key_for(@issuer_id)
+    @jwks = OidcOpJwksClient.new(
+      jwks_uri: OidcIssuer.jwks_uri("operator").to_s,
+      fetcher: -> { JitSecurityJwtRegistry.jwks_for(@issuer_id).deep_stringify_keys },
     )
-    payload, header = auth_parts
-    preference_signed = JWT.encode(
-      payload, JitSecurityJwtRegistry.private_key_for("preference_app"), "ES384", header,
-    )
-
-    assert_nil decode_auth(surface_token)
-    assert_nil decode_auth(preference_signed)
+    token = rp_cell_test_token_response(@client.client_id, subject: "external-subject", sid: "external-session")
+    @payload, @header = JWT.decode(token.fetch(:access_token), nil, false)
   end
 
-  test "auth access facade preserves an explicitly supplied authentication time" do
-    auth_time = Time.utc(2026, 1, 2, 3, 4, 5)
-    token = AuthenticationToken.encode(
-      clients(:one), host: AUTH_HOST, session_public_id: "sid", resource_type: "client",
-                     auth_time: auth_time,
-    )
-
-    payload = decode_auth(token)
-
-    assert_equal auth_time.to_i, payload.fetch("auth_time")
-  end
-
-  test "auth access rejects malformed and missing required claims" do
-    variants = {
-      "client_id missing" => ->(p) { p.except("client_id") },
-      "client_id not a string" => ->(p) { p.merge("client_id" => 7) },
-      "exp missing" => ->(p) { p.except("exp") },
-      "jti missing" => ->(p) { p.except("jti") },
-      "iss missing" => ->(p) { p.except("iss") },
-      "aud empty" => ->(p) { p.merge("aud" => []) },
-      "iat as float" => ->(p) { p.merge("iat" => p["iat"] + 0.5) },
-      "sub numeric" => ->(p) { p.merge("sub" => clients(:one).id) },
-      "scope as array" => ->(p) { p.merge("scope" => p["scope"].split) },
-      "scope missing" => ->(p) { p.except("scope") },
-      "future nbf" => ->(p) { p.merge("nbf" => 10.minutes.from_now.to_i) },
-    }
-
-    variants.each do |label, mutate|
-      assert_nil decode_auth(resign_auth(&mutate)), "#{label} must be rejected"
-    end
-  end
-
-  test "auth access rejects legacy scp, act, and payload typ claims" do
-    assert_nil decode_auth(resign_auth { |p| p.merge("scp" => p["scope"].split) })
-    assert_nil decode_auth(resign_auth { |p| p.merge("act" => "client") })
-    assert_nil decode_auth(resign_auth { |p| p.merge("typ" => "auth-access-token;client") })
-  end
-
-  test "auth access rejects a token whose domain scope names another resource type" do
-    payload = decode_auth(resign_auth { |p| p.merge("scope" => "authenticated domain:operator") })
-
-    assert_not AuthenticationToken.resource_type_scope_matches?(payload, "client")
-  end
-
-  test "auth access rejects a legacy custom-typ token end to end" do
-    payload, header = auth_parts
-    legacy = JWT.encode(
-      payload.merge("scp" => payload["scope"].split, "act" => "client", "sub" => clients(:one).id),
-      AuthenticationJwtConfiguration.private_key,
-      "ES384",
-      header.merge("typ" => "auth-access-token;client"),
-    )
-
-    assert_nil decode_auth(legacy)
-  end
-
-  test "local issuers are environment specific" do
-    assert_equal "urn:umaxica:test:auth", AuthenticationJwtConfiguration.issuer
-    assert_nil decode_auth(resign_auth { |p| p.merge("iss" => "urn:umaxica:development:auth") })
-  end
-
-  test "production boot validation rejects development and test issuers" do
-    with_production do
-      error = assert_raises(ArgumentError) { AuthenticationJwtConfiguration.validate! }
-
-      assert_match(/AUTH_JWT_ISSUER must not include non-production identifiers/, error.message)
-    end
-  end
-
-  test "production boot validation accepts production identifiers" do
-    with_env("AUTH_JWT_ISSUER" => "https://sign.umaxica.app") do
-      with_production do
-        assert AuthenticationJwtConfiguration.validate!
-      end
-    end
-  end
-
-  test "retired and unknown auth resource types are refused" do
-    [nil, "", "visitor", "unknown"].each do |resource_type|
-      assert_raises(ArgumentError) { AuthenticationJwtConfiguration.audiences(resource_type) }
-      assert_raises(ArgumentError) { AuthenticationJwtConfiguration.client_id(resource_type) }
-    end
-  end
-
-  test "leeway is fixed and not read from the environment" do
-    with_env("AUTH_JWT_LEEWAY_SECONDS" => "86400") do
-      assert_equal SecurityJwtRfc9068AccessTokenProfile::CLOCK_SKEW_LEEWAY_SECONDS,
-                   AuthenticationJwtConfiguration.leeway_seconds
-    end
-  end
-
-  test "keyring encode requires an explicit JOSE typ and ignores payload typ" do
-    assert_raises(ArgumentError) { JitSecurityJwtKeyring.encode({ "typ" => "x+jwt" }, typ: nil) }
-
-    token = JitSecurityJwtKeyring.encode({ "typ" => "payload-typ" }, typ: "at+jwt")
-
-    assert_equal "at+jwt", JWT.decode(token, nil, false)[1]["typ"]
-  end
-
-  private
-
-  def foreign_keys
+  test "external RP access verification refuses every algorithm other than ES384" do
     {
       "ES256" => OpenSSL::PKey::EC.generate("prime256v1"),
       "ES512" => OpenSSL::PKey::EC.generate("secp521r1"),
@@ -143,34 +26,80 @@ class SecurityJwtAccessTokenNegativeCasesTest < ActiveSupport::TestCase
       "PS256" => OpenSSL::PKey::RSA.generate(2048),
       "HS256" => "shared-secret",
       "none" => nil,
+    }.each do |algorithm, key|
+      token = JWT.encode(@payload, key, algorithm, @header.merge("alg" => algorithm))
+
+      assert_not verify(token).success?, "#{algorithm} must be rejected"
+    end
+  end
+
+  test "external RP access verification refuses a foreign signing key" do
+    token = JWT.encode(@payload, OpenSSL::PKey::EC.generate("secp384r1"), "ES384", @header)
+
+    assert_not verify(token).success?
+  end
+
+  test "external RP access verification refuses missing and malformed claims" do
+    variants = {
+      "client_id missing" => @payload.except("client_id"),
+      "client_id numeric" => @payload.merge("client_id" => 7),
+      "exp missing" => @payload.except("exp"),
+      "jti missing" => @payload.except("jti"),
+      "iss missing" => @payload.except("iss"),
+      "aud empty" => @payload.merge("aud" => []),
+      "iat fractional" => @payload.merge("iat" => @payload.fetch("iat") + 0.5),
+      "sub numeric" => @payload.merge("sub" => 381),
+      "scope array" => @payload.merge("scope" => ["openid"]),
+      "scope missing" => @payload.except("scope"),
+      "future nbf" => @payload.merge("nbf" => 10.minutes.from_now.to_i),
+      "unknown authentication context" => @payload.merge("authn_ctx" => "elevated"),
     }
+
+    variants.each do |name, payload|
+      assert_not verify(JWT.encode(payload, @key, "ES384", @header)).success?, name
+    end
   end
 
-  def auth_parts
-    token = AuthenticationToken.encode(
-      clients(:one), host: AUTH_HOST, session_public_id: "sid", resource_type: "client",
-    )
-    JWT.decode(token, nil, false)
+  test "external RP access verification refuses retired private claim formats" do
+    %w(scp act typ).each do |claim|
+      payload = @payload.merge(claim => "retired")
+
+      assert_not verify(JWT.encode(payload, @key, "ES384", @header)).success?, claim
+    end
   end
 
-  def resign_auth
-    payload, header = auth_parts
-    JWT.encode(yield(payload), AuthenticationJwtConfiguration.private_key, "ES384", header)
+  test "external RP access verification refuses another realm issuer audience or client" do
+    [
+      @payload.merge("scope" => "openid domain:client"),
+      @payload.merge("iss" => "https://other.example/issuer"),
+      @payload.merge("aud" => ["other-client"]),
+      @payload.merge("client_id" => "other-client"),
+    ].each do |payload|
+      assert_not verify(JWT.encode(payload, @key, "ES384", @header)).success?
+    end
   end
 
-  def decode_auth(token)
-    AuthenticationToken.decode(token, host: AUTH_HOST, resource_type: "client")
+  test "external RP access verification refuses wrong absent and legacy JOSE types" do
+    [@header.except("typ"), @header.merge("typ" => "JWT"),
+     @header.merge("typ" => "auth-access-token;client"),].each do |header|
+      assert_not verify(JWT.encode(@payload, @key, "ES384", header)).success?
+    end
   end
 
-  def with_production(&)
-    Rails.stub(:env, ActiveSupport::StringInquirer.new("production"), &)
+  test "keyring encoding requires explicit JOSE type and preserves header ownership" do
+    assert_raises(ArgumentError) { JitSecurityJwtKeyring.encode({ "typ" => "x+jwt" }, typ: nil, issuer_id: @issuer_id) }
+
+    token = JitSecurityJwtKeyring.encode({ "typ" => "payload-typ" }, typ: "at+jwt", issuer_id: @issuer_id)
+
+    assert_equal "at+jwt", JWT.decode(token, nil, false)[1].fetch("typ")
   end
 
-  def with_env(vars)
-    originals = vars.keys.index_with { |key| ENV.fetch(key, nil) }
-    vars.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
-    yield
-  ensure
-    originals.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
+  private
+
+  def verify(token)
+    OidcOpAccessTokenVerifier.new(
+      access_token: token, client_id: @client.client_id, realm: "org", issuer: @issuer,
+      audience: @client.aud, jwks_client: @jwks,
+    ).call
   end
 end

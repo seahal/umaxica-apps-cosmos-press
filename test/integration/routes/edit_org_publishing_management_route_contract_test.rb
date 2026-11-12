@@ -124,6 +124,37 @@ class EditOrgPublishingManagementRouteContractTest < ActionDispatch::Integration
     assert_not_includes path, "/1"
   end
 
+  test "the Publishing owner API is on Edit across all twelve cells" do
+    CELLS.each do |surface, audience|
+      path = "/api/v0/publishing/#{surface}/#{audience}/entries"
+      controller = "edit/org/api/v0/publishing/entries"
+
+      index = Rails.application.routes.recognize_path("http://#{HOST}#{path}", method: :get)
+      create = Rails.application.routes.recognize_path("http://#{HOST}#{path}", method: :post)
+      show = Rails.application.routes.recognize_path("http://#{HOST}#{path}/#{PUBLIC_ID}", method: :get)
+      update = Rails.application.routes.recognize_path("http://#{HOST}#{path}/#{PUBLIC_ID}", method: :patch)
+
+      assert_equal controller, index.fetch(:controller), "#{surface}/#{audience} index"
+      assert_equal "index", index.fetch(:action)
+      assert_equal controller, create.fetch(:controller), "#{surface}/#{audience} create"
+      assert_equal "create", create.fetch(:action)
+      assert_equal controller, show.fetch(:controller), "#{surface}/#{audience} show"
+      assert_equal "show", show.fetch(:action)
+      assert_equal PUBLIC_ID, show.fetch(:entry_ref)
+      assert_equal controller, update.fetch(:controller), "#{surface}/#{audience} update"
+      assert_equal "update", update.fetch(:action)
+      assert_equal PUBLIC_ID, update.fetch(:entry_ref)
+      assert_equal "domain-publishing", RuntimeRole.route_owner(controller)
+    end
+
+    assert_raises(ActionController::RoutingError) do
+      Rails.application.routes.recognize_path(
+        "http://base.org.localhost/api/v0/publishing/docs/org/entries/#{PUBLIC_ID}",
+        method: :get,
+      )
+    end
+  end
+
   test "the edit Publishing routes do not recognize on the Base staff host" do
     assert_raises(ActionController::RoutingError) do
       Rails.application.routes.recognize_path(

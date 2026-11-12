@@ -8,8 +8,25 @@ class OidcOpRevocationClientTest < ActiveSupport::TestCase
   ENDPOINT = "https://visa.example.test/oauth/revoke"
   REFRESH_TOKEN = "rp-session-id:secret-verifier"
 
+  test "rejects missing token unavailable client and mismatched resource before outbound access" do
+    client = OidcClientRegistry.find!("edit-org-ww")
+    requests = [
+      [client.client_id, "operator", "", :missing_token],
+      ["unknown-client", "operator", REFRESH_TOKEN, :client_unavailable],
+      [client.client_id, "client", REFRESH_TOKEN, :resource_mismatch],
+    ]
+
+    OutboundHttp::Connection.stub(:build, ->(**) { flunk("ineligible revocation must not connect") }) do
+      requests.each do |client_id, resource_type, token, expected_outcome|
+        result = OidcOpRevocationClient.revoke(client_id:, resource_type:, token:)
+
+        assert_equal expected_outcome, result.outcome
+      end
+    end
+  end
+
   test "posts only the bound refresh token body using the registered private key client method" do
-    client = OidcClientRegistry.find!("core-app-jp")
+    client = OidcClientRegistry.find!("edit-org-ww")
 
     assert_equal "private_key_jwt", client.registered_token_endpoint_auth_method
 
@@ -40,7 +57,7 @@ class OidcOpRevocationClientTest < ActiveSupport::TestCase
         ) do
           connection.stub(:post, request) do
             result = OidcOpRevocationClient.revoke(
-              client_id: client.client_id, resource_type: "client", token: REFRESH_TOKEN,
+              client_id: client.client_id, resource_type: "operator", token: REFRESH_TOKEN,
             )
           end
         end
@@ -65,9 +82,9 @@ class OidcOpRevocationClientTest < ActiveSupport::TestCase
     assert_not_includes uri.to_s, REFRESH_TOKEN
   end
 
-  test "a first-party revocation goes to the local port while the assertion audience stays public" do
-    client = OidcClientRegistry.find!("core-app-jp")
-    public_endpoint = "https://#{ENV.fetch("PUBLIC_VISA_SERVICE_URL")}/oauth/revoke"
+  test "external revocation and its assertion retain the registered HTTPS destination" do
+    client = OidcClientRegistry.find!("edit-org-ww")
+    public_endpoint = "https://#{ENV.fetch("PUBLIC_VISA_STAFF_URL")}/oauth/revoke"
     connection = Faraday.new
     posted = []
     audiences = []
@@ -83,7 +100,7 @@ class OidcOpRevocationClientTest < ActiveSupport::TestCase
         OutboundHttp::Connection.stub(:build, connection) do
           connection.stub(:post, ->(uri, _body) { (posted << uri) && Faraday::Response.new(status: 200, body: "") }) do
             result = OidcOpRevocationClient.revoke(
-              client_id: client.client_id, resource_type: "client",
+              client_id: client.client_id, resource_type: "operator",
               token: REFRESH_TOKEN,
             )
           end
@@ -93,14 +110,14 @@ class OidcOpRevocationClientTest < ActiveSupport::TestCase
     sent = posted.sole
 
     assert_predicate result, :success?
-    assert_equal ["http", ENV.fetch("PUBLIC_VISA_SERVICE_URL"), Integer(ENV.fetch("PORT"), exception: false) || 3000,
+    assert_equal ["https", ENV.fetch("PUBLIC_VISA_STAFF_URL"), 443,
                   "/oauth/revoke",],
                  [sent.scheme, sent.host, sent.port, sent.path]
     assert_equal [[client.client_id, public_endpoint]], audiences
   end
 
   test "retries one transient transport failure with a fresh client assertion" do
-    client = OidcClientRegistry.find!("core-app-jp")
+    client = OidcClientRegistry.find!("edit-org-ww")
     connection = Faraday.new
     response = Faraday::Response.new(status: 200, body: "")
     request_count = 0
@@ -126,7 +143,7 @@ class OidcOpRevocationClientTest < ActiveSupport::TestCase
         OutboundHttp::Connection.stub(:build, connection) do
           connection.stub(:post, request) do
             result = OidcOpRevocationClient.revoke(
-              client_id: client.client_id, resource_type: "client", token: REFRESH_TOKEN,
+              client_id: client.client_id, resource_type: "operator", token: REFRESH_TOKEN,
             )
           end
         end
@@ -140,7 +157,7 @@ class OidcOpRevocationClientTest < ActiveSupport::TestCase
   end
 
   test "classifies response boundaries without retrying any HTTP response" do
-    client = OidcClientRegistry.find!("core-app-jp")
+    client = OidcClientRegistry.find!("edit-org-ww")
     [
       [201, :unexpected_response],
       [299, :unexpected_response],
@@ -164,7 +181,7 @@ class OidcOpRevocationClientTest < ActiveSupport::TestCase
           OutboundHttp::Connection.stub(:build, connection) do
             connection.stub(:post, request) do
               result = OidcOpRevocationClient.revoke(
-                client_id: client.client_id, resource_type: "client", token: REFRESH_TOKEN,
+                client_id: client.client_id, resource_type: "operator", token: REFRESH_TOKEN,
               )
             end
           end
@@ -177,7 +194,7 @@ class OidcOpRevocationClientTest < ActiveSupport::TestCase
   end
 
   test "stops after one retry when both transport attempts fail" do
-    client = OidcClientRegistry.find!("core-app-jp")
+    client = OidcClientRegistry.find!("edit-org-ww")
     connection = Faraday.new
     request_count = 0
     request =
@@ -192,7 +209,7 @@ class OidcOpRevocationClientTest < ActiveSupport::TestCase
         OutboundHttp::Connection.stub(:build, connection) do
           connection.stub(:post, request) do
             result = OidcOpRevocationClient.revoke(
-              client_id: client.client_id, resource_type: "client", token: REFRESH_TOKEN,
+              client_id: client.client_id, resource_type: "operator", token: REFRESH_TOKEN,
             )
           end
         end

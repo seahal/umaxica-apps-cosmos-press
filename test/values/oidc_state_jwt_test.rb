@@ -5,7 +5,7 @@ require "test_helper"
 
 # D-149 / D-150: the RP `state` JWS.
 class OidcStateJwtTest < ActiveSupport::TestCase
-  CLIENT_ID = "core-app-jp"
+  CLIENT_ID = "edit-org-ww"
 
   test "a state issued by the RP verifies for that RP and carries its jti and target" do
     state, jti = OidcStateJwt.issue(client_id: CLIENT_ID, target_link_uri: "/dashboard")

@@ -4,11 +4,26 @@
 require_relative "boot"
 
 require "ipaddr"
-require "rails/all"
+
+# Load the Rails components this application uses without Action Mailbox. The mailbox railtie
+# contributes inbound-provider and development-conductor routes to every host even though this app
+# only sends mail; those endpoints are not an application surface.
+require "rails"
+%w(
+  active_record/railtie
+  active_storage/engine
+  action_controller/railtie
+  action_view/railtie
+  action_mailer/railtie
+  active_job/railtie
+  action_cable/engine
+  action_text/engine
+  rails/test_unit/railtie
+).each { |railtie| require railtie }
 
 Bundler.require(*Rails.groups)
 
-# `pghero`, `blazer`, the two `rswag` halves, `rails_performance`, and `coverband` are
+# `pghero`, `blazer`, the two `rswag` halves, and `coverband` are
 # `group :development` gems with `require: false` (Gemfile), so Bundler.require never auto-requires
 # them and the gems are not on the load path outside development. They must be required here rather
 # than from config/initializers: an engine only
@@ -20,24 +35,6 @@ if Rails.env.development?
   require "blazer"
   require "rswag/api"
   require "rswag/ui"
-
-  require "rails_performance"
-  # The gem ships one config/routes.rb that draws the engine's own route set and then calls
-  # `Rails.application.routes.draw { mount RailsPerformance::Engine => RailsPerformance.mount_at }`
-  # with no host constraint and no flag to disable it. Left in place, the dashboard answers on
-  # every host this application serves -- every app, com, org, content, and service FQDN -- which
-  # is the leak a dedicated host exists to prevent, and a mount
-  # test/security/invariants/mounted_engine_invariant_test.rb has no way to constrain.
-  #
-  # Dropping the routing path is the only available off switch, and it has to happen here: an
-  # engine contributes its routes through the `add_routing_paths` initializer, which has already
-  # run by the time config/initializers/* load. config/routes/performance.rb draws the engine's own
-  # routes and mounts it behind the host constraint instead.
-  #
-  # On upgrading this gem, re-read its config/routes.rb: the copied route list in
-  # config/routes/performance.rb has to be brought across by hand, and a renamed route shows up
-  # only as a dashboard tab that 404s.
-  RailsPerformance::Engine.paths["config/routes.rb"] = []
 
   # Coverband measures which Ruby lines execute, which is only a meaningful question for the
   # process serving requests. Requiring the gem is what starts it: its railtie hooks
@@ -94,12 +91,21 @@ module Jit
   end
 
   class Application < Rails::Application
+    if Rails.env.production?
+      raise ActiveRecord::AdapterNotSpecified, "production database is not configured"
+    end
+
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults(8.2)
 
     # Accept JSON messages only; authenticated legacy Marshal payloads are rejected too.
     config.active_support.message_serializer = JSON
 
+    # No model declares Active Storage attachments. Keep the framework loaded, but do not expose
+    # globally reachable blob and direct-upload endpoints.
+    config.active_storage.draw_routes = false
+    # Press has no Turbo Native client. The gem's global navigation routes have no host constraint.
+    config.turbo.draw_routes = false if config.respond_to?(:turbo)
     # Raw email content is not application logging data. Keep the Rails delivery
     # mechanism and its notifications intact while disabling ActionMailer's
     # logger across every environment.
@@ -108,15 +114,11 @@ module Jit
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # CommonHelper ones are `templates`, `generators`, or `middleware`, for example.
-    # `omniauth` holds lib/omniauth/strategies/umaxica_entra.rb, which reopens
-    # the omniauth_openid_connect gem's own OmniAuth::Strategies module
-    # (capitalized "OmniAuth"); Zeitwerk's inflection for the directory name
-    # ("Omniauth") would otherwise collide with it.
     # `rubocop` holds lib/rubocop/cop/umaxica/*.rb, the repository's custom
     # architecture cops. They subclass RuboCop::Cop::Base, which only exists
     # under `bin/rubocop`; autoloading them into the application would raise at
     # boot and, under eager loading, take the whole app down.
-    config.autoload_lib(ignore: %w(assets tasks omniauth rubocop))
+    config.autoload_lib(ignore: %w(assets tasks rubocop))
 
     # Configuration for the application, engines, and railties goes here.
     #

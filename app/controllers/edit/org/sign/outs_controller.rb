@@ -6,9 +6,6 @@ module Edit
     module Sign
       class OutsController < Edit::Org::BareController
         include ::BrowserRpAuthentication
-        include ::AuthenticationWithdrawalGate
-
-        include ::AuthenticationLogoutable
         include ::SignOutNotice
         include ::OidcRpLogoutLauncher
         include ::SignOutClearSiteData
@@ -20,7 +17,7 @@ module Edit
         after_action :verify_private_action_authorized!
         after_action :apply_authenticated_page_cache_policy!
         helper_method :current_resource, :browser_rp_authenticated?, :browser_rp_session_public_id,
-                      :current_browser_session_security_context, :current_session_public_id,
+                      :current_session_public_id,
                       :current_session, :logged_in?
 
         # OidcRpLogoutLauncher prepends its own callback and re-runs ensure_fqdn_gate_first!; restore
@@ -46,7 +43,7 @@ module Edit
         end
 
         def edit
-          render "auth/shared/sign_outs/edit"
+          render sign_out_template("edit")
         end
 
         def create
@@ -66,6 +63,8 @@ module Edit
         def browser_rp_resource_type
           "operator"
         end
+
+        def sign_out_template(name) = "edit/shared/sign_outs/#{name}"
 
         def sign_out_confirmation_form_path
           sign_out_post_path

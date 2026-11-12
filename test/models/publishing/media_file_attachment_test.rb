@@ -31,9 +31,11 @@ module Publishing
 
       assert_not_nil persisted
       assert_not media.file_data.key?("url")
-      assert_equal 0, Avatar.lease_connection.select_value(
-        "SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'publishing_media_files'",
-      )
+      [ApplicationRecord, ChronicleRecord, RpEditOrgRecord].each do |record|
+        assert_equal 0, record.lease_connection.select_value(
+          "SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'publishing_media_files'",
+        )
+      end
     end
 
     test "a non-image is rejected" do

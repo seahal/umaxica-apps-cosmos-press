@@ -3,30 +3,15 @@
 require "test_helper"
 
 class PublicMethodContractValuesTest < ActiveSupport::TestCase
-  test "a blank public identifier error names its record without substituting an internal id" do
-    error = BlankPublicIdentifierError.new(record_class: Client)
-
-    assert_equal "Client", error.record_class
-    assert_equal "Client has a blank public_id and cannot be exposed to a client", error.message
+  class AbstractTaxonomyAssignment < ApplicationRecord
+    self.abstract_class = true
+    include PublishingFamilyTaxonomyAssignment
   end
 
-  test "resource lifecycle predicates distinguish active and inactive state in every family" do
-    active = AuthorityResourceLifecycleStateValue::ACTIVE
-    inactive = AuthorityResourceLifecycleStateValue::INACTIVE
-    lifecycles = [AgentLifecycle, BureauLifecycle, EnterpriseLifecycle]
+  test "taxonomy assignment base class requires its concrete vocabulary kind" do
+    error = assert_raises(NotImplementedError) { AbstractTaxonomyAssignment.expected_kind }
 
-    lifecycles.each do |lifecycle_class|
-      assert_predicate lifecycle_class.new(state: active), :active?
-      assert_not_predicate lifecycle_class.new(state: inactive), :active?
-    end
-  end
-
-  test "persisted owner cutover markers are readonly in each owner family" do
-    [AgentAuthorityCutover, BureauAuthorityCutover, EnterpriseAuthorityCutover].each do |cutover_class|
-      cutover = cutover_class.establish!
-
-      assert_predicate cutover, :readonly?, cutover_class.name
-    end
+    assert_match(/must declare expected_kind/, error.message)
   end
 
   test "taxonomy assignment structural kinds follow their declared vocabulary kind" do
@@ -39,6 +24,45 @@ class PublicMethodContractValuesTest < ActiveSupport::TestCase
 
     assert_equal Publishing::TaxonomyKind::SINGLE_HIERARCHICAL, single.structural_kind.key
     assert_equal Publishing::TaxonomyKind::MULTIPLE_ORDERED_FLAT, multiple.structural_kind.key
+    cell_assignments = Publishing::ContentFamilies::CELL_BY_ENTRY.values
+    single_assignments =
+      cell_assignments.flat_map do |cell|
+        [cell.fetch(:revision_single), cell.fetch(:version_single)]
+      end
+    multiple_assignments =
+      cell_assignments.flat_map do |cell|
+        [cell.fetch(:revision_multiple), cell.fetch(:version_multiple)]
+      end
+
+    assert_equal Array.new(24, Publishing::TaxonomyKind::SINGLE_HIERARCHICAL),
+                 single_assignments.map(&:expected_kind)
+
+    assert_equal Array.new(24, Publishing::TaxonomyKind::MULTIPLE_ORDERED_FLAT),
+                 multiple_assignments.map(&:expected_kind)
+    taxonomy_term = Publishing::Info::App::TaxonomyTerm.new
+
+    assert_equal Publishing::ContentFamilies::CELL_BY_TAXONOMY_TERM.fetch(taxonomy_term.class),
+                 Publishing::ContentFamilies.cell_for_taxonomy_term(taxonomy_term)
+    assert_raises(ArgumentError) { Publishing::ContentFamilies.cell_for_taxonomy_term(Object.new) }
+  end
+
+  test "publication and taxonomy term expose their terminal and root states" do
+    publication = Publishing::Info::App::Publication.new(terminated_at: Time.zone.parse("2026-11-12 12:00:00"))
+    taxonomy_root = Publishing::Info::App::TaxonomyTerm.new(parent_id: nil)
+    taxonomy_child = Publishing::Info::App::TaxonomyTerm.new(parent_id: 1)
+
+    assert_predicate publication, :terminated?
+    assert_predicate taxonomy_root, :root?
+    assert_not_predicate taxonomy_child, :root?
+  end
+
+  test "successful archive result retains the archived entry" do
+    entry = Publishing::Info::App::Entry.new
+    result = PublishingArchiveEntryResult.success(entry)
+
+    assert_predicate result, :ok?
+    assert_same entry, result.entry
+    assert_empty result.errors
   end
 
   test "publishing revision and version classes map back to their own entry family" do
@@ -47,40 +71,6 @@ class PublicMethodContractValuesTest < ActiveSupport::TestCase
 
     assert_equal Publishing::Info::App::Entry, Publishing::ContentFamilies.entry_class_for_revision(revision)
     assert_equal Publishing::Info::App::Entry, Publishing::ContentFamilies.entry_class_for_version(version)
-  end
-
-  test "passkey result candidate initializes metadata as an empty object by default" do
-    candidate = IdentityPasskeyCeremonyResultIssuer::Candidate.new(
-      webauthn_id: "credential-id",
-      public_key: "public-key",
-      sign_count: 0,
-      description: "Security key",
-      transports: ["internal"],
-    )
-
-    assert_equal({}, candidate.metadata)
-  end
-
-  test "social ceremony grant exposes its validated expiry as UTC time" do
-    now = Time.current.change(usec: 0)
-    expires_at = now + 5.minutes
-    issuer_id = IdentitySocialCeremonyContract.acme_issuer_id("app")
-    attributes = {
-      surface: "app",
-      actor_ref: "actor-reference",
-      session_ref: "session-reference",
-      transaction_id: "transaction-reference",
-      jti: SecureRandom.uuid,
-      operation: "link",
-      provider: "google",
-      exp: expires_at.to_i,
-    }
-    payload = attributes.merge(
-      IdentitySocialCeremonyGrant.default_claims(attributes, issuer_id:, now:),
-    )
-    grant = IdentitySocialCeremonyGrant.new(payload, issuer_id:, now:)
-
-    assert_equal Time.zone.at(expires_at.to_i), grant.expires_at
   end
 
   test "identifier inventory result serializes its stable public shape" do
@@ -98,38 +88,10 @@ class PublicMethodContractValuesTest < ActiveSupport::TestCase
     assert_equal result.to_h, JSON.parse(result.to_json, symbolize_names: true)
   end
 
-  test "inventory results serialize summary and details without changing their shape" do
-    summary = { selection_complete: true, avatars_requested: 0 }
-    details = []
-    avatar_result = AvatarOwnershipTransitionInventoryQuery::Result.new(summary:, details:)
-    group_result = AvatarGroupOwnershipTransitionInventoryQuery::Result.new(summary:, details:)
-    backfill_result = AvatarConcreteOwnershipBackfillOperation::Result.new(summary:, details:)
-    group_backfill_result = AvatarGroupConcreteOwnershipBackfillOperation::Result.new(summary:, details:)
-    cutover_result = AvatarOwnershipCutoverOperation::Result.new(
-      status: "established",
-      summary:,
-      inventory: avatar_result,
-      group_inventory: group_result,
-    )
-
-    assert_predicate avatar_result, :selection_complete?
-    assert_equal({ summary:, details: }, group_result.to_h)
-    assert_equal({ summary:, details: }, backfill_result.to_h)
-    assert_equal({ summary:, details: }, group_backfill_result.to_h)
-    assert_equal(
-      { status: "established", summary:, inventory: avatar_result.to_h, group_inventory: group_result.to_h },
-      cutover_result.to_h,
-    )
-    assert_equal cutover_result.to_h, JSON.parse(cutover_result.to_json, symbolize_names: true)
-    assert_equal({ summary:, details: }, JSON.parse(avatar_result.to_json, symbolize_names: true))
-    assert_equal({ summary:, details: }, JSON.parse(group_result.to_json, symbolize_names: true))
-    assert_equal({ summary:, details: }, JSON.parse(backfill_result.to_json, symbolize_names: true))
-    assert_equal({ summary:, details: }, JSON.parse(group_backfill_result.to_json, symbolize_names: true))
-  end
-
   test "published entries query returns an empty relation when locale is absent" do
     query = PublishingPublishedEntriesQuery.new(entry_class: Publishing::Info::App::Entry, locale: " ")
 
     assert_empty query.call
+    assert_empty PublishingPublishedEntriesQuery.call(entry_class: Publishing::Info::App::Entry, locale: " ")
   end
 end

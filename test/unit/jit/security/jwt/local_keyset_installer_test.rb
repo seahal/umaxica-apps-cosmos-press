@@ -25,67 +25,6 @@ module Jit
           FileUtils.rm_f(@store_path)
         end
 
-        test "reinstalling from the same local store keeps app preference jwt signatures valid" do
-          JitSecurityJwtLocalKeysetInstaller.install!(store_path: @store_path)
-          JitSecurityJwtRegistry.reload!
-
-          token = PreferenceToken.encode(
-            SecurityJwtPreferenceTokenCodec::ANONYMOUS_PREFERENCE_VALUES.transform_values(&:first),
-            host: "log.umaxica.app",
-            preference_type: "AppPreference",
-            public_id: "pref-public",
-            jti: "pref-jti",
-            issued_at: Time.current,
-          )
-
-          assert_not_nil PreferenceToken.decode(token, host: "log.umaxica.app")
-
-          clear_local_jwt_env!
-          JitSecurityJwtLocalKeysetInstaller.install!(store_path: @store_path)
-          JitSecurityJwtRegistry.reload!
-
-          decoded = PreferenceToken.decode(token, host: "log.umaxica.app")
-
-          assert_not_nil decoded
-          assert_equal "pref-public", decoded["sub"]
-          assert_equal "pref-jti", decoded["jti"]
-        end
-
-        test "reinstalling from the same local store keeps org preference jwt signatures valid" do
-          JitSecurityJwtLocalKeysetInstaller.install!(store_path: @store_path)
-          JitSecurityJwtRegistry.reload!
-
-          token = PreferenceToken.encode(
-            SecurityJwtPreferenceTokenCodec::ANONYMOUS_PREFERENCE_VALUES.transform_values(&:first),
-            host: "log.umaxica.org",
-            preference_type: "OrgPreference",
-            public_id: "org-pref-public",
-            jti: "org-pref-jti",
-            issued_at: Time.current,
-            jwt_issuer_id: "preference_org",
-          )
-
-          assert_not_nil PreferenceToken.decode(
-            token,
-            host: "log.umaxica.org",
-            jwt_issuer_id: "preference_org",
-          )
-
-          clear_local_jwt_env!
-          JitSecurityJwtLocalKeysetInstaller.install!(store_path: @store_path)
-          JitSecurityJwtRegistry.reload!
-
-          decoded = PreferenceToken.decode(
-            token,
-            host: "log.umaxica.org",
-            jwt_issuer_id: "preference_org",
-          )
-
-          assert_not_nil decoded
-          assert_equal "org-pref-public", decoded["sub"]
-          assert_equal "org-pref-jti", decoded["jti"]
-        end
-
         test "partial keyset env is repaired from local store as one matching set" do
           JitSecurityJwtLocalKeysetInstaller.install!(store_path: @store_path)
           original_private_keyset = ENV.fetch("PREFERENCE_APP_JWT_PRIVATE_KEYSET")

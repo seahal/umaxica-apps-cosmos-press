@@ -2,12 +2,13 @@
 # frozen_string_literal: true
 
 module RequestContextContract
+  class InvalidRegionError < ArgumentError; end
+
   REQUIRED_KEYS = %i(ri).freeze
   RETURN_TARGET_KEYS = %i(pt nt).freeze
   OPTIONAL_OVERLAY_KEYS = %i(lx ct tz cu df tf mo dn ps).freeze
   PUBLIC_KEYS = (REQUIRED_KEYS + RETURN_TARGET_KEYS + OPTIONAL_OVERLAY_KEYS).freeze
   ALLOWED_REGIONS = %w(jp us).freeze
-  DEFAULT_REGION = "jp"
   TIME_FORMAT_SHORT_MAP = {
     "12" => "12",
     "24" => "24",
@@ -69,8 +70,6 @@ module RequestContextContract
 
   def allowed_regions = ALLOWED_REGIONS
 
-  def default_region = DEFAULT_REGION
-
   def internal_names = INTERNAL_NAMES
 
   def internal_name(key)
@@ -98,7 +97,13 @@ module RequestContextContract
   end
 
   def normalize_region(value)
-    normalized = normalize(:ri, value)
-    ALLOWED_REGIONS.include?(normalized) ? normalized : DEFAULT_REGION
+    return if value.nil?
+
+    raise InvalidRegionError, "region must be a supported string" unless value.is_a?(String)
+
+    normalized = value.downcase
+    return normalized if ALLOWED_REGIONS.include?(normalized)
+
+    raise InvalidRegionError, "region is not supported"
   end
 end

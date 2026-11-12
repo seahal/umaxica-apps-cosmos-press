@@ -14,7 +14,7 @@
 
 /*
  * The theme lives on `<html data-theme>`, written by the server from the `ct` cookie
- * (`app/helpers/application_helper.rb#theme_cookie_value`) and kept in sync by `src/lib/theme.ts`.
+ * (`app/helpers/application_helper.rb#theme_cookie_value`).
  * The attribute is always one of `light`, `dark` or `system`, so the two branches below are total:
  *
  *   - `dark`   always dark, whatever the operating system says
@@ -53,8 +53,7 @@
 
   /*
    * System fonts only, Latin face first so Latin text is not rendered by the Japanese face. No
-   * webfont, so nothing here blocks first paint. `base_family.css` re-points this for the base
-   * family rather than restating the whole rule at a higher specificity.
+   * webfont, so nothing here blocks first paint.
    */
   --ui-font-sans:
     "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
@@ -201,7 +200,7 @@
 
 /*
  * Unlayered, so the page ground wins over every Tailwind layer. A surface stylesheet re-points
- * `--ui-canvas` rather than restating this rule, which is why the fourteen surface files no longer
+ * `--ui-canvas` rather than restating this rule, which is why the thirteen retained surface files no longer
  * carry a `body` block of their own.
  */
 body {

@@ -8,6 +8,8 @@ module Publishing
         include PublishingFamilyTaxonomyAssignment
         include PublishingTaxonomySnapshot
 
+        validate :reject_user_supplied_position_snapshot, on: :create
+
         belongs_to :entry_version, class_name: "Publishing::News::Com::EntryVersion",
                                    inverse_of: :multiple_taxonomy_assignments
         validates :position,
@@ -19,13 +21,10 @@ module Publishing
 
         scope :ordered, -> { order(:position) }
 
-        def self.expected_kind = Publishing::TaxonomyKind::MULTIPLE_ORDERED_FLAT
+        validates :taxonomy_term_id, uniqueness: { scope: %i(entry_version_id vocabulary_id) }, on: :create
+        validates :position, uniqueness: { scope: %i(entry_version_id vocabulary_id) }, on: :create
 
-        def apply_snapshot(vocabulary:, term:)
-          super
-          self.position_snapshot = position
-          self
-        end
+        def self.expected_kind = Publishing::TaxonomyKind::MULTIPLE_ORDERED_FLAT
       end
     end
   end

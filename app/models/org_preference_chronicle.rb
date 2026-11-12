@@ -45,15 +45,8 @@ class OrgPreferenceChronicle < ChronicleRecord
 
   include Retainable
 
-  # Other subject types are valid; the guarded callback checks OrgPreference references.
-  belongs_to :org_preference,
-             class_name: "OrgPreference",
-             foreign_key: :subject_id,
-             primary_key: :id,
-             inverse_of: :org_preference_chronicles,
-             optional: true
   # Audit actors may be omitted or belong to another record type.
-  belongs_to :actor, polymorphic: true, optional: true # Helper methods for compatibility
+  belongs_to :actor, polymorphic: true, optional: true
   belongs_to :org_preference_chronicle_level, foreign_key: :level_id, inverse_of: :org_preference_chronicles
   belongs_to :org_preference_chronicle_event,
              class_name: "OrgPreferenceChronicleEvent",
@@ -94,21 +87,26 @@ class OrgPreferenceChronicle < ChronicleRecord
   end
 
   def org_preference
-    return if subject_id.blank?
-
-    OrgPreference.find(subject_id) if subject_type == "OrgPreference"
+    raise GovernanceUnavailableError, "Preference authority is unavailable"
   end
 
-  def org_preference=(pref)
-    self.subject_id = pref.id.to_s
-    self.subject_type = "OrgPreference"
+  def org_preference=(_preference)
+    raise GovernanceUnavailableError, "Preference authority is unavailable"
   end
 
   def default_actor_to_preference
     return if actor_id.present? && actor_type.present?
     return unless subject_id.present? && subject_type == "OrgPreference"
 
-    self.actor = org_preference
+    raise GovernanceUnavailableError, "Preference authority is unavailable"
+  end
+
+  public
+
+  def actor
+    super
+  rescue NameError => e
+    raise DependencyUnavailableError, "Historical actor authority is unavailable", cause: e
   end
 
   private
@@ -121,14 +119,6 @@ class OrgPreferenceChronicle < ChronicleRecord
   def coordinate_preference_reference!
     return unless subject_type == "OrgPreference" || actor_type == "OrgPreference"
 
-    self.class.lock_preference_audit_writers!
-    OrgSettingRecord.connected_to(role: :writing) do
-      if subject_type == "OrgPreference" && !OrgPreference.exists?(id: subject_id)
-        raise ActiveRecord::RecordNotFound, "org preference audit subject is missing"
-      end
-      if actor_type == "OrgPreference" && !OrgPreference.exists?(id: actor_id)
-        raise ActiveRecord::RecordNotFound, "org preference audit actor is missing"
-      end
-    end
+    raise GovernanceUnavailableError, "Preference authority is unavailable"
   end
 end

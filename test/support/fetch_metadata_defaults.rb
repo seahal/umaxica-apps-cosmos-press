@@ -10,12 +10,7 @@
 # leaves the actual protection untested.
 #
 # Requests made by the application to itself are same-origin, so that is the
-# default. A test that means to simulate another site has to say so explicitly:
-#
-#   post "/social/google", headers: { "Sec-Fetch-Site" => "cross-site" }
-#
-# which is exactly what the login CSRF guard in
-# test/integration/social_ceremony_entry_contract_test.rb does.
+# default. A test that simulates another site sets `Sec-Fetch-Site` to `cross-site` explicitly.
 module FetchMetadataDefaults
   HEADER = "Sec-Fetch-Site"
   RACK_HEADER = "HTTP_SEC_FETCH_SITE"

@@ -8,7 +8,7 @@ class RpRefreshLogoutConcurrencyTest < ActiveSupport::TestCase
   self.fixture_table_names = []
 
   test "unknown sid callback logout and duplicate delivery serialize on independent connections" do
-    cell = RpCellBinding.fetch("rp_core_app")
+    cell = RpCellBinding.fetch("rp_edit_org")
     issuer = "https://op.example.test"
     suffix = SecureRandom.hex(12)
     workers = []
@@ -44,9 +44,9 @@ class RpRefreshLogoutConcurrencyTest < ActiveSupport::TestCase
         when :duplicate_logout then [logout, logout]
         end
       workers << Thread.new do
-        RpCoreAppRecord.connection_pool.with_connection do |connection|
+        RpEditOrgRecord.connection_pool.with_connection do |connection|
           outcome =
-            RpCoreAppRecord.transaction do
+            RpEditOrgRecord.transaction do
               result = first_operation.call
               first_ready << [connection.select_value("SELECT pg_backend_pid()"), result]
               release.pop
@@ -62,7 +62,7 @@ class RpRefreshLogoutConcurrencyTest < ActiveSupport::TestCase
       assert_equal callback_first ? :committed : :revoked, first_outcome
 
       workers << Thread.new do
-        RpCoreAppRecord.connection_pool.with_connection do |connection|
+        RpEditOrgRecord.connection_pool.with_connection do |connection|
           second_ready << connection.select_value("SELECT pg_backend_pid()")
           results << second_operation.call
         end
@@ -75,8 +75,8 @@ class RpRefreshLogoutConcurrencyTest < ActiveSupport::TestCase
       Timeout.timeout(10) do
         loop do
           waiting =
-            RpCoreAppRecord.uncached do
-              RpCoreAppRecord.lease_connection.select_value(
+            RpEditOrgRecord.uncached do
+              RpEditOrgRecord.lease_connection.select_value(
                 "SELECT wait_event_type FROM pg_stat_activity WHERE pid = #{Integer(second_pid)}",
               )
             end
@@ -97,43 +97,43 @@ class RpRefreshLogoutConcurrencyTest < ActiveSupport::TestCase
         end
 
       assert_equal expected, outcomes.sort
-      anchor = RpCoreAppOpSessionBinding.find_by!(issuer: issuer, sid: sid)
+      anchor = RpEditOrgOpSessionBinding.find_by!(issuer: issuer, sid: sid)
 
       assert_not_nil anchor.revoked_at
-      assert_equal callback_first ? 1 : 0, RpCoreAppSession.where(op_session_binding_id: anchor.id).count
-      assert_not RpCoreAppSession.exists?(op_session_binding_id: anchor.id, revoked_at: nil)
-      assert_equal 1, RpCoreAppEventReceipt.where(op_session_binding_id: anchor.id).count
+      assert_equal callback_first ? 1 : 0, RpEditOrgSession.where(op_session_binding_id: anchor.id).count
+      assert_not RpEditOrgSession.exists?(op_session_binding_id: anchor.id, revoked_at: nil)
+      assert_equal 1, RpEditOrgEventReceipt.where(op_session_binding_id: anchor.id).count
     end
   ensure
     releases&.each { |release| release << true }
     workers&.each { |worker| worker.join(10) }
     if suffix
-      anchors = RpCoreAppOpSessionBinding.where(
+      anchors = RpEditOrgOpSessionBinding.where(
         issuer: issuer,
         sid: [
           "unknown-#{suffix}-0", "unknown-#{suffix}-1", "unknown-#{suffix}-2",
         ],
       )
-      RpCoreAppSession.where(op_session_binding_id: anchors.select(:id)).delete_all
-      RpCoreAppEventReceipt.where(op_session_binding_id: anchors.select(:id)).delete_all
+      RpEditOrgSession.where(op_session_binding_id: anchors.select(:id)).delete_all
+      RpEditOrgEventReceipt.where(op_session_binding_id: anchors.select(:id)).delete_all
       anchors.delete_all
-      identities = RpCoreAppIdentityBinding.where(issuer: issuer, subject: "subject-#{suffix}")
+      identities = RpEditOrgIdentityBinding.where(issuer: issuer, subject: "subject-#{suffix}")
       principal_ids = identities.pluck(:principal_id)
       identities.delete_all
-      RpCoreAppPrincipal.where(id: principal_ids).delete_all
+      RpEditOrgPrincipal.where(id: principal_ids).delete_all
     end
   end
 
   test "logout committed on another connection denies a cached reading caller's request and callback" do
-    cell = RpCellBinding.fetch("rp_core_app")
+    cell = RpCellBinding.fetch("rp_edit_org")
     issuer = "https://op.example.test"
     suffix = SecureRandom.hex(12)
     session = RpCallbackCommitter.call(
       cell: cell, issuer: issuer, subject: "subject-#{suffix}", sid: "sid-#{suffix}",
       absolute_expires_at: 1.hour.from_now,
     ).session
-    anchor = RpCoreAppOpSessionBinding.find(session.op_session_binding_id)
-    identity = RpCoreAppIdentityBinding.find(anchor.identity_binding_id)
+    anchor = RpEditOrgOpSessionBinding.find(session.op_session_binding_id)
+    identity = RpEditOrgIdentityBinding.find(anchor.identity_binding_id)
     principal_id = identity.principal_id
     key = OpenSSL::PKey::EC.generate("secp384r1")
     now = Time.current.to_i
@@ -166,13 +166,13 @@ class RpRefreshLogoutConcurrencyTest < ActiveSupport::TestCase
     logout_backend = nil
     statuses = []
     callback_outcome = nil
-    RpCoreAppRecord.connected_to(role: :reading) do
-      RpCoreAppRecord.cache do
-        reader_backend = RpCoreAppRecord.lease_connection.select_value("SELECT pg_backend_pid()")
+    RpEditOrgRecord.connected_to(role: :reading) do
+      RpEditOrgRecord.cache do
+        reader_backend = RpEditOrgRecord.lease_connection.select_value("SELECT pg_backend_pid()")
         statuses << authenticate.call
         logout =
           Thread.new do
-            RpCoreAppRecord.connection_pool.with_connection do |connection|
+            RpEditOrgRecord.connection_pool.with_connection do |connection|
               logout_backend = connection.select_value("SELECT pg_backend_pid()")
               RpCellSessionRevoker.call(
                 cell: cell, payload: { "iss" => issuer,
@@ -195,27 +195,27 @@ class RpRefreshLogoutConcurrencyTest < ActiveSupport::TestCase
     assert_not_equal reader_backend, logout_backend
     assert_equal %i(authenticated invalid), statuses
     assert_equal :revoked, callback_outcome
-    assert_not RpCoreAppSession.exists?(op_session_binding_id: anchor.id, revoked_at: nil)
+    assert_not RpEditOrgSession.exists?(op_session_binding_id: anchor.id, revoked_at: nil)
   ensure
     if anchor
-      RpCoreAppSession.where(op_session_binding_id: anchor.id).delete_all
-      RpCoreAppEventReceipt.where(op_session_binding_id: anchor.id).delete_all
-      RpCoreAppOpSessionBinding.where(id: anchor.id).delete_all
+      RpEditOrgSession.where(op_session_binding_id: anchor.id).delete_all
+      RpEditOrgEventReceipt.where(op_session_binding_id: anchor.id).delete_all
+      RpEditOrgOpSessionBinding.where(id: anchor.id).delete_all
     end
-    RpCoreAppIdentityBinding.where(id: identity.id).delete_all if identity
-    RpCoreAppPrincipal.where(id: principal_id).delete_all if principal_id
+    RpEditOrgIdentityBinding.where(id: identity.id).delete_all if identity
+    RpEditOrgPrincipal.where(id: principal_id).delete_all if principal_id
   end
 
   test "committed logout before a paused Refresh response prevents late installation on independent connections" do
-    cell = RpCellBinding.fetch("rp_core_app")
+    cell = RpCellBinding.fetch("rp_edit_org")
     issuer = "https://op.example.test"
     suffix = SecureRandom.hex(12)
     session = RpCallbackCommitter.call(
       cell: cell, issuer: issuer, subject: "subject-#{suffix}", sid: "sid-#{suffix}",
       absolute_expires_at: 1.hour.from_now,
     ).session
-    anchor = RpCoreAppOpSessionBinding.find(session.op_session_binding_id)
-    identity = RpCoreAppIdentityBinding.find(anchor.identity_binding_id)
+    anchor = RpEditOrgOpSessionBinding.find(session.op_session_binding_id)
+    identity = RpEditOrgIdentityBinding.find(anchor.identity_binding_id)
     principal_id = identity.principal_id
     key = OpenSSL::PKey::EC.generate("secp384r1")
     now = Time.current.to_i
@@ -253,7 +253,7 @@ class RpRefreshLogoutConcurrencyTest < ActiveSupport::TestCase
     ) do
       worker =
         Thread.new do
-          RpCoreAppRecord.connection_pool.with_connection do |connection|
+          RpEditOrgRecord.connection_pool.with_connection do |connection|
             outcomes << connection.select_value("SELECT pg_backend_pid()")
             outcomes << RpRefreshCommitter.call(
               cell: cell, local_session_id: session.public_id, refresh_token: "synthetic-predecessor",
@@ -265,7 +265,7 @@ class RpRefreshLogoutConcurrencyTest < ActiveSupport::TestCase
         end
       Timeout.timeout(10) { dispatched.pop }
       refresh_backend = outcomes.pop
-      logout_backend = RpCoreAppRecord.lease_connection.select_value("SELECT pg_backend_pid()")
+      logout_backend = RpEditOrgRecord.lease_connection.select_value("SELECT pg_backend_pid()")
 
       assert_not_equal refresh_backend, logout_backend
       assert_equal :revoked, Timeout.timeout(5) {
@@ -285,19 +285,19 @@ class RpRefreshLogoutConcurrencyTest < ActiveSupport::TestCase
       assert_equal 0, session.reload.installed_generation
       assert_nil session.current_access_jti_digest
       assert_not_nil anchor.reload.revoked_at
-      assert_equal 1, RpCoreAppEventReceipt.where(op_session_binding_id: anchor.id).count
+      assert_equal 1, RpEditOrgEventReceipt.where(op_session_binding_id: anchor.id).count
     end
   ensure
     deliver << true if deliver
     worker&.join(10)
     if session
-      RpCoreAppSession.where(id: session.id).delete_all
+      RpEditOrgSession.where(id: session.id).delete_all
     end
     if anchor
-      RpCoreAppEventReceipt.where(op_session_binding_id: anchor.id).delete_all
-      RpCoreAppOpSessionBinding.where(id: anchor.id).delete_all
+      RpEditOrgEventReceipt.where(op_session_binding_id: anchor.id).delete_all
+      RpEditOrgOpSessionBinding.where(id: anchor.id).delete_all
     end
-    RpCoreAppIdentityBinding.where(id: identity.id).delete_all if identity
-    RpCoreAppPrincipal.where(id: principal_id).delete_all if principal_id
+    RpEditOrgIdentityBinding.where(id: identity.id).delete_all if identity
+    RpEditOrgPrincipal.where(id: principal_id).delete_all if principal_id
   end
 end

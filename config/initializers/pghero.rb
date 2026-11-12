@@ -5,7 +5,7 @@
 # loaded before the routing paths are collected). This file only configures it, so everything
 # here stays behind the same development guard.
 if Rails.env.development?
-  # Cloudflare Access fronts pghero.umaxica.dev, but the mounted engine must not depend on the
+  # Cloudflare Access fronts pghero-press.umaxica.dev, but the mounted engine must not depend on the
   # edge alone: PgHero::Engine subclasses nothing of this application, so enforce_access_policy!
   # and surface isolation never run for it, and any request that reached the origin directly
   # would get unauthenticated read access to query stats/table stats and the ability to kill
@@ -28,17 +28,9 @@ if Rails.env.development?
     end
   end
 
-  # PgHero builds one anonymous ActiveRecord model per database with a plain
-  # `establish_connection`, which registers a pool for the writing role only. The
-  # DatabaseSelector middleware (config/initializers/multi_db.rb) wraps every GET in
-  # `connected_to(role: :reading)`, and a model without a reading pool raises
-  # ActiveRecord::ConnectionNotDefined there, the same reason Flipper's model declares
-  # both roles in config/initializers/flipper.rb.
-  #
-  # Each PgHero database resolves from a config/database.yml entry (PgHero's default
-  # config maps every ActiveRecord configuration to a `spec`), so both roles point at
-  # that same entry. PgHero only ever reads through these models, and the replica
-  # entries stay read-only at the PostgreSQL level.
+  # PgHero builds one anonymous ActiveRecord model per database. Each connection model
+  # declares both role names against the same config/database.yml entry, and PgHero only
+  # reads through these models. There is no request-level role switching.
   PgHero.databases.each_value do |database|
     spec = database.config["spec"]
     next if spec.blank?

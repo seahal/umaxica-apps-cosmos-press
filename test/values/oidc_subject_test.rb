@@ -21,8 +21,9 @@ class OidcRealmNormalizationTest < ActiveSupport::TestCase
     assert_raises(ArgumentError) { OidcSubject.for(Object.new) }
   end
 
-  test "subject inference assigns a client resource its client prefix" do
-    assert_equal "cli_client-reference", OidcSubject.for(Client.new(public_id: "client-reference"))
+  test "explicit client resource type assigns the client prefix" do
+    assert_equal "cli_client-reference",
+                 OidcSubject.for(RpEditOrgPrincipal.new(public_id: "client-reference"), resource_type: "client")
   end
 
   test "audience lookup rejects missing empty and unknown realms" do
@@ -32,6 +33,6 @@ class OidcRealmNormalizationTest < ActiveSupport::TestCase
   end
 
   test "an explicitly invalid realm is not replaced by resource inference" do
-    assert_raises(ArgumentError) { OidcSubject.for(Client.new, resource_type: false) }
+    assert_raises(ArgumentError) { OidcSubject.for(Object.new, resource_type: false) }
   end
 end

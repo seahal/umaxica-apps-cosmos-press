@@ -51,18 +51,6 @@ class ContentSurfaceBrowserGateTest < ActionDispatch::IntegrationTest
     assert_not_equal 406, response.status
   end
 
-  test "the html landing page still gates outdated browsers" do
-    get "/", headers: outdated_headers.merge("Accept" => "text/html")
-
-    assert_response :not_acceptable
-  end
-
-  test "the html landing page still serves a modern browser" do
-    get "/", headers: { "Accept" => "text/html", "User-Agent" => modern_browser }
-
-    assert_response :success
-  end
-
   private
 
   def outdated_headers

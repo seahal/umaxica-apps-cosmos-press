@@ -59,7 +59,7 @@ module PublishingManagementCell
     self.class.publishing_surface
   end
 
-  # Staff CMS Inertia/controller prefix comes from the surface
+  # Staff CMS controller prefix comes from the surface
   # ApplicationController (Edit::Org::ApplicationController#publishing_management_namespace).
   # Do not define a stub here: included modules sit ahead of the superclass in
   # the ancestor chain and would shadow that implementation for every cell.

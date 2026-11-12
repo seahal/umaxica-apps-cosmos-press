@@ -40,8 +40,9 @@ The gates are intentionally independent:
    observation is recorded in
    [evidence](../../evidence/2026-10-13-environment-test-retirement-A6V9.md). This is an operational
    check, not a test-suite guard; repeat it after changing host configuration.
-3. **Surface routing**: the route contract tests recognize non-health application resources for the
-   private Host values and assert the matching `app`, `com`, `org`, `net`, or `dev` controller.
+3. **Surface routing**: application route constraints cover Edit `org` and the Docs, Help, Info, and
+   News `app`, `com`, and `org` hosts. Operator tools have their own constrained hosts. The current
+   route inventory is recorded in the surface hard reset evidence.
 4. **Podman DNS aliases**: `podman compose config` must show the private aliases on `core`'s
    `frontend` network and no new host port publication. The connector never needs an inbound host
    port and must not be given one; the only publications in the stack are `core`'s loopback-bound
@@ -257,8 +258,8 @@ done
 
 Every line must read `200`. Pin the curl tag, or a digest, rather than tracking `latest`.
 
-Observed 2026-09-05: on `umaxica-apps-cosmos-press-dc_frontend` this loop returns `000`, not `200`, for
-every `*.localhost` alias, and `getent hosts core.app.localhost` in the same container answers
+Observed 2026-09-05: on `umaxica-apps-cosmos-press-dc_frontend` this loop returns `000`, not `200`,
+for every `*.localhost` alias, and `getent hosts core.app.localhost` in the same container answers
 `::1`. That is glibc applying RFC 6761 — names under the reserved `localhost.` domain resolve to
 loopback without consulting the container resolver — so the probe never reaches Rails through those
 names. It is a property of the probe container's resolver, not evidence about the connector:
@@ -271,11 +272,12 @@ The Workers VPC alias is unaffected and is the one to probe for that path:
 ```bash
 podman run --rm --network "$net" docker.io/curlimages/curl:8.16.0 \
   -sS -o /dev/null --max-time 5 -w "%{http_code}\n" \
-  -H "Host: core.app.localhost" http://core-workers-vpc.internal:3000/health/
+  -H "Host: info.app.localhost" http://core-workers-vpc.internal:3000/health/liveness
 ```
 
 `Host:` is set explicitly because `core-workers-vpc.internal` is a routing name only and
-`config.hosts` does not admit it — the same split the Worker's `fetch()` URL relies on.
+`config.hosts` does not admit it. `info.app.localhost` is an admitted development route host; choose
+the corresponding configured Press host when probing another environment.
 
 A `403` is Host Authorization, not transport: the alias resolved and Rails answered, but no
 `config.hosts` entry admits that name. Fix it in `config/environments/development.rb` or remove the
@@ -302,25 +304,25 @@ Repository checks cannot prove these Cloudflare-account and network controls:
 Treat each as blocked until verified in the deployment environment. Do not infer them from a local
 `/health` response.
 
-The second and third items were verified for development on 2026-08-10 against the ten published
-Rails hostnames: every unauthenticated external request returned an Access login redirect, a nonce
-probe confirmed no such request reached the origin, and authenticated browser traffic was observed
-arriving at Rails from a public client address. Evidence is in
-`research/implementation/2026-08-10-development-tunnel-access-verification.md`. That run covers
-development only; the first and fourth items remain unverified, and production remains blocked on
-all four. A dated verification run is evidence, not a substitute for re-checking after any account
-change.
+An observation on 2026-08-10 verified Access behavior for the then-published development hostnames;
+its inventory predates the current Press route set. See
+`research/implementation/2026-08-10-development-tunnel-access-verification.md` for what was measured
+at that time. Re-verify Access behavior, cookie forwarding and private-origin reachability against
+the current host list before relying on it. Local Rails routing does not establish that production
+or development edge routing has been published.
 
-That run also found that `palm-jp.umaxica.app` currently carries an interactive Access application.
-The observation predates Palm's move to a Browser RP: the former bearer API is retired. Before
-publishing the current browser flow, re-verify Access behavior, cookie forwarding, and private-origin
-reachability against the deployed route and callback contract. Local Rails routing does not establish
-that production or development edge routing has been published.
+## Server-to-Server Calls Through the Tunnel May Fail
 
-The Docs, Help, and News families are not published through the tunnel. `PUBLIC_DOCS_*_URL` names a
-private `*.localhost` origin and no `PUBLIC_HELP_*`/`PUBLIC_NEWS_*` value is set, so the former
-`docs-jp.`/`help-jp.`/`news-jp.umaxica.*` aliases named hostnames that nothing configured and that
-Host Authorization would reject; they are removed rather than left dangling. This also retires the
-pre-existing spelling mismatch between those aliases and the `docs.jp.umaxica.app` route
-constraints. Publishing any of the three means choosing the canonical hostname, setting the matching
-`PUBLIC_*_URL`, and adding the alias — in that order.
+Edit's relying-party flow calls external Auth and Visa endpoints through their public origins. Such
+calls can fail for reasons outside this application, so a failure on that path does not by itself
+indicate a local routing defect:
+
+- **Cloudflare Access.** An external provider origin may require its own Access policy. Check the
+  provider's current published endpoint and access rules.
+- **Connector state.** A tunnel with no healthy connector answers Error 1033. A connector still
+  running with another repository's token joins that tunnel as a replica, so requests reach a random
+  repository.
+- **Container lifecycle.** The receiving repository's Dev Container may be stopped or recreating.
+
+Check these first when a cross-repository call fails in development. This path is not available for
+offline or tunnel-less local work.

@@ -174,9 +174,7 @@ module Health
       def check_roles
         operation =
           lambda do
-            # Logical records such as AppPrincipalRecord share the connection
-            # established by their physical zenith base; role switching is only
-            # permitted on the class that called connects_to.
+            # Role switching belongs to the abstract record that established the connection.
             connection_owner = record_class.connection_class_for_self
             ROLES.each do |role|
               connection_owner.connected_to(role: role) do
@@ -219,11 +217,7 @@ module Health
       cache_key: "acme-app",
       surface_label: "app",
       record_classes: [
-        AppRpRecord,
-        AppSettingRecord,
-        AppSignalRecord,
-        AvatarRecord,
-        OccurrenceRecord,
+        PublishingRecord,
       ],
     )
 
@@ -231,7 +225,7 @@ module Health
       cache_key: "acme-com",
       surface_label: "com",
       record_classes: [
-        ComSettingRecord,
+        PublishingRecord,
       ],
     )
 
@@ -239,35 +233,21 @@ module Health
       cache_key: "acme-org",
       surface_label: "org",
       record_classes: [
-        OrgRpRecord,
-        OrgSettingRecord,
-        OrgSignalRecord,
+        PublishingRecord,
       ],
     )
 
-    SignApp = Base.new(
-      cache_key: "sign-app",
-      surface_label: "sign app",
+    EditOrg = Base.new(
+      cache_key: "edit-org",
+      surface_label: "edit org",
       record_classes: [
-        AppPrincipalRecord,
-        OpBaseAppRecord,
-        AppSettingRecord,
-      ],
-    )
-
-    SignOrg = Base.new(
-      cache_key: "sign-org",
-      surface_label: "sign org",
-      record_classes: [
-        OrgPrincipalRecord,
-        OpBaseOrgRecord,
-        OrgSettingRecord,
+        PublishingRecord,
+        RpEditOrgRecord,
       ],
     )
 
     # The bootstrap resolver has no authoritative store yet. Readiness therefore checks only the
     # process boundary; a storage check belongs here when a persistence decision is accepted.
-    Guid = Base.new(cache_key: "guid-net", surface_label: "guid", record_classes: [])
   end
 
   # Liveness probe: only confirms the Rails process can respond.

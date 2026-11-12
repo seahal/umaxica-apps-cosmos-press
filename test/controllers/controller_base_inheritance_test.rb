@@ -8,22 +8,10 @@ class ControllerBaseInheritanceTest < ActiveSupport::TestCase
   self.fixture_table_names = []
 
   BARE_CONTROLLERS = [
-    Auth::App::BareController,
-    Auth::Org::BareController,
-    Base::App::BareController,
-    Base::Com::BareController,
-    Base::Dev::BareController,
-    Base::Net::BareController,
-    Base::Org::BareController,
-    Core::App::BareController,
-    Core::Dev::BareController,
-    Core::Net::BareController,
-    Core::Org::BareController,
     Docs::App::BareController,
     Docs::Com::BareController,
     Docs::Org::BareController,
     Edit::Org::BareController,
-    Guid::Net::BareController,
     Help::App::BareController,
     Help::Com::BareController,
     Help::Org::BareController,
@@ -33,30 +21,10 @@ class ControllerBaseInheritanceTest < ActiveSupport::TestCase
     News::App::BareController,
     News::Com::BareController,
     News::Org::BareController,
-    Palm::App::BareController,
-    Tech::Org::BareController,
-    Visa::App::BareController,
-    Visa::Org::BareController,
-    Warp::App::BareController,
-    Warp::Com::BareController,
-    Warp::Org::BareController,
   ].freeze
 
   APPLICATION_CONTROLLERS = [
-    Auth::App::ApplicationController,
-    Auth::Org::ApplicationController,
-    Base::App::ApplicationController,
-    Base::Com::ApplicationController,
-    Base::Dev::ApplicationController,
-    Base::Net::ApplicationController,
-    Base::Org::ApplicationController,
     Edit::Org::ApplicationController,
-    Tech::Org::ApplicationController,
-    Core::App::ApplicationController,
-    Core::Org::ApplicationController,
-    Warp::App::ApplicationController,
-    Warp::Com::ApplicationController,
-    Warp::Org::ApplicationController,
   ].freeze
 
   test "bare controllers inherit directly from ActionController base" do
@@ -104,37 +72,6 @@ class ControllerBaseInheritanceTest < ActiveSupport::TestCase
                  "BARE_CONTROLLERS must list every bare_controller.rb so each is inheritance-checked"
   end
 
-  test "legacy open controller compatibility bases are retired" do
-    [
-      Base::App,
-      Base::Com,
-      Base::Org,
-      Core::App,
-      Core::Org,
-      Auth::App,
-      Auth::Org,
-      Warp::App,
-      Warp::Com,
-      Warp::Org,
-    ].each do |namespace|
-      assert_not namespace.const_defined?(:OpenController, false), namespace.name
-    end
-  end
-
-  test "check namespace controllers do not inherit checkpoint namespace implementations" do
-    violations =
-      Rails.root.glob("app/controllers/auth/**/*_controller.rb").filter_map do |path|
-        content = File.binread(path).encode("UTF-8", invalid: :replace, undef: :replace)
-        next unless content.match?(/class\s+.*::Checks?::?.*Controller\s*<\s*.*::Checkpoints?::?.*Controller/)
-
-        path.relative_path_from(Rails.root).to_s
-      end
-
-    assert_empty violations,
-                 "Check namespace controllers must not inherit stale Checkpoint implementations:\n" \
-                 "#{violations.join("\n")}"
-  end
-
   test "application routes reference loadable controller classes" do
     missing =
       Rails.application.routes.routes.filter_map do |route|
@@ -148,7 +85,7 @@ class ControllerBaseInheritanceTest < ActiveSupport::TestCase
         class_name
       end.uniq.sort
 
-    framework_prefixes = /\A(?:ActionMailbox|ActiveStorage|MissionControl|RailsDb|Turbo)::/
+    framework_prefixes = /\A(?:ActionMailbox|ActiveStorage|MissionControl)::/
     missing.reject! { |class_name| class_name.match?(framework_prefixes) }
 
     assert_empty missing, "Routes reference missing controller classes:\n#{missing.join("\n")}"

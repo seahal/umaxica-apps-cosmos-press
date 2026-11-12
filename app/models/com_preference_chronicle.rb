@@ -46,13 +46,6 @@ class ComPreferenceChronicle < ChronicleRecord
 
   include Retainable
 
-  # Other subject types are valid; the guarded callback checks ComPreference references.
-  belongs_to :com_preference,
-             class_name: "ComPreference",
-             foreign_key: :subject_id,
-             primary_key: :id,
-             inverse_of: :com_preference_chronicles,
-             optional: true
   # Audit actors may be omitted or belong to another record type.
   belongs_to :actor, polymorphic: true, optional: true
   belongs_to :com_preference_chronicle_level, foreign_key: :level_id, inverse_of: :com_preference_chronicles
@@ -92,23 +85,27 @@ class ComPreferenceChronicle < ChronicleRecord
 
   public_class_method :lock_preference_audit_writers!, :lock_preference_audit_for_purge!
 
-  # Helper methods for compatibility
   def com_preference
-    return if subject_id.blank?
-
-    ComPreference.find(subject_id) if subject_type == "ComPreference"
+    raise GovernanceUnavailableError, "Preference authority is unavailable"
   end
 
-  def com_preference=(pref)
-    self.subject_id = pref.id.to_s
-    self.subject_type = "ComPreference"
+  def com_preference=(_preference)
+    raise GovernanceUnavailableError, "Preference authority is unavailable"
   end
 
   def default_actor_to_preference
     return if actor_id.present? && actor_type.present?
     return unless subject_id.present? && subject_type == "ComPreference"
 
-    self.actor = com_preference
+    raise GovernanceUnavailableError, "Preference authority is unavailable"
+  end
+
+  public
+
+  def actor
+    super
+  rescue NameError => e
+    raise DependencyUnavailableError, "Historical actor authority is unavailable", cause: e
   end
 
   private
@@ -121,14 +118,6 @@ class ComPreferenceChronicle < ChronicleRecord
   def coordinate_preference_reference!
     return unless subject_type == "ComPreference" || actor_type == "ComPreference"
 
-    self.class.lock_preference_audit_writers!
-    ComSettingRecord.connected_to(role: :writing) do
-      if subject_type == "ComPreference" && !ComPreference.exists?(id: subject_id)
-        raise ActiveRecord::RecordNotFound, "com preference audit subject is missing"
-      end
-      if actor_type == "ComPreference" && !ComPreference.exists?(id: actor_id)
-        raise ActiveRecord::RecordNotFound, "com preference audit actor is missing"
-      end
-    end
+    raise GovernanceUnavailableError, "Preference authority is unavailable"
   end
 end

@@ -5,6 +5,7 @@ require "timeout"
 
 # Sends an RP's current Refresh Token to the registered OP revocation endpoint. The RP process
 # never reads the OP grant database; only the existing Visa endpoint can stop that grant.
+# TODO: AUDIT external access: calls the OP revocation endpoint.
 class OidcOpRevocationClient
   Result =
     Data.define(:outcome) do

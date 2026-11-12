@@ -8,12 +8,13 @@ module Security
     class PrivateAuthorizationPostconditionInvariantTest < ActiveSupport::TestCase
       self.fixture_table_names = []
 
-      test "authentication lifecycle verifies resource authorization after private actions" do
-        source = Rails.root.join("app/controllers/concerns/authentication_base.rb").read
+      test "Edit verifies resource authorization after private actions" do
+        controller = Rails.root.join("app/controllers/edit/org/application_controller.rb").read
+        authentication = Rails.root.join("app/controllers/concerns/browser_rp_authentication.rb").read
 
-        assert_includes source, "after_action :verify_private_action_authorized!"
-        assert_includes source, "self.class.authentication_mode_for(action_name) == :private"
-        assert_includes source, "verify_authorized"
+        assert_includes controller, "after_action :verify_private_action_authorized!"
+        assert_includes authentication, "self.class.authentication_mode_for(action_name) == :private"
+        assert_includes authentication, "verify_authorized"
       end
 
       test "authorization postcondition bypass APIs are absent from application controllers" do

@@ -15,6 +15,8 @@ module PublishingVersionMediaUsageRecord
     belongs_to :entry_version, class_name: "#{family}::EntryVersion", inverse_of: :media_usages
 
     validates :role, presence: true
-    validates :position, numericality: { greater_than_or_equal_to: 0, only_integer: true }
+    validates :position,
+              numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 2_147_483_647, only_integer: true }
+    validates :position, uniqueness: { scope: %i(entry_version_id role field_path block_path) }, on: :create
   end
 end

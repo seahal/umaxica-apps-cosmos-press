@@ -1,9 +1,12 @@
 # Step-Up Operation Inventory
 
-This inventory records the step-up operations that are in the current Rails implementation. The
-runtime requirement is owned by the Base action policy and is carried through the Base admission,
-Auth ceremony, result delivery, Base acceptance, and the protected mutation. The scope catalog is
-only a destination validator; it is not a policy source.
+> **Historical inventory (2026-11-10):** The local Auth and Base controller routes described below
+> were removed in the Press surface hard reset. This file records their former flow and is not a
+> current Press runtime contract. Edit's retained RP validates external OIDC step-up evidence at its
+> callback boundary.
+
+This inventory records the prior step-up operations. The scope catalog was only a destination
+validator; it was not a policy source.
 
 ## Requirement vocabulary
 
@@ -73,8 +76,8 @@ capability | `Base::Org::Iam::*`, `operator_capability` | Existing Action Policy
 read-only screen checks proof without taking a row lock, while mutations recheck under the owner
 lock | The screen returns grantable capabilities only after proof succeeds; mutations re-evaluate
 capability, tenant and target resource | Refuse without disclosing grant options or changing a
-grant | | org | Operator / support resource | Read the session-revocation screen or revoke
-Client sessions | `Base::Org::Support::Clients::*`, `support_session_revoke` | Existing support
+grant | | org | Operator / support resource | Read the session-revocation screen or revoke Client
+sessions | `Base::Org::Support::Clients::*`, `support_session_revoke` | Existing support
 authorization plus Step-Up; the read-only screen checks proof without taking a row lock, while the
 mutation rechecks under the owner lock | The screen returns the active-session count only after
 proof succeeds; the mutation rechecks target actor, tenant and sessions | Refuse without disclosing
@@ -87,14 +90,15 @@ result and final mutation | The current policy may strengthen the accepted snaps
 weakened by an older one | Stale, future, revoked, incomplete or mixed evidence is refused and
 requires a new ceremony |
 
-Passkey management requirements belong to `ClientPasskeyPolicy`, `VisitorPasskeyPolicy`, and
-`OperatorPasskeyPolicy`. Concrete Base controllers authorize the owned record before enforcing
-`settings_passkey` on rename and removal. The locked name/removal writers and
-additional-registration finalizer repeat the current policy check against the usable current Root,
-actor, and active evidence credential. Evidence from an expired event, another scope, a replaced
-session, or a removed authenticator cannot authorize the mutation. The fifteen-minute deadline is
-exclusive. First-key bootstrap remains a separate ceremony, and replay of an already consumed
-registration returns the existing credential without creating another one.
+Passkey management requirements belong to `ClientPasskeyPolicy`, `VisitorPasskeyPolicy`, and and the
+former `OperatorPasskeyPolicy` (removed with the Base passkey controllers on 2026-11-10). Those
+controllers authorized the owned record before enforcing `settings_passkey` on rename and removal.
+The locked name/removal writers and additional-registration finalizer repeat the current policy
+check against the usable current Root, actor, and active evidence credential. Evidence from an
+expired event, another scope, a replaced session, or a removed authenticator cannot authorize the
+mutation. The fifteen-minute deadline is exclusive. First-key bootstrap remains a separate ceremony,
+and replay of an already consumed registration returns the existing credential without creating
+another one.
 
 For an app Email preference edit, the signed return path identifies an Email owned by the current
 actor. The Step-Up transaction and the preference mutation both bind `resource_ref` to that Email's

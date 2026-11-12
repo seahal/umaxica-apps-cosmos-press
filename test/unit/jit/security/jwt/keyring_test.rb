@@ -23,6 +23,17 @@ module Jit
           assert_equal JitSecurityJwtRegistry.auth.current_kid, JitSecurityJwtKeyring.active_kid
         end
 
+        test "active private key resolves through the boot-time issuer record" do
+          kid = JitSecurityJwtKeyring.active_kid("auth")
+
+          assert_equal JitSecurityJwtKeyring.private_key_for(kid, issuer_id: "auth"),
+                       JitSecurityJwtKeyring.private_key_for_active("auth")
+          assert_equal JitSecurityJwtKeyring.private_key_for_active,
+                       AuthenticationJwtConfiguration.private_key
+          assert_equal JitSecurityJwtKeyring.public_key_for_active,
+                       AuthenticationJwtConfiguration.public_key
+        end
+
         test "active_kid ignores request-time ENV changes" do
           boot_kid = JitSecurityJwtKeyring.active_kid
 

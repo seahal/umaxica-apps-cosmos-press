@@ -77,7 +77,7 @@ class ShrineConfigurationTest < ActiveSupport::TestCase
   end
 
   test "verifying registered boundaries uses in-memory storage in test" do
-    assert_equal(%i(avatar publishing), ObjectStorage::Boundary.keys)
+    assert_equal(%i(publishing), ObjectStorage::Boundary.keys)
     assert_nothing_raised { ObjectStorage::ShrineConfiguration.verify_registered_boundaries! }
   end
 
@@ -113,7 +113,7 @@ class ShrineConfigurationTest < ActiveSupport::TestCase
 
     error =
       assert_raises(ArgumentError) do
-        ObjectStorage::ShrineConfiguration.s3_storage(bucket: "umaxica-avatar", prefix: "store")
+        ObjectStorage::ShrineConfiguration.s3_storage(bucket: "umaxica-demo", prefix: "store")
       end
 
     assert_match("OBJECT_STORAGE_ENDPOINT", error.message)
@@ -127,7 +127,7 @@ class ShrineConfigurationTest < ActiveSupport::TestCase
     ENV.delete("OBJECT_STORAGE_REGION")
 
     assert_raises(KeyError) do
-      ObjectStorage::ShrineConfiguration.s3_storage(bucket: "umaxica-avatar", prefix: "store")
+      ObjectStorage::ShrineConfiguration.s3_storage(bucket: "umaxica-demo", prefix: "store")
     end
   end
 
@@ -152,7 +152,7 @@ class ShrineConfigurationTest < ActiveSupport::TestCase
   end
 
   test "an unknown storage role resolves to no storage" do
-    assert_nil(ObjectStorage::ShrineConfiguration.dynamic("avatar", "archive"))
+    assert_nil(ObjectStorage::ShrineConfiguration.dynamic("publishing", "archive"))
   end
 
   test "requesting an unregistered storage name raises Shrine::MissingStorage" do

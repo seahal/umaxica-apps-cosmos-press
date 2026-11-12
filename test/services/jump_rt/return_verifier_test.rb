@@ -29,6 +29,14 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
     end
   end
 
+  # These pinned gateway protocol fixtures use a fixed foreign graph. Resolve only those
+  # literal identities here; the real directed-edge policy and all crypto checks still run.
+  # Press's actual empty local registry is exercised without doubles in return_policy_test.
+  FIXTURE_ORIGIN_NAMESPACES = {
+    "https://auth.umaxica.app" => "AUTH_APP",
+    "https://www.umaxica.app" => "BASE_APP",
+  }.freeze
+
   self.fixture_table_names = []
 
   setup do
@@ -59,10 +67,17 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
   test "a reusable return token verifies repeatedly and records no consumed jti" do
     token = sign_return_token(jti: "reusable-jti")
 
-    assert_no_difference -> { SecurityConsumedJti.count } do
+    writes = []
+    observer =
+      ->(_name, _start, _finish, _id, payload) do
+        writes << payload.fetch(:sql) if payload.fetch(:sql).match?(/\A\s*(INSERT|UPDATE|DELETE)\b/i)
+      end
+    ActiveSupport::Notifications.subscribed(observer, "sql.active_record") do
       assert_predicate verify(token), :success?
       assert_predicate verify(token), :success?
     end
+
+    assert_empty writes
   end
 
   test "rpl exact reuse is the only accepted replay policy" do
@@ -124,13 +139,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
       base = "https://www.umaxica.app/"
       url = base + ("a" * (length - base.length))
       token = sign_return_token(url: url)
-      result = JumpRtReturnVerifier.call(
-        token: token,
-        request_url: "#{url}?rt=#{token}",
-        request_base_url: "https://www.umaxica.app",
-        fetcher: -> { { "keys" => [@public_jwk] } },
-        now: @now,
-      )
+      result =
+        JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+          JumpRtReturnVerifier.call(
+            token: token,
+            request_url: "#{url}?rt=#{token}",
+            request_base_url: "https://www.umaxica.app",
+            fetcher: -> { { "keys" => [@public_jwk] } },
+            now: @now,
+          )
+        end
 
       if length <= JumpRtReturnVerifier::MAX_URL_LENGTH
         assert_predicate result, :success?, "url units=#{length}: #{result.error}"
@@ -208,10 +226,13 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
     url = "https://www.umaxica.app//evil.example/path"
     token = sign_return_token(url: url)
 
-    result = JumpRtReturnVerifier.call(
-      token: token, request_url: "#{url}?rt=#{token}", request_base_url: "https://www.umaxica.app",
-      fetcher: -> { { "keys" => [@public_jwk] } }, now: @now,
-    )
+    result =
+      JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+        JumpRtReturnVerifier.call(
+          token: token, request_url: "#{url}?rt=#{token}", request_base_url: "https://www.umaxica.app",
+          fetcher: -> { { "keys" => [@public_jwk] } }, now: @now,
+        )
+      end
 
     assert_equal "invalid_url", result.error
   end
@@ -219,13 +240,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
   test "rejects a request whose query parameter order differs from the signed url" do
     token = sign_return_token(url: "https://www.umaxica.app/path?ok=1&extra=2")
 
-    result = JumpRtReturnVerifier.call(
-      token: token,
-      request_url: "https://www.umaxica.app/path?extra=2&rt=#{token}&ok=1",
-      request_base_url: "https://www.umaxica.app",
-      fetcher: -> { { "keys" => [@public_jwk] } },
-      now: @now,
-    )
+    result =
+      JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+        JumpRtReturnVerifier.call(
+          token: token,
+          request_url: "https://www.umaxica.app/path?extra=2&rt=#{token}&ok=1",
+          request_base_url: "https://www.umaxica.app",
+          fetcher: -> { { "keys" => [@public_jwk] } },
+          now: @now,
+        )
+      end
 
     assert_equal "invalid_url", result.error
   end
@@ -233,13 +257,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
   test "accepts rt at any position when the remaining pairs keep the signed order" do
     token = sign_return_token(url: "https://www.umaxica.app/path?ok=1&extra=2")
 
-    result = JumpRtReturnVerifier.call(
-      token: token,
-      request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}&extra=2",
-      request_base_url: "https://www.umaxica.app",
-      fetcher: -> { { "keys" => [@public_jwk] } },
-      now: @now,
-    )
+    result =
+      JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+        JumpRtReturnVerifier.call(
+          token: token,
+          request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}&extra=2",
+          request_base_url: "https://www.umaxica.app",
+          fetcher: -> { { "keys" => [@public_jwk] } },
+          now: @now,
+        )
+      end
 
     assert_predicate result, :success?
   end
@@ -247,13 +274,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
   test "rejects a request that repeats a reserved parameter the signed url carries once" do
     token = sign_return_token(url: "https://www.umaxica.app/path?next=%2Fa")
 
-    result = JumpRtReturnVerifier.call(
-      token: token,
-      request_url: "https://www.umaxica.app/path?next=%2Fevil&next=%2Fa&rt=#{token}",
-      request_base_url: "https://www.umaxica.app",
-      fetcher: -> { { "keys" => [@public_jwk] } },
-      now: @now,
-    )
+    result =
+      JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+        JumpRtReturnVerifier.call(
+          token: token,
+          request_url: "https://www.umaxica.app/path?next=%2Fevil&next=%2Fa&rt=#{token}",
+          request_base_url: "https://www.umaxica.app",
+          fetcher: -> { { "keys" => [@public_jwk] } },
+          now: @now,
+        )
+      end
 
     assert_equal "invalid_url", result.error
   end
@@ -261,13 +291,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
   test "rejects a request carrying a second rt" do
     token = sign_return_token
 
-    result = JumpRtReturnVerifier.call(
-      token: token,
-      request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}&rt=#{token}",
-      request_base_url: "https://www.umaxica.app",
-      fetcher: -> { { "keys" => [@public_jwk] } },
-      now: @now,
-    )
+    result =
+      JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+        JumpRtReturnVerifier.call(
+          token: token,
+          request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}&rt=#{token}",
+          request_base_url: "https://www.umaxica.app",
+          fetcher: -> { { "keys" => [@public_jwk] } },
+          now: @now,
+        )
+      end
 
     assert_equal "invalid_url", result.error
   end
@@ -275,13 +308,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
   test "rejects a request whose rt value is not the verified token" do
     token = sign_return_token
 
-    result = JumpRtReturnVerifier.call(
-      token: token,
-      request_url: "https://www.umaxica.app/path?ok=1&rt=other",
-      request_base_url: "https://www.umaxica.app",
-      fetcher: -> { { "keys" => [@public_jwk] } },
-      now: @now,
-    )
+    result =
+      JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+        JumpRtReturnVerifier.call(
+          token: token,
+          request_url: "https://www.umaxica.app/path?ok=1&rt=other",
+          request_base_url: "https://www.umaxica.app",
+          fetcher: -> { { "keys" => [@public_jwk] } },
+          now: @now,
+        )
+      end
 
     assert_equal "invalid_url", result.error
   end
@@ -295,13 +331,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
   test "distinguishes a literal plus from a space in the signed url" do
     token = sign_return_token(url: "https://www.umaxica.app/path?q=a%2Bb")
 
-    result = JumpRtReturnVerifier.call(
-      token: token,
-      request_url: "https://www.umaxica.app/path?q=a+b&rt=#{token}",
-      request_base_url: "https://www.umaxica.app",
-      fetcher: -> { { "keys" => [@public_jwk] } },
-      now: @now,
-    )
+    result =
+      JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+        JumpRtReturnVerifier.call(
+          token: token,
+          request_url: "https://www.umaxica.app/path?q=a+b&rt=#{token}",
+          request_base_url: "https://www.umaxica.app",
+          fetcher: -> { { "keys" => [@public_jwk] } },
+          now: @now,
+        )
+      end
 
     assert_equal "invalid_url", result.error
   end
@@ -310,13 +349,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
     token = sign_return_token
     jwks = { "keys" => [@public_jwk.merge("d" => "private")] }
 
-    result = JumpRtReturnVerifier.call(
-      token: token,
-      request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
-      request_base_url: "https://www.umaxica.app",
-      fetcher: -> { jwks },
-      now: @now,
-    )
+    result =
+      JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+        JumpRtReturnVerifier.call(
+          token: token,
+          request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
+          request_base_url: "https://www.umaxica.app",
+          fetcher: -> { jwks },
+          now: @now,
+        )
+      end
 
     assert_equal "jwks_unavailable", result.error
   end
@@ -325,13 +367,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
     token = sign_return_token
     jwks = { "keys" => Array.new(11) { @public_jwk } }
 
-    result = JumpRtReturnVerifier.call(
-      token: token,
-      request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
-      request_base_url: "https://www.umaxica.app",
-      fetcher: -> { jwks },
-      now: @now,
-    )
+    result =
+      JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+        JumpRtReturnVerifier.call(
+          token: token,
+          request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
+          request_base_url: "https://www.umaxica.app",
+          fetcher: -> { jwks },
+          now: @now,
+        )
+      end
 
     assert_equal "jwks_unavailable", result.error
   end
@@ -342,13 +387,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
     key_ops_without_verify = { "keys" => [@public_jwk.merge("key_ops" => ["sign"])] }
 
     [duplicate_kid, key_ops_without_verify].each do |jwks|
-      result = JumpRtReturnVerifier.call(
-        token: token,
-        request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
-        request_base_url: "https://www.umaxica.app",
-        fetcher: -> { jwks },
-        now: @now,
-      )
+      result =
+        JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+          JumpRtReturnVerifier.call(
+            token: token,
+            request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
+            request_base_url: "https://www.umaxica.app",
+            fetcher: -> { jwks },
+            now: @now,
+          )
+        end
 
       assert_equal "jwks_unavailable", result.error
       Rails.cache.clear
@@ -363,13 +411,15 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
 
       result =
         Rails.configuration.x.stub(:boot_config, boot_config) do
-          JumpRtReturnVerifier.call(
-            token: token,
-            request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
-            request_base_url: "https://www.umaxica.app",
-            fetcher: -> { { "keys" => [@public_jwk] } },
-            now: @now,
-          )
+          JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+            JumpRtReturnVerifier.call(
+              token: token,
+              request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
+              request_base_url: "https://www.umaxica.app",
+              fetcher: -> { { "keys" => [@public_jwk] } },
+              now: @now,
+            )
+          end
         end
 
       assert_predicate result, :success?
@@ -434,13 +484,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
         { "keys" => keys }
       end
 
-    result = JumpRtReturnVerifier.call(
-      token: token,
-      request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
-      request_base_url: "https://www.umaxica.app",
-      fetcher: fetcher,
-      now: @now,
-    )
+    result =
+      JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+        JumpRtReturnVerifier.call(
+          token: token,
+          request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
+          request_base_url: "https://www.umaxica.app",
+          fetcher: fetcher,
+          now: @now,
+        )
+      end
 
     assert_predicate result, :success?
     assert_equal 2, calls
@@ -456,13 +509,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
       end
 
     2.times do
-      result = JumpRtReturnVerifier.call(
-        token: token,
-        request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
-        request_base_url: "https://www.umaxica.app",
-        fetcher: fetcher,
-        now: @now,
-      )
+      result =
+        JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+          JumpRtReturnVerifier.call(
+            token: token,
+            request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
+            request_base_url: "https://www.umaxica.app",
+            fetcher: fetcher,
+            now: @now,
+          )
+        end
 
       assert_equal "unknown_kid", result.error
     end
@@ -487,13 +543,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
     stale_key = "jump_rt:return_jwks:stale:#{Digest::SHA256.hexdigest(jwks_url)}"
     Rails.cache.write(stale_key, { "keys" => [@public_jwk] }, expires_in: 1.hour)
 
-    result = JumpRtReturnVerifier.call(
-      token: token,
-      request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
-      request_base_url: "https://www.umaxica.app",
-      fetcher: -> { raise JWT::DecodeError, "offline" },
-      now: @now,
-    )
+    result =
+      JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+        JumpRtReturnVerifier.call(
+          token: token,
+          request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
+          request_base_url: "https://www.umaxica.app",
+          fetcher: -> { raise JWT::DecodeError, "offline" },
+          now: @now,
+        )
+      end
 
     assert_equal "jwks_unavailable", result.error
   end
@@ -515,16 +574,19 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
       Rails.cache.clear
       calls = 0
       token = compact_token_with_size(length)
-      result = JumpRtReturnVerifier.call(
-        token: token,
-        request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
-        request_base_url: "https://www.umaxica.app",
-        fetcher: lambda {
-          calls += 1
-          { "keys" => [@public_jwk] }
-        },
-        now: @now,
-      )
+      result =
+        JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+          JumpRtReturnVerifier.call(
+            token: token,
+            request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
+            request_base_url: "https://www.umaxica.app",
+            fetcher: lambda {
+              calls += 1
+              { "keys" => [@public_jwk] }
+            },
+            now: @now,
+          )
+        end
 
       if length <= JumpRtReturnVerifier::MAX_TOKEN_LENGTH
         assert_equal "invalid_signature", result.error, "bytes=#{length}"
@@ -556,13 +618,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
   test "rejects http claimed urls in the local environment too" do
     token = sign_return_token(aud: "http://www.umaxica.app", url: "http://www.umaxica.app/path?ok=1")
 
-    result = JumpRtReturnVerifier.call(
-      token: token,
-      request_url: "http://www.umaxica.app/path?ok=1&rt=#{token}",
-      request_base_url: "http://www.umaxica.app",
-      fetcher: -> { { "keys" => [@public_jwk] } },
-      now: @now,
-    )
+    result =
+      JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+        JumpRtReturnVerifier.call(
+          token: token,
+          request_url: "http://www.umaxica.app/path?ok=1&rt=#{token}",
+          request_base_url: "http://www.umaxica.app",
+          fetcher: -> { { "keys" => [@public_jwk] } },
+          now: @now,
+        )
+      end
 
     assert_predicate Rails.env, :local?
     assert_equal "invalid_url", result.error
@@ -578,13 +643,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
     payload = Base64.urlsafe_encode64("{}", padding: false)
     token = "#{header}.#{payload}.signature"
 
-    result = JumpRtReturnVerifier.call(
-      token: token,
-      request_url: "https://www.umaxica.app/path",
-      request_base_url: "https://www.umaxica.app",
-      fetcher: -> { { "keys" => [] } },
-      now: @now,
-    )
+    result =
+      JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+        JumpRtReturnVerifier.call(
+          token: token,
+          request_url: "https://www.umaxica.app/path",
+          request_base_url: "https://www.umaxica.app",
+          fetcher: -> { { "keys" => [] } },
+          now: @now,
+        )
+      end
 
     assert_not result.success?
     assert_equal "invalid_header", result.error
@@ -593,13 +661,16 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
   test "fails closed when the jwks fetcher returns something other than a json object" do
     token = sign_return_token
 
-    result = JumpRtReturnVerifier.call(
-      token: token,
-      request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
-      request_base_url: "https://www.umaxica.app",
-      fetcher: -> { [@public_jwk] },
-      now: @now,
-    )
+    result =
+      JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+        JumpRtReturnVerifier.call(
+          token: token,
+          request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
+          request_base_url: "https://www.umaxica.app",
+          fetcher: -> { [@public_jwk] },
+          now: @now,
+        )
+      end
 
     assert_equal "jwks_unavailable", result.error
   end
@@ -611,12 +682,14 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
 
     result =
       OutboundHttp::Connection.stub(:build, connection) do
-        JumpRtReturnVerifier.call(
-          token: token,
-          request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
-          request_base_url: "https://www.umaxica.app",
-          now: @now,
-        )
+        JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+          JumpRtReturnVerifier.call(
+            token: token,
+            request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
+            request_base_url: "https://www.umaxica.app",
+            now: @now,
+          )
+        end
       end
 
     assert_predicate result, :success?
@@ -631,12 +704,14 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
 
     result =
       OutboundHttp::Connection.stub(:build, connection) do
-        JumpRtReturnVerifier.call(
-          token: token,
-          request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
-          request_base_url: "https://www.umaxica.app",
-          now: @now,
-        )
+        JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+          JumpRtReturnVerifier.call(
+            token: token,
+            request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
+            request_base_url: "https://www.umaxica.app",
+            now: @now,
+          )
+        end
       end
 
     assert_equal "jwks_unavailable", result.error
@@ -648,12 +723,14 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
 
     result =
       OutboundHttp::Connection.stub(:build, connection) do
-        JumpRtReturnVerifier.call(
-          token: token,
-          request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
-          request_base_url: "https://www.umaxica.app",
-          now: @now,
-        )
+        JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+          JumpRtReturnVerifier.call(
+            token: token,
+            request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
+            request_base_url: "https://www.umaxica.app",
+            now: @now,
+          )
+        end
       end
 
     assert_equal "jwks_unavailable", result.error
@@ -670,12 +747,14 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
         body = jwks_json + (" " * (size - jwks_json.bytesize))
         connection = StreamingConnection.new(body: body, success: true, requested: [])
         OutboundHttp::Connection.stub(:build, connection) do
-          JumpRtReturnVerifier.call(
-            token: token,
-            request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
-            request_base_url: "https://www.umaxica.app",
-            now: @now,
-          )
+          JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+            JumpRtReturnVerifier.call(
+              token: token,
+              request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
+              request_base_url: "https://www.umaxica.app",
+              now: @now,
+            )
+          end
         end
       end
 
@@ -709,13 +788,15 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
   end
 
   def verify(token)
-    JumpRtReturnVerifier.call(
-      token: token,
-      request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
-      request_base_url: "https://www.umaxica.app",
-      fetcher: -> { { "keys" => [@public_jwk] } },
-      now: @now,
-    )
+    JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
+      JumpRtReturnVerifier.call(
+        token: token,
+        request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
+        request_base_url: "https://www.umaxica.app",
+        fetcher: -> { { "keys" => [@public_jwk] } },
+        now: @now,
+      )
+    end
   end
 
   def sign_return_token(overrides = {})

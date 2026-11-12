@@ -12,18 +12,18 @@ require "test_helper"
 class FlipperUiSurfaceTest < ActionDispatch::IntegrationTest
   self.fixture_table_names = []
 
-  DEVELOPER_HOST = "flipper.core.dev.localhost"
+  CANONICAL_HOST = "flipper-press.umaxica.dev"
   MOUNT_PATH = "/"
   TEST_USER = "flipper-test-user"
   TEST_PASSWORD = "flipper-test-password"
 
-  test "developer host serves the Flipper feature list to an authenticated operator" do
+  test "canonical host serves the Flipper feature list to an authenticated operator" do
     with_flipper_ui_credentials do
-      host! DEVELOPER_HOST
+      host! CANONICAL_HOST
       # The mount root redirects to its features index.
       get MOUNT_PATH, headers: basic_auth_headers(TEST_USER, TEST_PASSWORD)
 
-      assert_redirected_to "http://#{DEVELOPER_HOST}/features"
+      assert_redirected_to "http://#{CANONICAL_HOST}/features"
       follow_redirect!(headers: basic_auth_headers(TEST_USER, TEST_PASSWORD))
 
       assert_response :success
@@ -31,9 +31,9 @@ class FlipperUiSurfaceTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "developer host rejects an unauthenticated request" do
+  test "canonical host rejects an unauthenticated request" do
     with_flipper_ui_credentials do
-      host! DEVELOPER_HOST
+      host! CANONICAL_HOST
       get MOUNT_PATH
 
       assert_response :unauthorized
@@ -41,9 +41,9 @@ class FlipperUiSurfaceTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "developer host rejects a wrong password" do
+  test "canonical host rejects a wrong password" do
     with_flipper_ui_credentials do
-      host! DEVELOPER_HOST
+      host! CANONICAL_HOST
       get MOUNT_PATH, headers: basic_auth_headers(TEST_USER, "not-the-password")
 
       assert_response :unauthorized
@@ -52,16 +52,16 @@ class FlipperUiSurfaceTest < ActionDispatch::IntegrationTest
 
   # A guard that falls open when its credentials are unset is worse than no guard,
   # because it reads as protection in review.
-  test "developer host rejects every request when credentials are not configured" do
-    host! DEVELOPER_HOST
+  test "canonical host rejects every request when credentials are not configured" do
+    host! CANONICAL_HOST
     get MOUNT_PATH, headers: basic_auth_headers(TEST_USER, TEST_PASSWORD)
 
     assert_response :unauthorized
   end
 
   test "no other surface routes the Flipper mount" do
-    ["base.app.localhost", "base.com.localhost", "base.org.localhost", "base.net.localhost",
-     "base.dev.localhost", "core.dev.localhost", "mission.core.dev.localhost",].each do |host|
+    [ENV.fetch("PRIVATE_INFO_SERVICE_URL"), ENV.fetch("PRIVATE_HELP_SERVICE_URL"),
+     ENV.fetch("PUBLIC_EDIT_STAFF_URL"), "mission.core.dev.localhost",].each do |host|
       assert_raises(ActionController::RoutingError, "#{host} must not route #{MOUNT_PATH}") do
         Rails.application.routes.recognize_path("http://#{host}/features", method: :get)
       end
@@ -73,7 +73,7 @@ class FlipperUiSurfaceTest < ActionDispatch::IntegrationTest
   # policy's `script-src 'strict-dynamic'` would block the engine's own nonce-less script tags.
   test "Flipper responses carry the engine policy, not the strict-dynamic application policy" do
     with_flipper_ui_credentials do
-      host! DEVELOPER_HOST
+      host! CANONICAL_HOST
       get "/features", headers: basic_auth_headers(TEST_USER, TEST_PASSWORD)
 
       policy = response.headers["Content-Security-Policy"]
@@ -84,7 +84,7 @@ class FlipperUiSurfaceTest < ActionDispatch::IntegrationTest
   end
 
   test "application surfaces keep the strict-dynamic script policy" do
-    host! "base.app.localhost"
+    host! ENV.fetch("PRIVATE_INFO_SERVICE_URL")
     get "/health"
 
     assert_includes response.headers["Content-Security-Policy"], "strict-dynamic"

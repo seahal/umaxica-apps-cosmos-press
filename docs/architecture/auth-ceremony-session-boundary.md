@@ -1,5 +1,9 @@
 # Auth ceremony session boundary
 
+> **Historical implementation record (2026-11-10):** The local Auth and Base route/controller trees
+> that admitted these ceremonies were retired. The ceremony models and retention data were kept; no
+> current Auth HTTP admission boundary is served by this checkout.
+
 Auth uses actor-specific `ClientAuthCeremonySession` and `OperatorAuthCeremonySession` rows in the
 matching ticket DB. Each row has a NOT NULL `status_id` FK to its realm-local status reference; the
 status is the current lifecycle authority, while admission, authentication, terminal, and SID

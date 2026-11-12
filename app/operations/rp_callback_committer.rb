@@ -129,7 +129,7 @@ class RpCallbackCommitter
     "#{cell.record_prefix}Record".constantize
   end
 
-  # Fixed cell models, e.g. RpCoreAppSession; the prefix comes from the trusted cell binding.
+  # Fixed cell models, e.g. RpEditOrgSession; the prefix comes from the trusted cell binding.
   def model(suffix)
     "#{cell.record_prefix}#{suffix}".constantize
   end

@@ -10,7 +10,7 @@ module Edit
           include ::MachineJsonNegotiation
 
           AUTHENTICATION_MODE = :bare
-          HEALTH_PROFILE = ::Health::Profiles::Org
+          HEALTH_PROFILE = ::Health::Profiles::EditOrg
 
           before_action :refuse_unless_machine_json_acceptable
 

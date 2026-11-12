@@ -18,13 +18,11 @@ module ObjectStorage
   # name; it is read from an explicitly named variable per boundary.
   #
   # A boundary is registered only when a model in that boundary actually
-  # declares an attachment. Databases without attachments (cache, queue, search,
-  # occurrence, chronicle, ticket, setting, signal) impose no bucket requirement.
+  # declares an attachment. Databases without attachments impose no bucket requirement.
   module Boundary
     module_function
 
     REGISTRY = {
-      avatar: "AVATAR",
       publishing: "PUBLISHING",
     }.freeze
 

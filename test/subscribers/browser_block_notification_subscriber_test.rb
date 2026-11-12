@@ -10,10 +10,10 @@ class BrowserBlockNotificationSubscriberTest < ActiveSupport::TestCase
   test "logs the parsed browser and requested resource without the raw user agent" do
     messages = []
     request = FakeRequest.new(
-      Base::App::RootsController,
+      Info::App::Api::V0::EntriesController,
       { action: "index" },
-      "app.umaxica.test",
-      "/",
+      "info.app.localhost",
+      "/api/v0/entries",
       "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 Chrome/41.0.2228.0 Safari/537.36",
     )
     event = ActiveSupport::Notifications::Event.new(
@@ -33,10 +33,10 @@ class BrowserBlockNotificationSubscriberTest < ActiveSupport::TestCase
     assert_equal "security.browser_block.blocked", parsed.fetch("event")
     assert_equal(
       {
-        "controller" => "Base::App::RootsController",
+        "controller" => "Info::App::Api::V0::EntriesController",
         "action" => "index",
-        "host" => "app.umaxica.test",
-        "path" => "/",
+        "host" => "info.app.localhost",
+        "path" => "/api/v0/entries",
         "browser" => "Chrome",
         "browser_version" => "41.0.2228.0",
         "required_versions" => "modern",
@@ -51,7 +51,7 @@ class BrowserBlockNotificationSubscriberTest < ActiveSupport::TestCase
     logger = Object.new
     logger.define_singleton_method(:info) { |_message| raise RuntimeError, "logger unavailable" }
     logger.define_singleton_method(:error) { |message| messages << message }
-    request = FakeRequest.new(nil, {}, "app.umaxica.test", "/", "Mozilla/5.0")
+    request = FakeRequest.new(nil, {}, "info.app.localhost", "/", "Mozilla/5.0")
     event = ActiveSupport::Notifications::Event.new(
       "browser_block.action_controller",
       Time.current,
@@ -72,7 +72,7 @@ class BrowserBlockNotificationSubscriberTest < ActiveSupport::TestCase
 
   test "registered notification subscriber logs Rails browser_block events in process" do
     messages = []
-    request = FakeRequest.new(nil, {}, "app.umaxica.test", "/", "Mozilla/5.0")
+    request = FakeRequest.new(nil, {}, "info.app.localhost", "/", "Mozilla/5.0")
 
     Rails.logger.stub(:info, ->(message) { messages << message }) do
       ActiveSupport::Notifications.instrument(

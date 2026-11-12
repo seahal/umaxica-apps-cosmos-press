@@ -7,10 +7,13 @@ module Publishing
         self.table_name = "publishing_info_com_entries"
         include PublishingEntryRecord
 
+        SLUG_CLASS = Publishing::Info::Com::EntrySlug
+
         SURFACE = "info"
         AUDIENCE = "com"
         REGION_CODE = nil
 
+        validates :current_revision_id, uniqueness: true, allow_nil: true
         validates :archived_by_operator_public_id, length: { maximum: 21 }
         # Unique indexes that include the primary key back composite references; checked only for an explicit id.
         validates :id, uniqueness: { scope: %i(locale) }, allow_nil: true, if: :will_save_change_to_id?

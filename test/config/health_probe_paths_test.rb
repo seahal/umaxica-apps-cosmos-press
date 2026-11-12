@@ -26,6 +26,11 @@ class HealthProbePathsTest < ActiveSupport::TestCase
       ["/health", "/health/liveness", "/health/readiness", "/health/startup"],
       HealthProbePaths::PATHS,
     )
+    probe = ActionDispatch::Request.new(Rack::MockRequest.env_for("http://probe.example/health/readiness"))
+    diagnostics = ActionDispatch::Request.new(Rack::MockRequest.env_for("http://probe.example/health/diagnostics"))
+
+    assert HealthProbePaths.probe?(probe)
+    assert_not HealthProbePaths.probe?(diagnostics)
   end
 
   test "every mounted probe path reaches the application from an unauthorized host" do

@@ -7,7 +7,7 @@ require "test_helper"
 class AuthenticationAccessPolicyTest < ActiveSupport::TestCase
   self.fixture_table_names = []
 
-  Context = AuthenticationBase::AccessPolicyContext
+  Context = BrowserRpAuthentication::AccessPolicyContext
 
   test "public strict allows anonymous and authenticated requests" do
     assert_predicate policy(logged_in: false), :public_strict?

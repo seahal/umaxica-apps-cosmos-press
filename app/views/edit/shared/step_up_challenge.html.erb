@@ -1,0 +1,13 @@
+<% content_for :page_title, t("auth.step_up.challenge.title") %>
+<section aria-labelledby="step-up-title" class="mx-auto flex w-full max-w-md flex-col gap-4">
+  <header class="flex flex-col gap-3">
+    <h1 id="step-up-title" class="min-w-0 wrap-anywhere text-2xl leading-snug font-semibold text-balance text-fg sm:text-3xl">
+      <%= t("auth.step_up.challenge.title") %>
+    </h1>
+    <p class="text-base text-pretty text-fg-muted">
+      <%= t("auth.step_up.challenge.description") %>
+    </p>
+  </header>
+  <p><%= link_to t("actions.continue"), entry_path,
+        class: "text-base text-link underline underline-offset-4 hover:underline" %></p>
+</section>

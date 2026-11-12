@@ -6,7 +6,10 @@
 > but it must not own sessions, refresh tokens, preference writes, dashboards, account lifecycle,
 > token issuance, logout, or step-up freshness. Existing sign-side physical tables/models do not
 > imply sign-side authority. Do not use this document to reintroduce sign-side sessions, refresh,
-> preference, dashboard, account lifecycle, token issuance, logout, or step-up freshness.
+> preference, dashboard, account lifecycle, token issuance, logout, or step-up freshness. Press
+> retired its local Auth and Google/Apple social sign-in entry points during the 2026-11-11 surface
+> reset. The authentication methods below are historical requirements, not current Press routes; see
+> the [active Press surface spec](../../specs/press-surface-hard-reset/spec.md).
 
 ## 1. Purpose and Background
 

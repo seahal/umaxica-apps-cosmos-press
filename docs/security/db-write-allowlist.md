@@ -1,5 +1,9 @@
 # DB Write Allowlist
 
+> **Route boundary update (2026-11-10):** The local Auth and Base controllers, plus their social and
+> identity callbacks, were removed. This allowlist covers the retained Edit, Docs, Help, Info, News,
+> and operator-tool routes. Persisted models and migrations remain for a separate review.
+
 ## Purpose
 
 Normal `GET` and `HEAD` requests should be read-only unless the write is an explicit lifecycle
@@ -11,30 +15,23 @@ authority to invent new state.
 
 ## Current Allowlist
 
-| ID  | Classification               | Request phase               | Expected write                                                                              | GET/HEAD lifecycle exception? | Current scope                                      |
-| --- | ---------------------------- | --------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------- | -------------------------------------------------- |
-| W8  | Preference explicit update   | Preference write endpoint   | Persist an intentional preference update from PATCH/PUT/DELETE/POST.                        | No                            | non-GET preference endpoints                       |
-| W9  | Preference reset/rebootstrap | Preference reset endpoint   | Retire or replace the current shared preference and rebootstrap a fresh preference.         | No                            | explicit reset/delete endpoint                     |
-| W10 | Cookie consent write         | Web/API preference endpoint | Persist cookie-consent flags and receipt, then issue the committed Preference snapshot.     | No                            | Base app/org/com API and preference cookie screens |
-| W11 | Theme write                  | Web/API preference endpoint | Persist the submitted theme and issue the committed Preference snapshot.                    | No                            | Base app/org/com preference endpoints              |
-| W16 | OIDC callback                | Protocol callback           | Exchange code, create or update local session/token state, and complete callback lifecycle. | No                            | OIDC callback endpoints                            |
-| W17 | Social/auth callback         | Protocol callback           | Complete external login callback state and create or update local session/token state.      | No                            | social/OIDC ceremony callbacks                     |
-| W18 | Maintenance or repair task   | Explicit operator task      | Repair, admin, or maintenance writes performed outside ordinary read-only request handling. | No                            | explicitly invoked tasks only                      |
+| ID  | Classification               | Request phase             | Expected write                                                                              | GET/HEAD lifecycle exception? | Current scope                    |
+| --- | ---------------------------- | ------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------- | -------------------------------- |
+| W8  | Preference explicit update   | Preference write endpoint | Persist an intentional preference update from PATCH/PUT/DELETE/POST.                        | No                            | non-GET preference endpoints     |
+| W9  | Preference reset/rebootstrap | Preference reset endpoint | Retire or replace the current shared preference and rebootstrap a fresh preference.         | No                            | explicit reset/delete endpoint   |
+| W16 | OIDC callback                | Edit ORG RP callback      | Validate the external issuer response and commit the retained Edit RP callback lifecycle.   | No                            | Edit ORG OIDC callback endpoints |
+| W18 | Maintenance or repair task   | Explicit operator task    | Repair, admin, or maintenance writes performed outside ordinary read-only request handling. | No                            | explicitly invoked tasks only    |
 
 The former W1-W7 preference GET writes and W14-W15 authentication GET writes were removed from the
 allowlist on 2026-09-25 after checking the current request lifecycle. `set_preferences_cookie`
 returns through read-only preference loading for `GET`/`HEAD`; `transparent_refresh_allowed?`
 rejects browser navigation; and authenticated session activity tracking defaults off for
 `GET`/`HEAD`. The preference transport and authentication refresh records are changed only at their
-explicit write endpoints. W16-W17 remain separate protocol-callback write boundaries.
+explicit write endpoints. W16 remains the Edit ORG RP callback write boundary.
 
-W12 and W13, the former App/Org/Com login-time preference adoption writes, were retired on
-2026-10-31. Visa APP/ORG now performs one-way explicit-field sign-in reflection and a separate
-database-sourced sign-out rebuild through `PreferenceWriteBoundary`. Visa OIDC result GETs validate
-the browser binding and result reference, then render a same-origin continuation form. The existing
-`Visa::{App,Org}::Oauth::AuthorizationsController#create` POST revalidates and finalizes the result,
-then applies the Preference sign-in reflection. GET/HEAD do not finalize authentication or write
-Preference state; the POST is the explicit protocol commit boundary, not a read-side exception.
+W10-W13 and W17 were retired with the local Base/Auth/Visa controller routes on 2026-11-10. Their
+cookie, theme, preference-adoption, social-login, and Visa callback writers are not current Press
+request paths. W16 remains for the independent Edit ORG RP callback.
 
 ## CI Direction
 

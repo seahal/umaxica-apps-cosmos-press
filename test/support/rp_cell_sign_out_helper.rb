@@ -2,19 +2,12 @@
 
 require_relative "rp_cell_session_helper"
 
-# Seeds the local RP authentication contract and keeps Visa's RFC 7009 call inside the test process.
+# Uses external credentials while verifying local revocation before an external RFC 7009 call.
 module RpCellSignOutHelper
-  def authenticate_rp_cell_for_sign_out!(client_id:, actor:, root_token:)
+  def authenticate_rp_cell_for_sign_out!(client_id: "edit-org-ww", subject: "operator:external-reference")
     @rp_cell_client = OidcClientRegistry.find!(client_id)
     @rp_cell_resource_type = OidcIssuer.resource_type_for_client(@rp_cell_client)
-    @rp_cell_token_response, @rp_cell_payload, @rp_cell_session = sign_in_rp_cell(
-      client_id, actor:, root_token:,
-    )
-    grant_class = (@rp_cell_resource_type == "operator") ? OpOrgGrant : OpAppGrant
-    @rp_cell_op_grant = grant_class.find_by!(
-      public_id: @rp_cell_payload.fetch("sid"), oidc_client_id: client_id,
-    )
-    @rp_cell_root_token = root_token
+    @rp_cell_token_response, @rp_cell_payload, @rp_cell_session = sign_in_edit_rp(subject:)
   end
 
   def post_rp_cell_sign_out(path, params: {}, headers: {})
@@ -51,8 +44,6 @@ module RpCellSignOutHelper
     )
     assert_rp_cell_local_logout_revocation!(client_id:, resource_type:)
     assert_predicate @rp_cell_session.reload.revoked_at, :present?
-    assert_predicate @rp_cell_op_grant.reload, :active?
-    assert_predicate @rp_cell_root_token.reload, :currently_usable?
   end
 
   private

@@ -10,8 +10,6 @@ module Edit
         AUTHENTICATION_MODE = :open
         declare_authentication_mode! :open
 
-        skip_before_action :set_region, raise: false
-
         public
 
         private

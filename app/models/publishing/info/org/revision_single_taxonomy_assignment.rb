@@ -10,6 +10,8 @@ module Publishing
         belongs_to :entry_revision, class_name: "Publishing::Info::Org::EntryRevision",
                                     inverse_of: :single_taxonomy_assignments
 
+        validates :vocabulary_id, uniqueness: { scope: :entry_revision_id }
+
         def self.expected_kind = Publishing::TaxonomyKind::SINGLE_HIERARCHICAL
       end
     end

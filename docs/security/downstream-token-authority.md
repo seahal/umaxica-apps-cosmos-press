@@ -1,5 +1,12 @@
 # Downstream Token Authority
 
+> **Current Press boundary (2026-11-10):** This document's provider and consumer map describes
+> former Rails surfaces. Press now hosts only Edit `org`, Docs, Help, Info and News
+> `app`/`com`/`org`, plus operator tools. Edit is an OIDC relying party for external Auth/Visa
+> services; this repository does not expose local Auth, Base, Core, Palm, Tech, Visa or Warp routes.
+> Do not use the historical token map below to infer a local route or authorization boundary. See
+> [README.md](../../README.md).
+
 > **Supersession (2026-06-12):** Use `adr/acme-sign-core-base-port-boundary.md` and
 > `docs/architecture/acme-sign-core-base-port.md` for the target component model. Acme is the only
 > IdP / Authorization Server. Palm is the native bearer-token API Resource Server. Older references

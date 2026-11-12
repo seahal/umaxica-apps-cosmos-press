@@ -5,71 +5,17 @@ require "test_helper"
 # require "helpers/global_test_support"
 
 class ReadOnlySurfacesTest < ActionDispatch::IntegrationTest
-  STATIC_SURFACES = [
-    ["palm_app_root_url", "PUBLIC_PALM_SERVICE_URL", "palm.app.localhost", "Palm App"],
-  ].freeze
-
-  BASE_GATEWAY_ROOTS = [
-    ["base_app_root_url", "PUBLIC_BASE_SERVICE_URL", "base.app.localhost", "base/app/roots/index"],
-    ["base_com_root_url", "PUBLIC_BASE_CORPORATE_URL", "base.com.localhost", "base/com/roots/index"],
-    ["base_org_root_url", "PUBLIC_BASE_STAFF_URL", "base.org.localhost", "base/org/roots/index"],
-  ].freeze
-
-  CONTENT_SURFACES = [
-    ["help_app_root_url", "PRIVATE_HELP_SERVICE_URL", "help.app.localhost", "Help API is available"],
-    ["help_com_root_url", "PRIVATE_HELP_CORPORATE_URL", "help.com.localhost", "Help API is available"],
-    ["help_org_root_url", "PRIVATE_HELP_STAFF_URL", "help.org.localhost", "Help API is available"],
-    ["docs_app_root_url", "PRIVATE_DOCS_SERVICE_URL", "docs.app.localhost", "Docs API is available"],
-    ["docs_com_root_url", "PRIVATE_DOCS_CORPORATE_URL", "docs.com.localhost", "Docs API is available"],
-    ["docs_org_root_url", "PRIVATE_DOCS_STAFF_URL", "docs.org.localhost", "Docs API is available"],
-    ["news_app_root_url", "PRIVATE_NEWS_SERVICE_URL", "news.app.localhost", "News API is available"],
-    ["news_com_root_url", "PRIVATE_NEWS_CORPORATE_URL", "news.com.localhost", "News API is available"],
-    ["news_org_root_url", "PRIVATE_NEWS_STAFF_URL", "news.org.localhost", "News API is available"],
-  ].freeze
-
   CONTENT_API_SURFACES = [
-    ["help_app_api_v0_entry_url", "PRIVATE_HELP_SERVICE_URL", "help.app.localhost", "help", "app"],
-    ["help_com_api_v0_entry_url", "PRIVATE_HELP_CORPORATE_URL", "help.com.localhost", "help", "com"],
-    ["help_org_api_v0_entry_url", "PRIVATE_HELP_STAFF_URL", "help.org.localhost", "help", "org"],
-    ["docs_app_api_v0_entry_url", "PRIVATE_DOCS_SERVICE_URL", "docs.app.localhost", "docs", "app"],
-    ["docs_com_api_v0_entry_url", "PRIVATE_DOCS_CORPORATE_URL", "docs.com.localhost", "docs", "com"],
-    ["docs_org_api_v0_entry_url", "PRIVATE_DOCS_STAFF_URL", "docs.org.localhost", "docs", "org"],
-    ["news_app_api_v0_entry_url", "PRIVATE_NEWS_SERVICE_URL", "news.app.localhost", "news", "app"],
-    ["news_com_api_v0_entry_url", "PRIVATE_NEWS_CORPORATE_URL", "news.com.localhost", "news", "com"],
-    ["news_org_api_v0_entry_url", "PRIVATE_NEWS_STAFF_URL", "news.org.localhost", "news", "org"],
+    %w(help_app_api_v0_entry_url PRIVATE_HELP_SERVICE_URL help app),
+    %w(help_com_api_v0_entry_url PRIVATE_HELP_CORPORATE_URL help com),
+    %w(help_org_api_v0_entry_url PRIVATE_HELP_STAFF_URL help org),
+    %w(docs_app_api_v0_entry_url PRIVATE_DOCS_SERVICE_URL docs app),
+    %w(docs_com_api_v0_entry_url PRIVATE_DOCS_CORPORATE_URL docs com),
+    %w(docs_org_api_v0_entry_url PRIVATE_DOCS_STAFF_URL docs org),
+    %w(news_app_api_v0_entry_url PRIVATE_NEWS_SERVICE_URL news app),
+    %w(news_com_api_v0_entry_url PRIVATE_NEWS_CORPORATE_URL news com),
+    %w(news_org_api_v0_entry_url PRIVATE_NEWS_STAFF_URL news org),
   ].freeze
-
-  test "palm browser root responds without an auth redirect" do
-    STATIC_SURFACES.each do |helper, env_key, fallback, expected|
-      host = ENV.fetch(env_key, fallback)
-      host! host
-      get public_send(helper, ri: "jp", host: host)
-
-      assert_response :success
-      assert_includes response.body, expected
-    end
-  end
-
-  test "base gateway roots render the control-plane home" do
-    BASE_GATEWAY_ROOTS.each do |helper, env_key, fallback, component|
-      host = ENV.fetch(env_key, fallback)
-      host! host
-      get public_send(helper, ri: "jp", host: host)
-
-      assert_response :success
-      assert_equal component, inertia_component
-    end
-  end
-
-  test "content roots respond as thin availability endpoints" do
-    CONTENT_SURFACES.each do |helper, env_key, fallback, expected|
-      host! ENV.fetch(env_key, fallback)
-      get public_send(helper, ri: "jp", host: ENV.fetch(env_key, fallback))
-
-      assert_response :success
-      assert_includes response.body, expected
-    end
-  end
 
   test "content api show rejects unpublished entries and old rails article routes are unavailable" do
     published = create_publishing_entry(
@@ -153,7 +99,7 @@ class ReadOnlySurfacesTest < ActionDispatch::IntegrationTest
   end
 
   test "content api index and show serialize published content with the expected namespace" do
-    CONTENT_API_SURFACES.each do |helper, env_key, fallback, surface, audience|
+    CONTENT_API_SURFACES.each do |helper, env_key, surface, audience|
       create_publishing_entry(
         audience:, surface:, slug: "#{audience}-older-entry", title: "Older Entry", locale: "test-api",
         published_at: 2.hours.ago,
@@ -168,7 +114,7 @@ class ReadOnlySurfacesTest < ActionDispatch::IntegrationTest
         locale: "jp",
       )
 
-      host = ENV.fetch(env_key, fallback)
+      host = ENV.fetch(env_key)
       host! host
 
       get public_send(helper, public_id: newer.public_id, locale: "test-api", host: host),

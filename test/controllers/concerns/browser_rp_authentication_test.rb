@@ -5,872 +5,293 @@ require "test_helper"
 
 # Wired like a production Browser RP controller: the shared authentication concern, then the two
 # refresh orchestrators in the same callback positions.
-class BrowserRpAuthenticationProbeController < ApplicationController
-  include BrowserRpAuthentication
-  include BrowserRpSafeRequestRefresh
-  include BrowserRpUnsafeRequestRefresh
+module Edit
+  module Org
+    class BrowserRpAuthenticationProbeController < ::ApplicationController
+      include ::BrowserRpAuthentication
+      include ::BrowserRpSafeRequestRefresh
+      include ::BrowserRpUnsafeRequestRefresh
+      include ::OidcSsoInitiator
 
-  protect_from_forgery with: :exception
-  before_action :authenticate_browser_rp_safe_request!
-  prepend_before_action :authenticate_browser_rp_unsafe_request!
+      protect_from_forgery with: :exception
+      before_action :authenticate_browser_rp_safe_request!
+      prepend_before_action :authenticate_browser_rp_unsafe_request!
+      before_action :enforce_access_policy!, only: %i(open_probe guest_probe deny_all_probe)
+      access_policy :public_strict, only: :policy_probe, probe_policy: "configured"
+      declare_authentication_mode! :open, only: :open_probe
+      declare_authentication_mode! :guest, only: :guest_probe
+      declare_authentication_mode! :deny_all, only: :deny_all_probe
 
-  def show
-    if (params[:required] == "1") && !authenticate_browser_rp!
-      return
+      def show
+        if (params[:required] == "1") && !authenticate_browser_rp!
+          return
+        end
+
+        render plain: current_resource&.public_id.to_s
+      end
+
+      def csrf
+        render plain: form_authenticity_token
+      end
+
+      def update
+        return unless authenticate_browser_rp!
+
+        render plain: "mutated"
+      end
+
+      def helpers
+        render json: {
+          current_resource: current_resource&.public_id,
+          current_session: current_session&.public_id,
+          current_session_public_id: current_session_public_id,
+          browser_rp_session_public_id: browser_rp_session_public_id,
+          browser_rp_controller: browser_rp_controller?,
+          logged_in_operator: logged_in_operator?,
+          operator: am_i_operator?,
+          staff: am_i_staff?,
+          resource_type: resource_type,
+        }
+      end
+
+      def policy_probe
+        mode_policy = policy_for_authentication_mode(self.class.authentication_mode_for(action_name))
+        options = access_policy_options_for(action_name)
+        context = access_policy_context(mode_policy, options)
+        allowed = access_policy_allows?(:probe_rule, context)
+        render json: {
+          mode_policy:,
+          options:,
+          current_resource_deactivated: context.current_resource_deactivated,
+          allowed:,
+        }
+      end
+
+      def open_probe
+        render plain: "open"
+      end
+
+      def guest_probe
+        render plain: "guest"
+      end
+
+      def deny_all_probe
+        render plain: "unreachable"
+      end
+
+      def authenticate_probe
+        authenticate!
+        render plain: "authenticated" unless performed?
+      end
+
+      protected
+
+      def browser_rp_client_id = "edit-org-ww"
+
+      def browser_rp_resource_type = "operator"
+
+      def browser_rp_trusted_origins = [request.base_url]
+
+      def oidc_client_id = "edit-org-ww"
+
+      def oidc_sign_host = Rails.configuration.x.boot_config.fetch(:hosts).auth_staff.host
+
+      def oidc_visa_authority_host = Rails.configuration.x.boot_config.fetch(:hosts).visa_staff.host
     end
 
-    render plain: current_resource&.public_id.to_s
+    class BrowserRpAuthenticationDefaultProbeController < ::ApplicationController
+      include ::BrowserRpAuthentication
+
+      AUTHENTICATION_MODE = :open
+
+      def trusted_origins
+        browser_rp_trusted_origins
+      end
+
+      def client_id_probe
+        browser_rp_client_id
+      end
+
+      def resource_type_probe
+        resource_type
+      end
+    end
   end
 
-  def update
-    return unless authenticate_browser_rp!
+  class BrowserRpAuthenticationSkipProbeController < ApplicationController
+    include ::BrowserRpAuthentication
 
-    render plain: "mutated"
+    before_action :probe_filter
+
+    def self.skip_probe_filter!
+      skip_before_action :probe_filter
+    end
   end
-
-  protected
-
-  def browser_rp_client_id = "core-app-jp"
-
-  def browser_rp_resource_type = "client"
-
-  def browser_rp_trusted_origins = [request.base_url]
 end
 
 class BrowserRpAuthenticationTest < ActionController::TestCase
-  tests BrowserRpAuthenticationProbeController
+  include RpCellSessionHelper
+
+  tests Edit::Org::BrowserRpAuthenticationProbeController
 
   setup do
     @routes = ActionDispatch::Routing::RouteSet.new
     @routes.draw do
-      get "/probe" => "browser_rp_authentication_probe#show"
-      patch "/probe" => "browser_rp_authentication_probe#update"
+      get "/csrf" => "edit/org/browser_rp_authentication_probe#csrf"
+      get "/probe" => "edit/org/browser_rp_authentication_probe#show"
+      get "/helpers" => "edit/org/browser_rp_authentication_probe#helpers"
+      get "/policy" => "edit/org/browser_rp_authentication_probe#policy_probe"
+      get "/open" => "edit/org/browser_rp_authentication_probe#open_probe"
+      get "/guest" => "edit/org/browser_rp_authentication_probe#guest_probe"
+      get "/deny-all" => "edit/org/browser_rp_authentication_probe#deny_all_probe"
+      get "/authenticate" => "edit/org/browser_rp_authentication_probe#authenticate_probe"
+      patch "/probe" => "edit/org/browser_rp_authentication_probe#update"
     end
-    @client = clients(:one)
-    @root_token = client_tokens(:one)
-    @rp_session = OpAppGrant.create!(
-      authentication_epoch: 0,
-      client_token: @root_token,
-      oidc_client_id: "core-app-jp",
-      oidc_scope: "openid profile",
-      oidc_jti: SecureRandom.uuid,
-      oidc_auth_time: 1.minute.ago,
-      refresh_token_expires_at: 10.minutes.from_now,
-    )
-    @refresh_token = @rp_session.issue_refresh_token!
-    @request.host = "core.app.localhost"
-    @access_token =
-      begin
-        fv5116 = { expires_at: 5.minutes.from_now }
-        fv5113 = fv5116.fetch(:expires_at)
-        fv5112 = fv5116.fetch(:issuer) { nil }
-        fv5111 = fv5116.fetch(:audiences) { nil }
-        fv5109 = fv5116.fetch(:client_id) { nil }
-        fv5110 = fv5116.fetch(:subject) { nil }
-        fv5115 = fv5116.fetch(:base_session_public_id) { nil }
-        fv5114 = fv5116.fetch(:oidc_sid) { nil }
-        fv5108 = OidcClientRegistry.find!("core-app-jp")
-        AuthenticationTokenService.encode(
-          @client,
-          host: request.host,
-          resource_type: "client",
-          session_public_id: @root_token.public_id,
-          base_session_public_id: fv5115 || @root_token.public_id,
-          oidc_sid: fv5114 || @rp_session.public_id,
-          oidc_jti: @rp_session.oidc_jti,
-          expires_at: fv5113,
-          scopes: %w(openid profile),
-          issuer: fv5112 || OidcIssuer.for_resource_type("client"),
-          audiences: fv5111 || [fv5108.aud],
-          jwt_issuer_id: OidcIssuer.jwt_issuer_id_for_client(fv5108),
-          subject: fv5110 || OidcSubject.for(@client, resource_type: "client"),
-          client_id: fv5109 || fv5108.client_id,
-        )
-      end
+    @request.host = Rails.configuration.x.boot_config.fetch(:hosts).edit_staff.host
+    @previous_jwks_clients = OidcOpJwksClient::CLIENTS.dup
+    install_rp_cell_operator_jwks_client!
+    @tokens, @payload, @local_session = sign_in_edit_rp
+    @local_session =
+      RpEditOrgSession.includes(op_session_binding: { identity_binding: :principal }).find(@local_session.id)
   end
 
-  test "a valid RP access cookie authenticates without reading refresh authority" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-    OidcTokenExchangeCoordinator.stub(:call, ->(**) { raise RuntimeError, "refresh must not run" }) do
+  teardown do
+    OidcOpJwksClient::CLIENTS.clear
+    @previous_jwks_clients.each { |key, value| OidcOpJwksClient::CLIENTS[key] = value }
+  end
+
+  test "valid external access and local session authenticate without a refresh call" do
+    OidcOpTokenClient.stub(:refresh, ->(**) { flunk("valid access must not refresh") }) do
       get :show, params: { required: "1" }
     end
 
     assert_response :success
-    assert_equal @client.public_id, response.body
-    assert_equal @root_token.public_id, @controller.current_session_public_id
-    assert_equal @rp_session.public_id, @controller.browser_rp_session_public_id
+    assert_equal @local_session.op_session_binding.identity_binding.principal.public_id, response.body
   end
 
-  test "an expired access cookie refreshes independently and replaces both RP cookies" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] =
-      begin
-        fv5107 = { expires_at: 1.minute.ago }
-        fv5104 = fv5107.fetch(:expires_at)
-        fv5103 = fv5107.fetch(:issuer) { nil }
-        fv5102 = fv5107.fetch(:audiences) { nil }
-        fv5100 = fv5107.fetch(:client_id) { nil }
-        fv5101 = fv5107.fetch(:subject) { nil }
-        fv5106 = fv5107.fetch(:base_session_public_id) { nil }
-        fv5105 = fv5107.fetch(:oidc_sid) { nil }
-        fv5099 = OidcClientRegistry.find!("core-app-jp")
-        AuthenticationTokenService.encode(
-          @client,
-          host: request.host,
-          resource_type: "client",
-          session_public_id: @root_token.public_id,
-          base_session_public_id: fv5106 || @root_token.public_id,
-          oidc_sid: fv5105 || @rp_session.public_id,
-          oidc_jti: @rp_session.oidc_jti,
-          expires_at: fv5104,
-          scopes: %w(openid profile),
-          issuer: fv5103 || OidcIssuer.for_resource_type("client"),
-          audiences: fv5102 || [fv5099.aud],
-          jwt_issuer_id: OidcIssuer.jwt_issuer_id_for_client(fv5099),
-          subject: fv5101 || OidcSubject.for(@client, resource_type: "client"),
-          client_id: fv5100 || fv5099.client_id,
-        )
-      end
-    cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE] = @refresh_token
-    response_access =
-      begin
-        fv5098 = { expires_at: 5.minutes.from_now }
-        fv5095 = fv5098.fetch(:expires_at)
-        fv5094 = fv5098.fetch(:issuer) { nil }
-        fv5093 = fv5098.fetch(:audiences) { nil }
-        fv5091 = fv5098.fetch(:client_id) { nil }
-        fv5092 = fv5098.fetch(:subject) { nil }
-        fv5097 = fv5098.fetch(:base_session_public_id) { nil }
-        fv5096 = fv5098.fetch(:oidc_sid) { nil }
-        fv5090 = OidcClientRegistry.find!("core-app-jp")
-        AuthenticationTokenService.encode(
-          @client,
-          host: request.host,
-          resource_type: "client",
-          session_public_id: @root_token.public_id,
-          base_session_public_id: fv5097 || @root_token.public_id,
-          oidc_sid: fv5096 || @rp_session.public_id,
-          oidc_jti: @rp_session.oidc_jti,
-          expires_at: fv5095,
-          scopes: %w(openid profile),
-          issuer: fv5094 || OidcIssuer.for_resource_type("client"),
-          audiences: fv5093 || [fv5090.aud],
-          jwt_issuer_id: OidcIssuer.jwt_issuer_id_for_client(fv5090),
-          subject: fv5092 || OidcSubject.for(@client, resource_type: "client"),
-          client_id: fv5091 || fv5090.client_id,
-        )
-      end
-    result = OidcTokenExchangeCoordinator::Result.new(
-      success: true,
-      token_response: {
-        access_token: response_access,
-        refresh_token: "replacement-refresh",
-        expires_in: 300,
-        refresh_token_expires_in: 600,
-      },
-      error: nil,
-      error_description: nil,
-      access_expires_at: 5.minutes.from_now,
-      refresh_expires_at: 10.minutes.from_now,
-    )
-
-    OidcTokenExchangeCoordinator.stub(:call, result) do
-      get :show, params: { required: "1" }
-    end
+  test "shared runtime uses the same local session rather than OP storage" do
+    previous = ENV["UMAXICA_RUNTIME_ROLE"]
+    ENV["UMAXICA_RUNTIME_ROLE"] = "shared"
+    get(:show, params: { required: "1" })
 
     assert_response :success
-    assert_equal @client.public_id, response.body
-    assert_equal "replacement-refresh", cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE]
-    assert_predicate response.headers["Set-Cookie"], :present?
+    assert_equal @local_session.op_session_binding.identity_binding.principal.public_id, response.body
+  ensure
+    previous.nil? ? ENV.delete("UMAXICA_RUNTIME_ROLE") : ENV["UMAXICA_RUNTIME_ROLE"] = previous
   end
 
-  test "an invalid refresh clears RP cookies and leaves a protected request unauthenticated" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = "malformed"
-    cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE] = @refresh_token
-    result = OidcTokenExchangeCoordinator::Result.new(
-      success: false,
-      token_response: nil,
-      error: "invalid_grant",
-      error_description: "invalid refresh",
-      access_expires_at: nil,
-      refresh_expires_at: nil,
-    )
-
-    OidcTokenExchangeCoordinator.stub(:call, result) do
+  test "no RP credentials cannot authenticate or consult the external refresh authority" do
+    cookies.delete(OidcRpBrowserCredentialContract::ACCESS_COOKIE)
+    cookies.delete(OidcRpBrowserCredentialContract::REFRESH_COOKIE)
+    cookies.delete(OidcRpBrowserCredentialContract::SESSION_COOKIE)
+    OidcOpTokenClient.stub(:refresh, ->(**) { flunk("missing credentials must not refresh") }) do
       get :show, params: { required: "1" }
     end
 
-    assert_response :unauthorized
-    cookie_header = Array(response.headers["Set-Cookie"]).join("\n")
-
-    assert_match(/#{Regexp.escape(OidcRpBrowserCredentialContract::ACCESS_COOKIE)}=/, cookie_header)
-    assert_match(/#{Regexp.escape(OidcRpBrowserCredentialContract::REFRESH_COOKIE)}=/, cookie_header)
+    assert_response :redirect
   end
 
-  test "dependency failure returns 503 and preserves RP cookies" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = "expired"
-    cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE] = @refresh_token
-    result = OidcTokenExchangeCoordinator::Result.new(
-      success: false,
-      token_response: nil,
-      error: "server_error",
-      error_description: "temporarily unavailable",
-      access_expires_at: nil,
-      refresh_expires_at: nil,
-    )
+  test "an external access token with the wrong audience cannot authenticate this RP" do
+    replace_access_claim("aud", ["another-client"])
+    cookies.delete(OidcRpBrowserCredentialContract::REFRESH_COOKIE)
+    get :show, params: { required: "1" }
 
-    OidcTokenExchangeCoordinator.stub(:call, result) do
+    assert_response :redirect
+    assert_empty cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE].to_s
+  end
+
+  test "missing local credential cannot authenticate a valid external access token" do
+    cookies.delete(OidcRpBrowserCredentialContract::SESSION_COOKIE)
+    cookies.delete(OidcRpBrowserCredentialContract::REFRESH_COOKIE)
+    get :show, params: { required: "1" }
+
+    assert_response :redirect
+    assert_not_equal @local_session.op_session_binding.identity_binding.principal.public_id, response.body
+  end
+
+  test "revoked local binding refuses the same signed access token" do
+    @local_session.op_session_binding.update!(revoked_at: Time.current)
+    cookies.delete(OidcRpBrowserCredentialContract::REFRESH_COOKIE)
+    get :show, params: { required: "1" }
+
+    assert_response :redirect
+    assert_empty cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE].to_s
+  end
+
+  test "disabled local principal refuses the same signed access token" do
+    @local_session.op_session_binding.identity_binding.principal.update!(disabled_at: Time.current)
+    cookies.delete(OidcRpBrowserCredentialContract::REFRESH_COOKIE)
+    get :show, params: { required: "1" }
+
+    assert_response :redirect
+    assert_empty cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE].to_s
+  end
+
+  test "a signed access token for another subject cannot use this local session" do
+    replace_access_claim("sub", "operator:another-external-subject")
+    cookies.delete(OidcRpBrowserCredentialContract::REFRESH_COOKIE)
+    get :show, params: { required: "1" }
+
+    assert_response :redirect
+    assert_empty cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE].to_s
+  end
+
+  test "a signed access token for another sid cannot use this local session" do
+    replace_access_claim("sid", SecureRandom.urlsafe_base64(24))
+    cookies.delete(OidcRpBrowserCredentialContract::REFRESH_COOKIE)
+    get :show, params: { required: "1" }
+
+    assert_response :redirect
+    assert_empty cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE].to_s
+  end
+
+  test "another issuer is refused before fetching an external key" do
+    replace_access_claim("iss", "https://untrusted.example")
+    cookies.delete(OidcRpBrowserCredentialContract::REFRESH_COOKIE)
+    jwks_client = OidcOpJwksClient.for_resource_type("operator")
+    jwks_client.stub(:lookup, ->(*) { flunk("wrong issuer must not fetch a key") }) do
+      get :show, params: { required: "1" }
+    end
+
+    assert_response :redirect
+    assert_empty cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE].to_s
+  end
+
+  test "database dependency failure preserves all browser credentials and answers 503" do
+    RpRequestAuthenticator.stub(:call, ->(**) { raise ActiveRecord::ConnectionTimeoutError }) do
       get :show, params: { required: "1" }
     end
 
     assert_response :service_unavailable
-    assert_nil response.headers["Set-Cookie"]
+    assert_equal @tokens.fetch(:access_token), cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE]
+    assert_equal @tokens.fetch(:refresh_token), cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE]
+    assert_equal @local_session.public_id, cookies[OidcRpBrowserCredentialContract::SESSION_COOKIE]
   end
 
-  test "unsafe requests reject an untrusted Origin before refresh" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = "expired"
-    cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE] = @refresh_token
+  test "unavailable JWKS preserves all browser credentials and answers 503" do
+    OidcOpJwksClient.stub(:for_resource_type, ->(*) { raise OidcOpJwksClient::FetchError }) do
+      get :show, params: { required: "1" }
+    end
 
-    OidcTokenExchangeCoordinator.stub(:call, ->(**) { raise RuntimeError, "refresh must not run" }) do
-      @request.set_header("HTTP_ORIGIN", "https://attacker.example")
-      @request.set_header("HTTP_SEC_FETCH_SITE", "cross-site")
+    assert_response :service_unavailable
+    assert_equal @tokens.fetch(:access_token), cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE]
+    assert_equal @tokens.fetch(:refresh_token), cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE]
+  end
+
+  test "unsafe cross-origin request cannot refresh or mutate" do
+    @request.headers["Origin"] = "https://attacker.example"
+    OidcOpTokenClient.stub(:refresh, ->(**) { flunk("unsafe request must not dispatch refresh") }) do
       patch :update
     end
 
     assert_response :unprocessable_content
-    assert_equal 0, @rp_session.reload.refresh_generation
-    assert_equal @refresh_token, cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE]
+    assert_not_equal "mutated", response.body
+    assert_equal @tokens.fetch(:refresh_token), cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE]
   end
 
-  # --- Access credential: issuer, audience, client, realm, shape (RP3) ---------------------------
-
-  test "a request without any RP credential is unauthenticated and consults no refresh authority" do
-    OidcTokenExchangeCoordinator.stub(:call, ->(**) { raise RuntimeError, "refresh must not run" }) do
-      get :show, params: { required: "1" }
-    end
-
-    assert_response :unauthorized
-    assert_nil response.headers["Set-Cookie"]
-  end
-
-  test "missing RP credentials log the Browser RP refusal vocabulary and controller metadata" do
-    output = StringIO.new
-    logger = ActiveSupport::Logger.new(output)
-    @request.set_header("HTTP_SEC_FETCH_SITE", "cross-site")
-
-    Rails.stub(:logger, logger) { get :show, params: { required: "1" } }
-
-    assert_response :unauthorized
-    events =
-      output.string.lines.filter_map do |line|
-        next unless line.start_with?("{")
-
-        event = JSON.parse(line)
-        event if event["event"] == "auth.session.authentication_required"
-      end
-
-    assert_equal 1, events.length
-    data = events.fetch(0).fetch("data")
-
-    assert_equal "access_credential_missing", data.fetch("failure_reason")
-    assert_equal "BrowserRpAuthenticationProbeController", data.fetch("controller")
-    assert_equal "show", data.fetch("action")
-    assert_equal [false, false], data.values_at("access_credential_presented", "refresh_credential_presented")
-    assert_equal "cross-site", data.fetch("fetch_site")
-    assert_in_delta Time.current.to_f, Time.iso8601(data.fetch("occurred_at")).to_f, 5
-    assert_equal %w(action access_credential_presented controller failure_reason fetch_site occurred_at
-                    refresh_credential_presented).sort, data.keys.sort
-  end
-
-  test "invalid RP credentials log presence without either credential value" do
-    output = StringIO.new
-    logger = ActiveSupport::Logger.new(output)
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = "invalid-access-credential-sensitive"
-    cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE] = @refresh_token
-    refusal = OidcTokenExchangeCoordinator::Result.new(
-      success: false, token_response: nil, error: "invalid_grant", error_description: "invalid refresh",
-      access_expires_at: nil, refresh_expires_at: nil,
-    )
-
-    Rails.stub(:logger, logger) do
-      OidcTokenExchangeCoordinator.stub(:call, refusal) { get :show, params: { required: "1" } }
-    end
-
-    assert_response :unauthorized
-    event = output.string.lines.filter_map do |line|
-      next unless line.start_with?("{")
-
-      parsed = JSON.parse(line)
-      parsed if parsed["event"] == "auth.session.authentication_required"
-    end.fetch(0)
-
-    assert_equal "access_credential_invalid", event.fetch("data").fetch("failure_reason")
-    assert_equal [true, true],
-                 event.fetch("data").values_at("access_credential_presented", "refresh_credential_presented")
-    assert_not_includes output.string, "invalid-access-credential-sensitive"
-    assert_not_includes output.string, @refresh_token
-  end
-
-  test "RP refusal fetch-site metadata preserves known classifications and omits missing empty or unsupported values" do
-    [nil, "", "credential-like-fetch-site-value", "same-origin", "same-site", "cross-site", "none"].each do |value|
-      output = StringIO.new
-      logger = ActiveSupport::Logger.new(output)
-      @request.set_header("HTTP_SEC_FETCH_SITE", value)
-
-      Rails.stub(:logger, logger) { get :show, params: { required: "1" } }
-
-      assert_response :unauthorized
-      event = output.string.lines.filter_map do |line|
-        next unless line.start_with?("{")
-
-        parsed = JSON.parse(line)
-        parsed if parsed["event"] == "auth.session.authentication_required"
-      end.fetch(0)
-      if %w(same-origin same-site cross-site none).include?(value)
-        assert_equal value, event.fetch("data").fetch("fetch_site")
-      else
-        assert_not event.fetch("data").key?("fetch_site")
-      end
-
-      assert_not_includes output.string, "credential-like-fetch-site-value"
-    end
-  end
-
-  {
-    "another issuer" => { issuer: "https://issuer.invalid" },
-    "another audience" => { audiences: ["https://audience.invalid"] },
-    "another client" => { client_id: "warp-app-jp" },
-    "another subject" => { subject: "client:another-subject" },
-    "another Browser Session" => { base_session_public_id: "another-root-session" },
-    "a context different from the root session" => {
-      authentication_context: AuthenticationContextValue::STANDBY_KEY,
-    },
-  }.each do |label, overrides|
-    test "an access credential for #{label} is refused and detached" do
-      cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] =
-        begin
-          fv5089 = { expires_at: 5.minutes.from_now, **overrides }
-          fv5086 = fv5089.fetch(:expires_at)
-          fv5085 = fv5089.fetch(:issuer) { nil }
-          fv5084 = fv5089.fetch(:audiences) { nil }
-          fv5082 = fv5089.fetch(:client_id) { nil }
-          fv5083 = fv5089.fetch(:subject) { nil }
-          fv5088 = fv5089.fetch(:base_session_public_id) { nil }
-          fv5087 = fv5089.fetch(:oidc_sid) { nil }
-          fv5081 = OidcClientRegistry.find!("core-app-jp")
-          AuthenticationTokenService.encode(
-            @client,
-            host: request.host,
-            resource_type: "client",
-            session_public_id: @root_token.public_id,
-            base_session_public_id: fv5088 || @root_token.public_id,
-            oidc_sid: fv5087 || @rp_session.public_id,
-            oidc_jti: @rp_session.oidc_jti,
-            expires_at: fv5086,
-            scopes: %w(openid profile),
-            issuer: fv5085 || OidcIssuer.for_resource_type("client"),
-            audiences: fv5084 || [fv5081.aud],
-            jwt_issuer_id: OidcIssuer.jwt_issuer_id_for_client(fv5081),
-            subject: fv5083 || OidcSubject.for(@client, resource_type: "client"),
-            client_id: fv5082 || fv5081.client_id,
-            authentication_context: overrides.fetch(:authentication_context, nil),
-          )
-        end
-
-      get :show, params: { required: "1" }
-
-      assert_response :unauthorized
-      assert_empty response.body.scan(@client.public_id)
-      assert_match(
-        /#{Regexp.escape(OidcRpBrowserCredentialContract::ACCESS_COOKIE)}=;/,
-        Array(response.headers["Set-Cookie"]).join("\n"),
-      )
-    end
-  end
-
-  ["malformed", ".", "a.b", "a.b.c.d", "!!!.@@@.###", "0", "a" * 4000].each do |value|
-    test "a malformed access credential #{value[0, 12].inspect} of #{value.bytesize} bytes is refused" do
-      cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = value
-
-      get :show, params: { required: "1" }
-
-      assert_response :unauthorized
-    end
-  end
-
-  test "a root access credential in the RP cookie does not authenticate" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = AuthenticationToken.encode(
-      @client, host: @request.host, session_public_id: @root_token.public_id, resource_type: "client",
-    )
-
-    get :show, params: { required: "1" }
-
-    assert_response :unauthorized
-  end
-
-  test "the root cookie family alone does not authenticate a Browser RP request" do
-    cookies[AuthenticationBase::ACCESS_COOKIE_KEY] = AuthenticationToken.encode(
-      @client, host: @request.host, session_public_id: @root_token.public_id, resource_type: "client",
-    )
-
-    get :show, params: { required: "1" }
-
-    assert_response :unauthorized
-  end
-
-  # JWT expiry is checked as `exp <= now - leeway`, so the last accepted instant is one second
-  # before `exp + leeway`.
-  [[-1, :success], [0, :unauthorized], [1, :unauthorized]].each do |offset, expected|
-    test "an access credential #{offset} second(s) from exp plus leeway answers #{expected}" do
-      freeze_time
-      expires_at = 5.minutes.from_now
-      cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] =
-        begin
-          fv5080 = { expires_at: expires_at }
-          fv5077 = fv5080.fetch(:expires_at)
-          fv5076 = fv5080.fetch(:issuer) { nil }
-          fv5075 = fv5080.fetch(:audiences) { nil }
-          fv5073 = fv5080.fetch(:client_id) { nil }
-          fv5074 = fv5080.fetch(:subject) { nil }
-          fv5079 = fv5080.fetch(:base_session_public_id) { nil }
-          fv5078 = fv5080.fetch(:oidc_sid) { nil }
-          fv5072 = OidcClientRegistry.find!("core-app-jp")
-          AuthenticationTokenService.encode(
-            @client,
-            host: request.host,
-            resource_type: "client",
-            session_public_id: @root_token.public_id,
-            base_session_public_id: fv5079 || @root_token.public_id,
-            oidc_sid: fv5078 || @rp_session.public_id,
-            oidc_jti: @rp_session.oidc_jti,
-            expires_at: fv5077,
-            scopes: %w(openid profile),
-            issuer: fv5076 || OidcIssuer.for_resource_type("client"),
-            audiences: fv5075 || [fv5072.aud],
-            jwt_issuer_id: OidcIssuer.jwt_issuer_id_for_client(fv5072),
-            subject: fv5074 || OidcSubject.for(@client, resource_type: "client"),
-            client_id: fv5073 || fv5072.client_id,
-          )
-        end
-      travel_to(expires_at + AuthenticationJwtConfiguration.leeway_seconds.seconds + offset.seconds)
-
-      get :show, params: { required: "1" }
-
-      assert_response expected
-    end
-  end
-
-  # --- Live parent state: a revoked or missing parent ends the credential at once ---------------
-
-  test "an access credential stops authenticating as soon as its RP Session is revoked" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-    @rp_session.update_columns(revoked_at: OpAppGrant.database_now)
-
-    get :show, params: { required: "1" }
-
-    assert_response :unauthorized
-  end
-
-  test "an access credential stops authenticating as soon as its Browser Session is revoked" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-    @root_token.device_session_record.revoke!(reason: "rp-authentication-test")
-
-    get :show, params: { required: "1" }
-
-    assert_response :unauthorized
-  end
-
-  test "an access credential whose RP Session row no longer exists does not authenticate" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] =
-      begin
-        fv5071 = { expires_at: 5.minutes.from_now, oidc_sid: "missing-rp-session" }
-        fv5068 = fv5071.fetch(:expires_at)
-        fv5067 = fv5071.fetch(:issuer) { nil }
-        fv5066 = fv5071.fetch(:audiences) { nil }
-        fv5064 = fv5071.fetch(:client_id) { nil }
-        fv5065 = fv5071.fetch(:subject) { nil }
-        fv5070 = fv5071.fetch(:base_session_public_id) { nil }
-        fv5069 = fv5071.fetch(:oidc_sid) { nil }
-        fv5063 = OidcClientRegistry.find!("core-app-jp")
-        AuthenticationTokenService.encode(
-          @client,
-          host: request.host,
-          resource_type: "client",
-          session_public_id: @root_token.public_id,
-          base_session_public_id: fv5070 || @root_token.public_id,
-          oidc_sid: fv5069 || @rp_session.public_id,
-          oidc_jti: @rp_session.oidc_jti,
-          expires_at: fv5068,
-          scopes: %w(openid profile),
-          issuer: fv5067 || OidcIssuer.for_resource_type("client"),
-          audiences: fv5066 || [fv5063.aud],
-          jwt_issuer_id: OidcIssuer.jwt_issuer_id_for_client(fv5063),
-          subject: fv5065 || OidcSubject.for(@client, resource_type: "client"),
-          client_id: fv5064 || fv5063.client_id,
-        )
-      end
-
-    get :show, params: { required: "1" }
-
-    assert_response :unauthorized
-  end
-
-  test "a revoked Browser Session cannot issue a new RP refresh credential" do
-    @root_token.device_session_record.revoke!(reason: "rp-authentication-test")
-
-    assert_raises(RpSession::IssuanceRejected) { @rp_session.reload.issue_refresh_token! }
-  end
-
-  test "a safe request cannot refresh credentials after its parent Browser Session is revoked" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = "expired"
-    cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE] = @refresh_token
-    RpSessionRevoker.call(
-      scope: :browser_session, record: @root_token, cause: "browser_logout",
-      authority_evidence_ref: "test",
-    )
-    refresh_digest = @rp_session.reload.refresh_token_digest
-    refresh_generation = @rp_session.refresh_generation
-
-    get :show, params: { required: "1" }
-
-    assert_response :unauthorized
-    assert_equal refresh_digest, @rp_session.reload.refresh_token_digest
-    assert_equal refresh_generation, @rp_session.refresh_generation
-  end
-
-  test "an access credential stops authenticating as soon as its root token is revoked" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-    @root_token.revoke!
-
-    get :show, params: { required: "1" }
-
-    assert_response :unauthorized
-  end
-
-  test "an access credential stops authenticating as soon as its root token is historically restricted" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-    @root_token.update!(user_token_status_id: ClientTokenStatus::RESTRICTED)
-
-    get :show, params: { required: "1" }
-
-    assert_response :unauthorized
-  end
-
-  test "an access credential stops authenticating once the Browser Session points at another root token" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-    replacement = ClientToken.create!(authentication_epoch: 0, user: @client)
-    @root_token.device_session_record.update_columns(current_refresh_token_id: replacement.id)
-
-    get :show, params: { required: "1" }
-
-    assert_response :unauthorized
-  end
-
-  test "a deactivated actor is answered withdrawal_required and keeps the credential" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-    @client.update_columns(
-      withdrawal_started_at: 2.hours.ago, deactivated_at: 1.hour.ago, purge_eligible_at: 31.days.from_now,
-    )
-
-    get :show, params: { required: "1" }, format: :json
-
-    assert_response :forbidden
-    assert_equal "withdrawal_required", response.parsed_body.fetch("error_code")
-    assert_nil response.headers["Set-Cookie"]
-  end
-
-  test "a principal with a login-blocked status cannot authenticate an existing RP session" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-    @client.update!(status_id: ClientStatus::RESERVED)
-
-    get :show, params: { required: "1" }
-
-    assert_response :unauthorized
-  end
-
-  test "a withdrawn principal cannot authenticate an existing RP session" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-    @client.update_columns(withdrawn_at: 1.hour.ago)
-
-    get :show, params: { required: "1" }
-
-    assert_response :unauthorized
-  end
-
-  test "a deactivated actor is not identified on a page that does not require authentication" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-    @client.update_columns(
-      withdrawal_started_at: 2.hours.ago, deactivated_at: 1.hour.ago, purge_eligible_at: 31.days.from_now,
-    )
-
-    get :show
-
-    assert_response :success
-    assert_empty response.body
-  end
-
-  # No fallback to cryptographic-only verification: when live state cannot be read the request
-  # fails closed and the credentials are left for the retry.
-  test "a database failure while reading live state answers 503 and keeps the cookies" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-    cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE] = @refresh_token
-
-    OpAppGrant.stub(:includes, ->(*) { raise ActiveRecord::ConnectionNotEstablished, "injected" }) do
-      OidcTokenExchangeCoordinator.stub(:call, ->(**) { raise RuntimeError, "refresh must not run" }) do
-        get :show, params: { required: "1" }
-      end
-    end
-
-    assert_response :service_unavailable
-    assert_not_includes response.body, @client.public_id
-    assert_nil response.headers["Set-Cookie"]
-  end
-
-  # A connection pool that cannot serve the state read is the same dependency failure.
-  test "an exhausted connection pool while reading live state answers 503 and keeps the cookies" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-
-    OpAppGrant.stub(:includes, ->(*) { raise ActiveRecord::ConnectionTimeoutError, "injected" }) do
-      get :show, params: { required: "1" }
-    end
-
-    assert_response :service_unavailable
-    assert_nil response.headers["Set-Cookie"]
-  end
-
-  # Revocation applies to the next request after it commits; the request before it was served.
-  test "a request before revocation is served and the request after it is refused" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-
-    get :show, params: { required: "1" }
-
-    assert_response :success
-
-    @root_token.device_session_record.revoke!(reason: "rp-authentication-test")
-    get :show, params: { required: "1" }
-
-    assert_response :unauthorized
-  end
-
-  test "an operator-realm credential does not authenticate a client-realm controller" do
-    operator = Operator.create!(security_mode_id: SecurityModeConfigurable::ADVANCED)
-    operator_token = OperatorToken.create!(authentication_epoch: 0, staff: operator)
-    operator_token.rotate_refresh_token!
-    operator_client = OidcClientRegistry.find!("core-org-jp")
-    op_org_grant = OpOrgGrant.create!(
-      authentication_epoch: 0,
-      operator_token: operator_token, oidc_client_id: operator_client.client_id, oidc_scope: "openid profile",
-      oidc_jti: SecureRandom.uuid, oidc_auth_time: 1.minute.ago, refresh_token_expires_at: 10.minutes.from_now,
-    )
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = AuthenticationTokenService.encode(
-      operator,
-      host: request.host, resource_type: "operator", session_public_id: operator_token.public_id,
-      base_session_public_id: operator_token.public_id, oidc_sid: op_org_grant.public_id,
-      oidc_jti: op_org_grant.oidc_jti, expires_at: 5.minutes.from_now, scopes: %w(openid profile),
-      issuer: OidcIssuer.for_resource_type("operator"), audiences: [operator_client.aud],
-      jwt_issuer_id: OidcIssuer.jwt_issuer_id_for_client(operator_client),
-      subject: OidcSubject.for(operator, resource_type: "operator"), client_id: operator_client.client_id,
-    )
-
-    get :show, params: { required: "1" }
-
-    assert_response :unauthorized
-  end
-
-  # One authenticated request reads each link of the live chain once: RP Session, Browser Session,
-  # actor, current root token, and the database clock. More than that is a repeated or N+1 read.
-  test "live validation reads the chain once per request" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-    statements = []
-    subscriber =
-      lambda do |_name, _start, _finish, _id, payload|
-        statements << payload[:sql] unless payload[:name] == "SCHEMA" || payload[:cached]
-      end
-
-    ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") do
-      get :show, params: { required: "1" }
-    end
-
-    assert_response :success
-    assert_equal 5, statements.size, statements.join("\n")
-    %w(op_app_grants client_device_sessions clients client_tokens).each do |table|
-      assert_equal 1, statements.count { |sql| sql.include?(%("#{table}")) }, table
-    end
-  end
-
-  # --- Refresh credential values (RP3) -----------------------------------------------------------
-
-  ["", " ", "\t", "a\u0000b", " padded "].each do |value|
-    test "a refresh credential of #{value.inspect} is treated as absent and never presented" do
-      cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] =
-        begin
-          fv5062 = { expires_at: 1.minute.ago }
-          fv5059 = fv5062.fetch(:expires_at)
-          fv5058 = fv5062.fetch(:issuer) { nil }
-          fv5057 = fv5062.fetch(:audiences) { nil }
-          fv5055 = fv5062.fetch(:client_id) { nil }
-          fv5056 = fv5062.fetch(:subject) { nil }
-          fv5061 = fv5062.fetch(:base_session_public_id) { nil }
-          fv5060 = fv5062.fetch(:oidc_sid) { nil }
-          fv5054 = OidcClientRegistry.find!("core-app-jp")
-          AuthenticationTokenService.encode(
-            @client,
-            host: request.host,
-            resource_type: "client",
-            session_public_id: @root_token.public_id,
-            base_session_public_id: fv5061 || @root_token.public_id,
-            oidc_sid: fv5060 || @rp_session.public_id,
-            oidc_jti: @rp_session.oidc_jti,
-            expires_at: fv5059,
-            scopes: %w(openid profile),
-            issuer: fv5058 || OidcIssuer.for_resource_type("client"),
-            audiences: fv5057 || [fv5054.aud],
-            jwt_issuer_id: OidcIssuer.jwt_issuer_id_for_client(fv5054),
-            subject: fv5056 || OidcSubject.for(@client, resource_type: "client"),
-            client_id: fv5055 || fv5054.client_id,
-          )
-        end
-      cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE] = value
-
-      OidcTokenExchangeCoordinator.stub(:call, ->(**) { raise RuntimeError, "refresh must not run" }) do
-        get :show, params: { required: "1" }
-      end
-
-      assert_response :unauthorized
-    end
-  end
-
-  ["0", "malformed", "a" * 4000].each do |value|
-    test "a refresh credential #{value[0, 12].inspect} of #{value.bytesize} bytes is decided by the authority" do
-      cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] =
-        begin
-          fv5053 = { expires_at: 1.minute.ago }
-          fv5050 = fv5053.fetch(:expires_at)
-          fv5049 = fv5053.fetch(:issuer) { nil }
-          fv5048 = fv5053.fetch(:audiences) { nil }
-          fv5046 = fv5053.fetch(:client_id) { nil }
-          fv5047 = fv5053.fetch(:subject) { nil }
-          fv5052 = fv5053.fetch(:base_session_public_id) { nil }
-          fv5051 = fv5053.fetch(:oidc_sid) { nil }
-          fv5045 = OidcClientRegistry.find!("core-app-jp")
-          AuthenticationTokenService.encode(
-            @client,
-            host: request.host,
-            resource_type: "client",
-            session_public_id: @root_token.public_id,
-            base_session_public_id: fv5052 || @root_token.public_id,
-            oidc_sid: fv5051 || @rp_session.public_id,
-            oidc_jti: @rp_session.oidc_jti,
-            expires_at: fv5050,
-            scopes: %w(openid profile),
-            issuer: fv5049 || OidcIssuer.for_resource_type("client"),
-            audiences: fv5048 || [fv5045.aud],
-            jwt_issuer_id: OidcIssuer.jwt_issuer_id_for_client(fv5045),
-            subject: fv5047 || OidcSubject.for(@client, resource_type: "client"),
-            client_id: fv5046 || fv5045.client_id,
-          )
-        end
-      cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE] = value
-      presented = []
-      refusal = OidcTokenExchangeCoordinator::Result.new(
-        success: false, token_response: nil, error: "invalid_grant", error_description: "invalid refresh",
-        access_expires_at: nil, refresh_expires_at: nil,
-      )
-
-      OidcTokenExchangeCoordinator.stub(
-        :call, ->(**kwargs) {
-                 presented << kwargs.fetch(:refresh_token)
-                 refusal
-               },
-      ) do
-        get :show, params: { required: "1" }
-      end
-
-      assert_equal [value], presented
-      assert_response :unauthorized
-    end
-  end
-
-  # --- Unsafe requests: provenance and CSRF before refresh, then exactly one mutation (RP4) -----
-
-  test "an unsafe request without a valid CSRF token causes no rotation and no mutation" do
-    begin
-      previous_forgery_protection = ActionController::Base.allow_forgery_protection
-      ActionController::Base.allow_forgery_protection = true
-      cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] =
-        begin
-          fv5044 = { expires_at: 1.minute.ago }
-          fv5041 = fv5044.fetch(:expires_at)
-          fv5040 = fv5044.fetch(:issuer) { nil }
-          fv5039 = fv5044.fetch(:audiences) { nil }
-          fv5037 = fv5044.fetch(:client_id) { nil }
-          fv5038 = fv5044.fetch(:subject) { nil }
-          fv5043 = fv5044.fetch(:base_session_public_id) { nil }
-          fv5042 = fv5044.fetch(:oidc_sid) { nil }
-          fv5036 = OidcClientRegistry.find!("core-app-jp")
-          AuthenticationTokenService.encode(
-            @client,
-            host: request.host,
-            resource_type: "client",
-            session_public_id: @root_token.public_id,
-            base_session_public_id: fv5043 || @root_token.public_id,
-            oidc_sid: fv5042 || @rp_session.public_id,
-            oidc_jti: @rp_session.oidc_jti,
-            expires_at: fv5041,
-            scopes: %w(openid profile),
-            issuer: fv5040 || OidcIssuer.for_resource_type("client"),
-            audiences: fv5039 || [fv5036.aud],
-            jwt_issuer_id: OidcIssuer.jwt_issuer_id_for_client(fv5036),
-            subject: fv5038 || OidcSubject.for(@client, resource_type: "client"),
-            client_id: fv5037 || fv5036.client_id,
-          )
-        end
-      cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE] = @refresh_token
-
-      OidcTokenExchangeCoordinator.stub(:call, ->(**) { raise RuntimeError, "refresh must not run" }) do
-        patch(:update, params: { authenticity_token: "forged" })
-      end
-
-      assert_response :unprocessable_content
-      assert_not_equal "mutated", response.body
-      assert_equal 0, @rp_session.reload.refresh_generation
-    ensure
-      ActionController::Base.allow_forgery_protection = previous_forgery_protection
-    end
-  end
-
-  test "an unsafe request with Origin null causes no rotation and no mutation" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] =
-      begin
-        fv5035 = { expires_at: 1.minute.ago }
-        fv5032 = fv5035.fetch(:expires_at)
-        fv5031 = fv5035.fetch(:issuer) { nil }
-        fv5030 = fv5035.fetch(:audiences) { nil }
-        fv5028 = fv5035.fetch(:client_id) { nil }
-        fv5029 = fv5035.fetch(:subject) { nil }
-        fv5034 = fv5035.fetch(:base_session_public_id) { nil }
-        fv5033 = fv5035.fetch(:oidc_sid) { nil }
-        fv5027 = OidcClientRegistry.find!("core-app-jp")
-        AuthenticationTokenService.encode(
-          @client,
-          host: request.host,
-          resource_type: "client",
-          session_public_id: @root_token.public_id,
-          base_session_public_id: fv5034 || @root_token.public_id,
-          oidc_sid: fv5033 || @rp_session.public_id,
-          oidc_jti: @rp_session.oidc_jti,
-          expires_at: fv5032,
-          scopes: %w(openid profile),
-          issuer: fv5031 || OidcIssuer.for_resource_type("client"),
-          audiences: fv5030 || [fv5027.aud],
-          jwt_issuer_id: OidcIssuer.jwt_issuer_id_for_client(fv5027),
-          subject: fv5029 || OidcSubject.for(@client, resource_type: "client"),
-          client_id: fv5028 || fv5027.client_id,
-        )
-      end
-    cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE] = @refresh_token
-
-    OidcTokenExchangeCoordinator.stub(:call, ->(**) { raise RuntimeError, "refresh must not run" }) do
-      @request.set_header("HTTP_ORIGIN", "null")
+  test "unsafe null-origin request cannot refresh or mutate" do
+    @request.headers["Origin"] = "null"
+    OidcOpTokenClient.stub(:refresh, ->(**) { flunk("null origin must not dispatch refresh") }) do
       patch :update
     end
 
@@ -878,182 +299,296 @@ class BrowserRpAuthenticationTest < ActionController::TestCase
     assert_not_equal "mutated", response.body
   end
 
-  test "an unsafe request with an expired access credential refreshes once and performs one mutation" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] =
-      begin
-        fv5026 = { expires_at: 1.minute.ago }
-        fv5023 = fv5026.fetch(:expires_at)
-        fv5022 = fv5026.fetch(:issuer) { nil }
-        fv5021 = fv5026.fetch(:audiences) { nil }
-        fv5019 = fv5026.fetch(:client_id) { nil }
-        fv5020 = fv5026.fetch(:subject) { nil }
-        fv5025 = fv5026.fetch(:base_session_public_id) { nil }
-        fv5024 = fv5026.fetch(:oidc_sid) { nil }
-        fv5018 = OidcClientRegistry.find!("core-app-jp")
-        AuthenticationTokenService.encode(
-          @client,
-          host: request.host,
-          resource_type: "client",
-          session_public_id: @root_token.public_id,
-          base_session_public_id: fv5025 || @root_token.public_id,
-          oidc_sid: fv5024 || @rp_session.public_id,
-          oidc_jti: @rp_session.oidc_jti,
-          expires_at: fv5023,
-          scopes: %w(openid profile),
-          issuer: fv5022 || OidcIssuer.for_resource_type("client"),
-          audiences: fv5021 || [fv5018.aud],
-          jwt_issuer_id: OidcIssuer.jwt_issuer_id_for_client(fv5018),
-          subject: fv5020 || OidcSubject.for(@client, resource_type: "client"),
-          client_id: fv5019 || fv5018.client_id,
-        )
-      end
-    cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE] = @refresh_token
-    calls = 0
-    success = OidcTokenExchangeCoordinator::Result.new(
-      success: true,
-      token_response: {
-        access_token: begin
-          fv5017 = { expires_at: 5.minutes.from_now }
-          fv5014 = fv5017.fetch(:expires_at)
-          fv5013 = fv5017.fetch(:issuer) { nil }
-          fv5012 = fv5017.fetch(:audiences) { nil }
-          fv5010 = fv5017.fetch(:client_id) { nil }
-          fv5011 = fv5017.fetch(:subject) { nil }
-          fv5016 = fv5017.fetch(:base_session_public_id) { nil }
-          fv5015 = fv5017.fetch(:oidc_sid) { nil }
-          fv5009 = OidcClientRegistry.find!("core-app-jp")
-          AuthenticationTokenService.encode(
-            @client,
-            host: request.host,
-            resource_type: "client",
-            session_public_id: @root_token.public_id,
-            base_session_public_id: fv5016 || @root_token.public_id,
-            oidc_sid: fv5015 || @rp_session.public_id,
-            oidc_jti: @rp_session.oidc_jti,
-            expires_at: fv5014,
-            scopes: %w(openid profile),
-            issuer: fv5013 || OidcIssuer.for_resource_type("client"),
-            audiences: fv5012 || [fv5009.aud],
-            jwt_issuer_id: OidcIssuer.jwt_issuer_id_for_client(fv5009),
-            subject: fv5011 || OidcSubject.for(@client, resource_type: "client"),
-            client_id: fv5010 || fv5009.client_id,
-          )
-        end,
-        refresh_token: "replacement-refresh",
-        expires_in: 300,
-        refresh_token_expires_in: 600,
-      },
-      error: nil,
-      error_description: nil,
-      access_expires_at: 5.minutes.from_now,
-      refresh_expires_at: 10.minutes.from_now,
-    )
-
-    OidcTokenExchangeCoordinator.stub(
-      :call, ->(**) {
-               calls += 1
-               success
-             },
+  test "expired access refreshes once through the external endpoint and installs the local generation" do
+    replace_access_claim("exp", 2.minutes.ago.to_i)
+    refreshed = rp_cell_test_token_response("edit-org-ww", subject: @payload.fetch("sub"), sid: @payload.fetch("sid"))
+    calls = []
+    result = OidcOpTokenClient::Result.new(outcome: :success, token_response: refreshed, error: nil)
+    OidcOpTokenClient.stub(
+      :refresh, ->(**args) {
+                  calls << args
+                  result
+                },
     ) do
-      @request.set_header("HTTP_SEC_FETCH_SITE", "same-origin")
-      patch :update
+      get :show, params: { required: "1" }
+    end
+
+    assert_response :success
+    assert_equal 1, calls.length
+    assert_equal @tokens.fetch(:refresh_token), calls.first.fetch(:refresh_token)
+    assert_equal refreshed.fetch(:access_token), cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE]
+    assert_equal refreshed.fetch(:refresh_token), cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE]
+    assert_equal 1, @local_session.reload.installed_generation
+  end
+
+  test "definitively refused refresh clears every local browser credential" do
+    replace_access_claim("exp", 2.minutes.ago.to_i)
+    result = OidcOpTokenClient::Result.new(outcome: :refused, token_response: nil, error: "invalid_grant")
+    OidcOpTokenClient.stub(:refresh, ->(**) { result }) do
+      get :show, params: { required: "1" }
+    end
+
+    assert_response :redirect
+    assert_empty cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE].to_s
+    assert_empty cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE].to_s
+    assert_empty cookies[OidcRpBrowserCredentialContract::SESSION_COOKIE].to_s
+  end
+
+  test "indeterminate refresh clears credentials instead of replaying a potentially rotated token" do
+    replace_access_claim("exp", 2.minutes.ago.to_i)
+    calls = 0
+    result = OidcOpTokenClient::Result.new(outcome: :indeterminate, token_response: nil, error: "timeout")
+    OidcOpTokenClient.stub(
+      :refresh, ->(**) {
+                  calls += 1
+                  result
+                },
+    ) do
+      get :show, params: { required: "1" }
+    end
+
+    assert_equal 1, calls
+    assert_response :redirect
+    assert_empty cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE].to_s
+    assert_empty cookies[OidcRpBrowserCredentialContract::SESSION_COOKIE].to_s
+  end
+
+  test "pre-dispatch refresh dependency failure preserves cookies and local installed generation" do
+    replace_access_claim("exp", 2.minutes.ago.to_i)
+    expired_access = cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE]
+    result = OidcOpTokenClient::Result.new(outcome: :dependency, token_response: nil, error: "unavailable")
+    OidcOpTokenClient.stub(:refresh, ->(**) { result }) do
+      get :show, params: { required: "1" }
+    end
+
+    assert_response :service_unavailable
+    assert_equal expired_access, cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE]
+    assert_equal @tokens.fetch(:refresh_token), cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE]
+    assert_equal @local_session.public_id, cookies[OidcRpBrowserCredentialContract::SESSION_COOKIE]
+    assert_equal 0, @local_session.reload.installed_generation
+  end
+
+  test "unsafe missing CSRF cannot dispatch refresh or reach mutation" do
+    previous = @controller.allow_forgery_protection
+    @controller.allow_forgery_protection = true
+    @request.headers["Origin"] = request.base_url
+    replace_access_claim("exp", 2.minutes.ago.to_i)
+    OidcOpTokenClient.stub(:refresh, ->(**) { flunk("CSRF must precede external refresh") }) do
+      patch(:update)
+    end
+
+    assert_response :unprocessable_content
+    assert_not_equal "mutated", response.body
+    assert_equal 0, @local_session.reload.installed_generation
+  ensure
+    @controller.allow_forgery_protection = previous
+  end
+
+  test "canonical operator activity is unavailable even for an enabled local principal" do
+    assert_raises(GovernanceUnavailableError) { @controller.active_operator? }
+  end
+
+  test "public session and operator helpers expose the authenticated local RP state" do
+    get :helpers
+
+    assert_response :success
+    body = response.parsed_body
+
+    assert_equal @local_session.op_session_binding.identity_binding.principal.public_id, body.fetch("current_resource")
+    assert_equal @local_session.public_id, body.fetch("current_session")
+    assert_equal @local_session.public_id, body.fetch("current_session_public_id")
+    assert_equal @local_session.public_id, body.fetch("browser_rp_session_public_id")
+    assert body.fetch("browser_rp_controller")
+    assert body.fetch("logged_in_operator")
+    assert body.fetch("operator")
+    assert body.fetch("staff")
+    assert_equal "operator", body.fetch("resource_type")
+  end
+
+  test "access policy helpers resolve the declared rule and pass its context to policy evaluation" do
+    captured = nil
+    @controller.stub(
+      :allowed_to?,
+      ->(rule, context, with:) do
+        captured = [rule, context, with]
+        true
+      end,
+    ) do
+      get :policy_probe
+    end
+
+    assert_response :success
+    body = response.parsed_body
+
+    assert_equal "public_strict", body.fetch("mode_policy")
+    assert_equal "configured", body.fetch("options").fetch("probe_policy")
+    assert_equal :probe_rule, captured.fetch(0)
+    assert_equal :public_strict, captured.fetch(1).policy
+    assert_equal "configured", captured.fetch(1).options.fetch(:probe_policy)
+    assert_equal Authentication::AccessPolicy, captured.fetch(2)
+    assert_not body.fetch("current_resource_deactivated")
+    assert body.fetch("allowed")
+  end
+
+  test "access policy options use the access rule when no authentication mode rule matches" do
+    controller_class = @controller.class
+    authentication_rules = BrowserRpAuthentication::AUTHENTICATION_MODE_RULES.fetch(controller_class)
+    BrowserRpAuthentication::AUTHENTICATION_MODE_RULES[controller_class] = []
+
+    @controller.stub(:allowed_to?, ->(*) { true }) do
+      get(:policy_probe)
+    end
+
+    assert_response :success
+    assert_equal "configured", response.parsed_body.fetch("options").fetch("probe_policy")
+  ensure
+    BrowserRpAuthentication::AUTHENTICATION_MODE_RULES[controller_class] = authentication_rules
+  end
+
+  test "open HTML routes detach a refused credential while JSON routes return unauthorized" do
+    cookies.delete(OidcRpBrowserCredentialContract::REFRESH_COOKIE)
+    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = "malformed-access"
+    get :open_probe
+
+    assert_response :success
+    assert_equal "open", response.body
+    assert_empty cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE].to_s
+
+    cookies.delete(OidcRpBrowserCredentialContract::REFRESH_COOKIE)
+    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = "malformed-access"
+    get :open_probe, format: :json
+
+    assert_response :unauthorized
+    assert_empty cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE].to_s
+  end
+
+  test "guest mode allows a browser without RP credentials" do
+    cookies.delete(OidcRpBrowserCredentialContract::ACCESS_COOKIE)
+    cookies.delete(OidcRpBrowserCredentialContract::REFRESH_COOKIE)
+    cookies.delete(OidcRpBrowserCredentialContract::SESSION_COOKIE)
+    get :guest_probe
+
+    assert_response :success
+    assert_equal "guest", response.body
+  end
+
+  test "guest mode refuses an authenticated browser RP" do
+    get :guest_probe
+
+    assert_response :forbidden
+  end
+
+  test "deny-all mode raises even for an authenticated browser RP" do
+    error = assert_raises(BrowserRpAuthentication::MissingPolicyError) { get(:deny_all_probe) }
+
+    assert_match(/Denied by default authentication mode/, error.message)
+  end
+
+  test "class-level filter skipping delegates ordinary filters and protects access enforcement" do
+    Edit::BrowserRpAuthenticationSkipProbeController.skip_probe_filter!
+
+    error =
+      assert_raises(BrowserRpAuthentication::SkipNotAllowedError) do
+        Edit::BrowserRpAuthenticationSkipProbeController.skip_before_action(:enforce_access_policy!)
+      end
+
+    assert_match(/skip_before_action.*enforce_access_policy!/, error.message)
+  end
+
+  test "SSO authentication returns for a logged-in RP" do
+    get :authenticate_probe
+
+    assert_response :success
+    assert_equal "authenticated", response.body
+  end
+
+  test "SSO authentication redirects a missing HTML session to sign-in" do
+    cookies.delete(OidcRpBrowserCredentialContract::ACCESS_COOKIE)
+    cookies.delete(OidcRpBrowserCredentialContract::REFRESH_COOKIE)
+    cookies.delete(OidcRpBrowserCredentialContract::SESSION_COOKIE)
+    get :authenticate_probe
+
+    assert_response :redirect
+    assert_match(%r{/sign\?}, response.headers.fetch("Location"))
+  end
+
+  test "SSO authentication answers JSON requests without a session as unauthorized" do
+    cookies.delete(OidcRpBrowserCredentialContract::ACCESS_COOKIE)
+    cookies.delete(OidcRpBrowserCredentialContract::REFRESH_COOKIE)
+    cookies.delete(OidcRpBrowserCredentialContract::SESSION_COOKIE)
+    get :authenticate_probe, format: :json
+
+    assert_response :unauthorized
+    assert_equal({ "error" => "Unauthorized" }, response.parsed_body)
+  end
+
+  test "unsafe request with valid CSRF refreshes once and reaches the same mutation" do
+    previous = @controller.allow_forgery_protection
+    @controller.allow_forgery_protection = true
+    get(:csrf)
+    @request.headers["X-CSRF-Token"] = response.body
+    @request.headers["Origin"] = request.base_url
+    replace_access_claim("exp", 2.minutes.ago.to_i)
+    refreshed = rp_cell_test_token_response("edit-org-ww", subject: @payload.fetch("sub"), sid: @payload.fetch("sid"))
+    calls = []
+    result = OidcOpTokenClient::Result.new(outcome: :success, token_response: refreshed, error: nil)
+    OidcOpTokenClient.stub(
+      :refresh, ->(**args) {
+                  calls << args
+                  result
+                },
+    ) do
+      patch(:update)
     end
 
     assert_response :success
     assert_equal "mutated", response.body
-    assert_equal 1, calls
+    assert_equal 1, calls.length
+    assert_equal 1, @local_session.reload.installed_generation
+  ensure
+    @controller.allow_forgery_protection = previous
   end
 
-  test "an unsafe request whose refresh is refused performs no mutation" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] =
-      begin
-        fv5008 = { expires_at: 1.minute.ago }
-        fv5005 = fv5008.fetch(:expires_at)
-        fv5004 = fv5008.fetch(:issuer) { nil }
-        fv5003 = fv5008.fetch(:audiences) { nil }
-        fv5001 = fv5008.fetch(:client_id) { nil }
-        fv5002 = fv5008.fetch(:subject) { nil }
-        fv5007 = fv5008.fetch(:base_session_public_id) { nil }
-        fv5006 = fv5008.fetch(:oidc_sid) { nil }
-        fv5000 = OidcClientRegistry.find!("core-app-jp")
-        AuthenticationTokenService.encode(
-          @client,
-          host: request.host,
-          resource_type: "client",
-          session_public_id: @root_token.public_id,
-          base_session_public_id: fv5007 || @root_token.public_id,
-          oidc_sid: fv5006 || @rp_session.public_id,
-          oidc_jti: @rp_session.oidc_jti,
-          expires_at: fv5005,
-          scopes: %w(openid profile),
-          issuer: fv5004 || OidcIssuer.for_resource_type("client"),
-          audiences: fv5003 || [fv5000.aud],
-          jwt_issuer_id: OidcIssuer.jwt_issuer_id_for_client(fv5000),
-          subject: fv5002 || OidcSubject.for(@client, resource_type: "client"),
-          client_id: fv5001 || fv5000.client_id,
-        )
-      end
-    cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE] = @refresh_token
-    refusal = OidcTokenExchangeCoordinator::Result.new(
-      success: false, token_response: nil, error: "invalid_grant", error_description: "invalid refresh",
-      access_expires_at: nil, refresh_expires_at: nil,
-    )
-
-    OidcTokenExchangeCoordinator.stub(:call, refusal) do
-      @request.set_header("HTTP_SEC_FETCH_SITE", "same-origin")
-      patch :update
-    end
-
-    assert_response :unauthorized
-    assert_not_equal "mutated", response.body
-  end
-
-  test "an access-valid GET takes no refresh lock and rotates nothing" do
-    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = @access_token
-    cookies[OidcRpBrowserCredentialContract::REFRESH_COOKIE] = @refresh_token
-
-    OidcTokenExchangeCoordinator.stub(:call, ->(**) { raise RuntimeError, "refresh must not run" }) do
+  test "authentication refusal records credential presence without exposing either token" do
+    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = "invalid-access-do-not-log"
+    cookies.delete(OidcRpBrowserCredentialContract::REFRESH_COOKIE)
+    events = []
+    Rails.logger.stub(:info, ->(message) { events << message.to_s }) do
       get :show, params: { required: "1" }
     end
 
-    assert_response :success
-    assert_equal 0, @rp_session.reload.refresh_generation
+    assert_response :redirect
+    event = events.find { |message| message.include?("auth.session.authentication_required") }
+
+    assert event, "the authentication refusal must be observable"
+    assert_includes event, "invalid"
+    assert_includes event, "access_credential_presented"
+    assert_not_includes events.join, "invalid-access-do-not-log"
+    assert_not_includes events.join, @tokens.fetch(:refresh_token)
   end
 
   private
 
-  # CSRF is verified by real Rails forgery protection for this test only (D-113).
+  def replace_access_claim(claim, value)
+    payload = @payload.merge(claim => value)
+    issuer_id = OidcIssuer.jwt_issuer_id_for_client(OidcClientRegistry.find!("edit-org-ww"))
+    token = JitSecurityJwtKeyring.encode(payload, typ: "at+jwt", issuer_id:)
+    cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = token
+    # Functional tests copy the previous request cookies over the browser jar before dispatch.
+    @request.cookies[OidcRpBrowserCredentialContract::ACCESS_COOKIE] = token
+  end
 end
 
-class BrowserRpUnauthenticatedBasePasskeyTest < ActionDispatch::IntegrationTest
-  test "Base passkey management without a session reaches the authentication gate in every account realm" do
-    [
-      ["app", new_base_app_identity_passkey_path(ri: "jp", format: :json)],
-      ["org", new_base_org_identity_passkey_path(ri: "jp", format: :json)],
-    ].each do |realm, path|
-      client = OidcClientRegistry.find!("base-#{realm}-ww")
-      browser = open_session
-      browser.https!
-      browser.host!(URI.parse(client.redirect_uris.first).host)
-      output = StringIO.new
-      logger = ActiveSupport::Logger.new(output)
-      request_id = "unauthenticated-base-passkeys-#{realm}"
+class BrowserRpAuthenticationDefaultProbeTest < ActionController::TestCase
+  self.fixture_table_names = []
 
-      Rails.stub(:logger, logger) do
-        browser.get(path, headers: { "Sec-Fetch-Site" => "same-origin", "X-Request-ID" => request_id })
-      end
+  tests Edit::Org::BrowserRpAuthenticationDefaultProbeController
 
-      assert_equal 401, browser.response.status, "#{realm}: #{browser.response.body.first(100)}"
-      assert_equal({ "error" => "Unauthorized" }, JSON.parse(browser.response.body))
-      event = output.string.lines.filter_map do |line|
-        next unless line.start_with?("{")
+  test "default trust origins are empty and unimplemented RP identity hooks fail explicitly" do
+    probe = Edit::Org::BrowserRpAuthenticationDefaultProbeController.new
 
-        parsed = JSON.parse(line)
-        parsed if parsed["event"] == "auth.session.authentication_required"
-      end.fetch(0)
-
-      assert_equal request_id, event.fetch("data").fetch("request_id")
-      assert_equal request_id, browser.response.headers.fetch("X-Request-ID")
-    end
+    assert_equal [], probe.trusted_origins
+    assert_raises(NotImplementedError) { probe.client_id_probe }
+    assert_raises(NotImplementedError) { probe.resource_type_probe }
   end
 end

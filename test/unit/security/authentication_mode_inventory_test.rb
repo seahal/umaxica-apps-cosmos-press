@@ -2,85 +2,20 @@
 # frozen_string_literal: true
 
 require "test_helper"
-# require "helpers/global_test_support"
 
 module Security
   class AuthenticationModeInventoryTest < ActiveSupport::TestCase
     self.fixture_table_names = []
 
-    class ParentController < ApplicationController
-      include AuthenticationBase
-
-      declare_authentication_mode! :open
+    test "Edit surface application controller defaults to deny_all" do
+      assert_equal :deny_all, Edit::Org::ApplicationController.authentication_mode_for(:index)
     end
 
-    class UndeclaredController < ParentController
-    end
-
-    class ConstantController < ApplicationController
-      include AuthenticationBase
-
-      AUTHENTICATION_MODE = :guest
-    end
-
-    class PrivateController < ApplicationController
-      include AuthenticationBase
-
-      declare_authentication_mode! :private
-    end
-
-    class MixedController < ApplicationController
-      include AuthenticationBase
-
-      declare_authentication_mode! :deny_all
-      declare_authentication_mode! :open, only: :index
-      declare_authentication_mode! :guest, only: :new
-    end
-
-    test "undeclared concrete controllers resolve to deny_all instead of inheriting parent mode" do
-      assert_equal :open, ParentController.authentication_mode_for(:index)
-      assert_empty UndeclaredController.access_policy_rules
-      assert_empty UndeclaredController.local_authentication_mode_rules
-      assert_equal :deny_all, UndeclaredController.authentication_mode_for(:index)
-    end
-
-    test "legacy access policy DSL temporarily maps to authentication mode metadata" do
-      assert_equal :private, PrivateController.authentication_mode_for(:show)
-    end
-
-    test "local AUTHENTICATION_MODE constant is honored without inheritance" do
-      assert_equal :guest, ConstantController.authentication_mode_for(:show)
-    end
-
-    test "action-specific authentication mode rules override the deny_all default" do
-      assert_equal :open, MixedController.authentication_mode_for(:index)
-      assert_equal :guest, MixedController.authentication_mode_for(:new)
-      assert_equal :deny_all, MixedController.authentication_mode_for(:show)
-    end
-
-    test "surface application controllers default to deny_all" do
-      [
-        Auth::App::ApplicationController,
-        Auth::Org::ApplicationController,
-        Base::App::ApplicationController,
-        Base::Org::ApplicationController,
-        Core::App::ApplicationController,
-        Core::Org::ApplicationController,
-        Warp::App::ApplicationController,
-        Warp::Org::ApplicationController,
-      ].each do |controller_class|
-        assert_equal :deny_all, controller_class.authentication_mode_for(:index), controller_class.name
-      end
-    end
-
-    # The com surfaces no longer include AuthenticationBase, so the inventory covers the
-    # controllers that still carry an authentication boundary. Anonymous com controllers are checked
-    # by Base::Com::ApplicationControllerTest and the Warp::Com controller tests instead.
     test "controller files declare a local authentication mode" do
       missing =
         Rails.root.glob("app/controllers/**/*_controller.rb").filter_map do |path|
           controller_class = controller_class_for(path)
-          next unless controller_class&.include?(AuthenticationBase)
+          next unless controller_class&.include?(BrowserRpAuthentication)
 
           relative_path = path.relative_path_from(Rails.root).to_s
           content = File.binread(path).encode("UTF-8", invalid: :replace, undef: :replace)
@@ -120,15 +55,11 @@ module Security
           controller_name = route.defaults[:controller]
           action_name = route.defaults[:action]
           next if controller_name.blank? || action_name.blank?
-          # Development-only inertia_rails DevTools; RuntimeRoleRouteOwnershipTest shows these
-          # routes do not match outside development.
-          next if controller_name == "inertia_rails/devtools/entries"
 
           controller_class = "#{controller_name.camelize}Controller".safe_constantize
           next if controller_class.blank?
-          next unless application_controller_class?(controller_class)
-          # Anonymous com controllers carry no authentication boundary to declare.
-          next unless controller_class.include?(AuthenticationBase)
+          next unless controller_class.name.start_with?("Edit::")
+          next unless controller_class.include?(BrowserRpAuthentication)
           next if controller_class.const_defined?(:AUTHENTICATION_MODE, false)
           next if controller_class.respond_to?(:local_authentication_mode_rules) &&
             controller_class.local_authentication_mode_rules.present?
@@ -144,10 +75,6 @@ module Security
     def controller_class_for(path)
       relative = path.relative_path_from(Rails.root.join("app/controllers")).to_s.delete_suffix(".rb")
       "#{relative.camelize}Controller".safe_constantize
-    end
-
-    def application_controller_class?(controller_class)
-      controller_class.name.start_with?("Auth::", "Base::", "Core::", "Jump::", "Warp::", "Inertia")
     end
   end
 end

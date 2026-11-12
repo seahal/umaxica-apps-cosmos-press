@@ -4,6 +4,7 @@
 require "minitest/autorun"
 require "active_support"
 require "active_support/test_case"
+require "tmpdir"
 require_relative "../../lib/architecture_baseline"
 
 # Ratchet for the Umaxica architecture cops.
@@ -49,5 +50,46 @@ class ArchitectureBaselineTest < ActiveSupport::TestCase
                    "#{cop} baseline lists files with no remaining offenses. " \
                    "Run bin/rails architecture:baseline to drop them."
     end
+  end
+
+  def test_write_updates_both_generated_artifacts_in_name_order
+    Dir.mktmpdir("architecture-baseline-test") do |directory|
+      counts_path = Pathname.new(directory).join("architecture_baseline.yml")
+      todo_path = Pathname.new(directory).join("rubocop_todo.yml")
+      counts = {
+        "Umaxica/NoConcernInclusionHooks" => { "z.rb" => 1, "a.rb" => 2 },
+        "Umaxica/ExplicitMethodVisibility" => {},
+      }
+
+      with_output_paths(counts_path, todo_path) { ArchitectureBaseline.write(counts) }
+
+      assert_equal(
+        ArchitectureBaseline::HEADER + {
+          "Umaxica/NoConcernInclusionHooks" => { "a.rb" => 2, "z.rb" => 1 },
+          "Umaxica/ExplicitMethodVisibility" => {},
+        }.to_yaml,
+        counts_path.read,
+      )
+      assert_includes todo_path.read, "    - \"a.rb\"\n    - \"z.rb\"\n"
+    end
+  end
+
+  private
+
+  # `ArchitectureBaseline.write` intentionally targets repository artifacts; redirecting the two
+  # path constants keeps this behavior test isolated from the shared worktree.
+  def with_output_paths(counts_path, todo_path)
+    original_counts_path = ArchitectureBaseline::COUNTS_PATH
+    original_todo_path = ArchitectureBaseline::TODO_PATH
+    ArchitectureBaseline.send(:remove_const, :COUNTS_PATH)
+    ArchitectureBaseline.const_set(:COUNTS_PATH, counts_path)
+    ArchitectureBaseline.send(:remove_const, :TODO_PATH)
+    ArchitectureBaseline.const_set(:TODO_PATH, todo_path)
+    yield
+  ensure
+    ArchitectureBaseline.send(:remove_const, :COUNTS_PATH)
+    ArchitectureBaseline.const_set(:COUNTS_PATH, original_counts_path)
+    ArchitectureBaseline.send(:remove_const, :TODO_PATH)
+    ArchitectureBaseline.const_set(:TODO_PATH, original_todo_path)
   end
 end

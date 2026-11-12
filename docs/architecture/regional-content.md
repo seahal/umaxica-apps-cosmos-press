@@ -49,14 +49,11 @@ authenticated actor lifecycle.
 `acme` and `core` are both RP surfaces, but they do not share repository ownership: `acme` remains
 global, while `core` belongs to regional.
 
-Regional placement classifies the boundary, not the location of every line of code that serves it.
-`core`, `side`, and `palm` each have a route file in this repository
-(`config/routes/{core,side,palm}.rb`) carrying OIDC callbacks, sign-out, session and token
-endpoints, and the surface's health and crawler routes. Those are the credential and BFF halves of a
-regional surface, which is consistent with the rule below; the regional RP delivery itself is not
-here. `adr/core-browser-jwt-cookie-transport-and-nextjs-zero-cookie-boundary.md` records that split
-for `core`. The current Edge UI origin uses TanStack Start; the ADR name retains historical Next.js
-wording. Content-surface cells are listed in `docs/architecture/content-surface-matrix.md`.
+Regional placement classifies a boundary, not the location of every line of code that serves it. The
+former Core, Side and Palm Rails route files were removed by the 2026-11-10 Press surface reset;
+they are not current local credential or BFF endpoints. The table above preserves regional names as
+historical placement context. Current content-surface cells are listed in
+`docs/architecture/content-surface-matrix.md`.
 
 ## Current Rule
 

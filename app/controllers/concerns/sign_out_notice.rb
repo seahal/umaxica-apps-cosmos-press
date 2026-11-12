@@ -102,11 +102,10 @@ module SignOutNotice
     response.headers["Referrer-Policy"] = SIGN_OUT_REFERRER_POLICY
     # The session may already be revoked. Clearing the history of a session that survived only
     # costs a server round trip on Back, so the unknown outcome takes the signed-out side.
-    session[:inertia_clear_history] = true
     if respond_to?(:render_oidc_rp_logout_indeterminate, true)
       render_oidc_rp_logout_indeterminate
     else
-      render "auth/shared/sign_outs/indeterminate", status: :service_unavailable, layout: false
+      render sign_out_template("indeterminate"), status: :service_unavailable, layout: false
     end
   end
 
@@ -117,6 +116,8 @@ module SignOutNotice
 
     t("sign.shared.sign_out.completed_description")
   end
+
+  def sign_out_template(name) = "auth/shared/sign_outs/#{name}"
 
   def parse_sign_out_notice_time(value)
     Time.zone.iso8601(value.to_s)

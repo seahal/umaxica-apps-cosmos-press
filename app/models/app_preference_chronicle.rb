@@ -44,13 +44,6 @@ class AppPreferenceChronicle < ChronicleRecord
 
   include Retainable
 
-  # Audit rows may describe another subject type; the guarded callback checks AppPreference references.
-  belongs_to :app_preference,
-             class_name: "AppPreference",
-             foreign_key: :subject_id,
-             primary_key: :id,
-             inverse_of: :app_preference_chronicles,
-             optional: true
   belongs_to :app_preference_chronicle_level, foreign_key: :level_id, inverse_of: :app_preference_chronicles
   belongs_to :app_preference_chronicle_event,
              class_name: "AppPreferenceChronicleEvent",
@@ -89,16 +82,12 @@ class AppPreferenceChronicle < ChronicleRecord
     end
   end
 
-  # Helper methods for compatibility
   def app_preference
-    return if subject_id.blank?
-
-    AppPreference.find(subject_id) if subject_type == "AppPreference"
+    raise GovernanceUnavailableError, "Preference authority is unavailable"
   end
 
-  def app_preference=(pref)
-    self.subject_id = pref.id.to_s
-    self.subject_type = "AppPreference"
+  def app_preference=(_preference)
+    raise GovernanceUnavailableError, "Preference authority is unavailable"
   end
 
   private
@@ -111,14 +100,6 @@ class AppPreferenceChronicle < ChronicleRecord
   def coordinate_preference_reference!
     return unless subject_type == "AppPreference" || actor_type == "AppPreference"
 
-    self.class.lock_preference_audit_writers!
-    AppSettingRecord.connected_to(role: :writing) do
-      if subject_type == "AppPreference" && !AppPreference.exists?(id: subject_id)
-        raise ActiveRecord::RecordNotFound, "app preference audit subject is missing"
-      end
-      if actor_type == "AppPreference" && !AppPreference.exists?(id: actor_id)
-        raise ActiveRecord::RecordNotFound, "app preference audit actor is missing"
-      end
-    end
+    raise GovernanceUnavailableError, "Preference authority is unavailable"
   end
 end

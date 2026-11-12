@@ -46,6 +46,10 @@ module Publishing
       end
 
       PublishingCreateEntryResult.success(entry)
+    rescue ActiveRecord::RecordInvalid => e
+      raise unless slug_uniqueness_error?(e)
+
+      PublishingCreateEntryResult.failure(slug: "is already used by another entry in this locale")
     rescue ActiveRecord::RecordNotUnique => e
       raise unless e.message.include?(self.class.slug_index_name(entry_class))
 
@@ -55,6 +59,12 @@ module Publishing
     private
 
     attr_reader :entry_class, :locale, :slug, :title, :summary, :body, :operator_public_id
+
+    def slug_uniqueness_error?(error)
+      error.record.instance_of?(entry_class::SLUG_CLASS) &&
+        error.record.errors.attribute_names == [:slug] &&
+        error.record.errors.details.fetch(:slug).all? { |detail| detail.fetch(:error) == :taken }
+    end
 
     def create_revision(entry)
       entry.revisions.create!(

@@ -1,5 +1,9 @@
 # Persistent identifier acceptance
 
+> **Route boundary update (2026-11-10):** The Base ORG identity controllers referenced in older
+> examples below were removed. Their HTTP acceptance coverage is historical; model and database
+> identifier criteria remain pending the separate model/database review.
+
 These are user-approved I requirements, expressed as observable criteria, not verification results.
 Scope and interpretation follow C01–C15 in the [integrated acceptance index](integrated-stack.md).
 The accepted [identifier contract](../../adr/identifier-contract.md) records the user decisions;
@@ -428,11 +432,11 @@ triggers for additional tables.
   supported NanoID-21 or legacy UUID-v4 transaction form and rejects malformed, missing, stale,
   wrong-flow, wrong-purpose, wrong-surface or cross-purpose references without a silent lookup
   fallback. A transaction reference cannot be used as a generation, grant or result identity.
-- APP Email and Telephone sign-up issuers refuse an existing transaction whose expiry differs
-  from its parent Flow expiry, without rotating the OTP or changing the contact cooldown.
-  Delivery and verification also refuse that mismatch, including an existing verified receipt.
-  Issuance refuses a changed destination for the same candidate and Flow rather than creating a
-  second transaction for that binding, and locks the existing transaction before checking it.
+- APP Email and Telephone sign-up issuers refuse an existing transaction whose expiry differs from
+  its parent Flow expiry, without rotating the OTP or changing the contact cooldown. Delivery and
+  verification also refuse that mismatch, including an existing verified receipt. Issuance refuses a
+  changed destination for the same candidate and Flow rather than creating a second transaction for
+  that binding, and locks the existing transaction before checking it.
 - When a newly generated transaction collides, only the concrete table's named single-column
   `transaction_id` unique B-tree collision may be retried. Each retry uses a fresh reference inside
   a savepoint and the finite shared collision budget. Caller-supplied IDs, unrelated validation or
@@ -547,28 +551,12 @@ triggers for additional tables.
   credential identity, provider/protocol values or other ceremony transaction/grant issuers. Current
   evidence is revision-scoped and is not a permanent PASS for future code.
 
-## ID-3j — Social ceremony transaction and grant references
+## ID-3j — Social ceremony transaction and grant references (retired 2026-11-10)
 
-- Basis: I04/I06/I07/I10 and ID-3; scope: the APP Social ceremony grant issuer, signed grant/result
-  binding, provider callback handoff and replay transaction. Provider subject values, OAuth/OIDC
-  state, candidate capability references and result identities remain separate contracts.
-- Given a newly issued Social ceremony grant, the internally generated `transaction_id` and
-  `grant_jti` are separate NanoID-21 values from the shared public-ID mechanism. Provider-managed
-  subject identifiers and the explicit candidate capability reference are not reformatted or used as
-  the transaction or grant identity.
-- A generated collision may be retried only for the concrete table's named, single-column
-  `transaction_id` or `grant_jti` unique B-tree index. Each retry uses fresh generated values inside
-  a savepoint and the finite shared collision budget. Caller-supplied values, unrelated validation
-  or uniqueness failures and exhausted retries remain explicit failures; no provider, surface or
-  purpose fallback is permitted.
-- Check: `test/models/concerns/social_ceremony_transactionable_test.rb`, the Social ceremony
-  contract, result-issuer, consumer and transaction integration tests. Direct inspection must
-  confirm that provider subject binding, verified callback validation and result consumption retain
-  their existing trust boundaries. Static checks do not prove concurrent committed collision
-  behavior or live provider behavior.
-- This criterion does not classify Social `result_jti`, provider subject values, candidate `ref`,
-  OAuth/OIDC state, permanent external-identity identifiers or other ceremony issuers. Current
-  evidence is revision-scoped and is not a permanent PASS for future code.
+The local provider callback and grant-issuance flow were removed during the Press surface hard
+reset. The transaction model, lifecycle concern, scheduled purger and schema remain for existing
+records and the separate model/database review. This criterion no longer describes a current Press
+request writer.
 
 ## ID-3k — Step-up ceremony transaction and grant references
 
@@ -704,31 +692,12 @@ triggers for additional tables.
   transaction and grant values remain readable during the bounded transition. Current evidence is
   revision-scoped and is not a permanent PASS for future code.
 
-## ID-3p — Social candidate capability references
+## ID-3p — Social candidate capability references (retired 2026-11-10)
 
-- Basis: I04/I06/I07/I10 and ID-3; scope: the APP Social link candidate store, link-completion
-  request boundary and the candidate's verified callback/result consumers. Provider subject values,
-  OAuth/OIDC state, signed result identities and transaction/grant references remain separate
-  contracts.
-- Given a newly stored Social candidate, its self-controlled non-secret `ref` is a NanoID-21 value
-  generated through the shared public-ID mechanism. An already issued UUID-v4 candidate remains
-  readable during this bounded transition; no existing candidate is rewritten and no shared UUID
-  admission pattern is widened for unrelated flows.
-- A link-completion request accepts only a strict Social candidate reference: the new NanoID-21 form
-  or the retained UUID-v4 form. Missing, malformed, cross-purpose or unknown references are rejected
-  without a lookup fallback to another identity column. Provider callback verification,
-  actor/session binding, expiry and one-shot consumption remain authoritative.
-- A generated collision may be retried only for the concrete candidate table's named, single-column
-  `ref` unique B-tree index. Each retry uses a fresh value inside a savepoint and the finite shared
-  collision budget. Caller-supplied legacy values, unrelated validation or uniqueness failures and
-  exhausted retries remain explicit failures; provider values and candidate capability references
-  are never substituted for transaction or result identities.
-- Check: `test/services/identity/social_ceremony_contract_test.rb`,
-  `test/integration/acme_social_link_completion_test.rb` and
-  `test/integration/social_auth_link_test.rb`, plus direct inspection of
-  `IdentitySocialCeremonyCandidateStore` and `Auth::App::Social::LinkCompletionsController`. Static
-  checks do not prove concurrent committed collision behavior or live provider behavior. Evidence is
-  revision-scoped and is not a permanent PASS for future code.
+The local Social link-completion controller and candidate store were removed during the Press
+surface hard reset. This criterion no longer describes a current Press request or writer. Social
+candidate models and migrations remain for the separate model/database review; they were not changed
+by this cleanup.
 
 ## ID-3q — Step-Up passkey challenge references
 

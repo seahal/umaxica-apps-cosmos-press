@@ -61,15 +61,6 @@ class ObjectPlacementTest < Minitest::Test
     invalidator
   ).freeze
 
-  # Token minters keep the Issuer name and live in app/lib: they build and sign a payload and
-  # persist nothing, so the suffix describes the domain act rather than a state change. Decided in
-  # research/2026-08-29-object-placement-inventory.md after reading each Issuer individually.
-  TOKEN_MINTERS = %w(
-    app/lib/jump_rt_issuer.rb
-    app/lib/oidc_id_token_issuer.rb
-    app/lib/identity_step_up_ceremony_result_issuer.rb
-  ).freeze
-
   def test_write_side_objects_are_not_in_app_services
     offenders =
       ruby_files_under("app/services").select do |path|
@@ -79,14 +70,6 @@ class ObjectPlacementTest < Minitest::Test
     assert_empty offenders,
                  "app/services holds objects that perform a state change " \
                  "(see value-object-boundaries.mdc):\n#{offenders.join("\n")}"
-  end
-
-  def test_token_minters_stay_out_of_the_write_side_root
-    misplaced = TOKEN_MINTERS.reject { |path| File.exist?(File.join(REPOSITORY_ROOT, path)) }
-
-    assert_empty misplaced,
-                 "Token minters build and sign a payload and persist nothing, so they belong in " \
-                 "app/lib:\n#{misplaced.join("\n")}"
   end
 
   # app/validators is the one root Rails itself gives a meaning: ActiveModel wires its contents
@@ -132,7 +115,7 @@ class ObjectPlacementTest < Minitest::Test
 
   # An error namespace holds Error classes rather than being one, so it cannot carry the suffix
   # without the constant lying about what it is.
-  SUFFIX_EXEMPT = ["app/errors/identity_telephone_ceremony.rb"].freeze
+  SUFFIX_EXEMPT = [].freeze
 
   def test_every_file_names_its_own_role
     offenders =

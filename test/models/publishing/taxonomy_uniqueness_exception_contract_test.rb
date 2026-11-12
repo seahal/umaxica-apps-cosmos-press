@@ -19,7 +19,7 @@ class TaxonomyUniquenessExceptionContractTest < ActiveSupport::TestCase
   ].freeze
 
   FAMILIES.each do |vocabulary_class, term_class|
-    test "#{term_class.name} preserves the slug exception with either one or two unique conflicts" do
+    test "#{term_class.name} preflights slug conflicts while SQL retains both unique constraints" do
       vocabulary = vocabulary_class.create!(
         key: "exception_contract", kind: Publishing::TaxonomyKind::SINGLE_HIERARCHICAL,
         internal_name: "Contract",
@@ -33,9 +33,21 @@ class TaxonomyUniquenessExceptionContractTest < ActiveSupport::TestCase
                      position: 0, }
       first = term_class.create!(attributes)
       [0, 1].each do |position|
-        assert_raises(ActiveRecord::RecordNotUnique) do
+        assert_raises(ActiveRecord::RecordInvalid) do
           term_class.transaction(requires_new: true) { term_class.create!(attributes.merge(position: position)) }
         end
+        error =
+          assert_raises(ActiveRecord::RecordNotUnique) do
+            term_class.transaction(requires_new: true) do
+              term_class.insert_all!(
+                [first.attributes.except("id").merge(
+                  "public_id" => "z" * 21,
+                  "position" => position,
+                )],
+              )
+            end
+          end
+        assert_instance_of PG::UniqueViolation, error.cause
         assert_equal "first-root", first.reload.slug
       end
     end

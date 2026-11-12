@@ -38,18 +38,18 @@ class RpLocalSchemaContractTest < ActiveSupport::TestCase
   end
 
   test "client lookup cannot select an unknown or request-derived cell" do
-    assert_equal "rp_core_app", RpCellBinding.for_client("core-app-jp").connection
-    assert_raises(RpCellBinding::UnknownCell) { RpCellBinding.fetch("rp_core_app_jp") }
-    assert_raises(RpCellBinding::UnknownCell) { RpCellBinding.for_client("core-app-us") }
+    assert_equal "rp_edit_org", RpCellBinding.for_client("edit-org-ww").connection
+    assert_equal ["rp_edit_org"], RpCellBinding.connections
+    assert_raises(RpCellBinding::UnknownCell) { RpCellBinding.for_client("core-app-jp") }
   end
 
   test "local models reject a cross-cell identity binding" do
-    principal = RpCoreAppPrincipal.create!
-    identity_binding = RpCoreAppIdentityBinding.new(
+    principal = RpEditOrgPrincipal.create!
+    identity_binding = RpEditOrgIdentityBinding.new(
       principal:,
       issuer: "https://op.example.test",
-      realm: "com",
-      client_id: "core-app-jp",
+      realm: "app",
+      client_id: "edit-org-ww",
       subject: "subject-1",
     )
 
@@ -58,10 +58,10 @@ class RpLocalSchemaContractTest < ActiveSupport::TestCase
   end
 
   test "database cell constraint rejects an invalid tombstone shape" do
-    tombstone = RpCoreAppOpSessionBinding.new(
+    tombstone = RpEditOrgOpSessionBinding.new(
       issuer: "https://op.example.test",
-      realm: "com",
-      client_id: "core-app-jp",
+      realm: "app",
+      client_id: "edit-org-ww",
       sid: "unknown-sid",
     )
 
@@ -69,25 +69,25 @@ class RpLocalSchemaContractTest < ActiveSupport::TestCase
   end
 
   test "one live local session exists per OP binding and a revocation is absorbing" do
-    principal = RpCoreAppPrincipal.create!
-    identity_binding = RpCoreAppIdentityBinding.create!(
+    principal = RpEditOrgPrincipal.create!
+    identity_binding = RpEditOrgIdentityBinding.create!(
       principal:,
       issuer: "https://op.example.test",
-      realm: "app",
-      client_id: "core-app-jp",
+      realm: "org",
+      client_id: "edit-org-ww",
       subject: "subject-2",
     )
-    op_binding = RpCoreAppOpSessionBinding.create!(
+    op_binding = RpEditOrgOpSessionBinding.create!(
       identity_binding:,
       issuer: "https://op.example.test",
-      realm: "app",
-      client_id: "core-app-jp",
+      realm: "org",
+      client_id: "edit-org-ww",
       sid: "sid-2",
     )
     expires_at = 10.minutes.from_now
-    first_session = RpCoreAppSession.create!(op_session_binding: op_binding, absolute_expires_at: expires_at)
+    first_session = RpEditOrgSession.create!(op_session_binding: op_binding, absolute_expires_at: expires_at)
 
-    duplicate = RpCoreAppSession.new(op_session_binding: op_binding, absolute_expires_at: expires_at)
+    duplicate = RpEditOrgSession.new(op_session_binding: op_binding, absolute_expires_at: expires_at)
     assert_raises(ActiveRecord::RecordNotUnique) { duplicate.save!(validate: false) }
 
     revoked_at = Time.current.change(usec: 0)

@@ -5,10 +5,6 @@ require "test_helper"
 # require "helpers/global_test_support"
 
 class JumpRtReturnPolicyTest < ActiveSupport::TestCase
-  APP_ORG_CANDIDATE_GRAPH = JSON.parse(
-    Rails.root.join("test/fixtures/files/jump_app_org_candidate_graph.json").read,
-  ).freeze
-
   self.fixture_table_names = []
 
   test "normalize_origin returns nil for invalid URI" do
@@ -71,13 +67,6 @@ class JumpRtReturnPolicyTest < ActiveSupport::TestCase
     assert_nil JumpRtReturnPolicy.normalize_origin("https://")
   end
 
-  test "allowed_source returns true for valid source matching destination" do
-    assert JumpRtReturnPolicy.allowed_source?(
-      destination_origin: "https://www.umaxica.app",
-      source: "https://auth.umaxica.app",
-    )
-  end
-
   test "allowed_source returns false for unauthorized source" do
     assert_not JumpRtReturnPolicy.allowed_source?(
       destination_origin: "https://www.umaxica.app",
@@ -100,169 +89,15 @@ class JumpRtReturnPolicyTest < ActiveSupport::TestCase
     assert_equal 80, JumpRtReturnPolicy.default_port_for("http")
   end
 
-  test "only the approved app/org directed graph is allowed across all 81 canonical pairs" do
-    namespaces = {
-      "auth-app-ww" => "AUTH_APP",
-      "auth-org-ww" => "AUTH_ORG",
-      "base-app-ww" => "BASE_APP",
-      "base-org-ww" => "BASE_ORG",
-      "core-app-jp" => "CORE_APP",
-      "core-org-jp" => "CORE_ORG",
-      "palm-app-jp" => "PALM_APP",
-      "warp-app-jp" => "WARP_APP",
-      "warp-org-jp" => "WARP_ORG",
-    }
-    origins = {
-      "auth-app-ww" => "https://auth.umaxica.app",
-      "auth-org-ww" => "https://auth.umaxica.org",
-      "base-app-ww" => "https://www.umaxica.app",
-      "base-org-ww" => "https://www.umaxica.org",
-      "core-app-jp" => "https://jp.umaxica.app",
-      "core-org-jp" => "https://jp.umaxica.org",
-      "palm-app-jp" => "https://palm-jp.umaxica.app",
-      "warp-app-jp" => "https://www-jp.umaxica.app",
-      "warp-org-jp" => "https://www-jp.umaxica.org",
-    }
-    edges = [
-      ["auth-app-ww", "base-app-ww"],
-      ["auth-org-ww", "base-org-ww"],
-      ["base-app-ww", "auth-app-ww"],
-      ["base-app-ww", "core-app-jp"],
-      ["base-app-ww", "palm-app-jp"],
-      ["base-app-ww", "warp-app-jp"],
-      ["base-org-ww", "auth-org-ww"],
-      ["base-org-ww", "core-org-jp"],
-      ["base-org-ww", "warp-org-jp"],
-      ["core-app-jp", "base-app-ww"],
-      ["core-org-jp", "base-org-ww"],
-      ["palm-app-jp", "base-app-ww"],
-      ["warp-app-jp", "base-app-ww"],
-      ["warp-org-jp", "base-org-ww"],
-    ]
+  test "Press does not accept another repository's directed Jump edges as its own" do
+    origins = %w(
+      https://auth.example.invalid https://base.example.invalid https://visa.example.invalid
+      https://core.example.invalid https://warp.example.invalid https://palm.example.invalid
+      https://edit.example.invalid
+    )
 
-    assert_equal 14, edges.size
-    legacy_edges =
-      JumpRtReturnPolicy::ALLOWED_EDGES.reject { |source, destination|
-        source.start_with?("VISA_") ||
-          destination.start_with?("VISA_")
-      }
-
-    assert_equal edges.map { |source, destination| [namespaces.fetch(source), namespaces.fetch(destination)] }.sort,
-                 legacy_edges.sort
-    pairs = origins.keys.product(origins.keys)
-
-    assert_equal 81, pairs.size
-    pairs.each do |source, destination|
-      assert_equal edges.include?([source, destination]),
-                   JumpRtReturnPolicy.allowed_source?(
-                     destination_origin: origins.fetch(destination),
-                     source: origins.fetch(source),
-                   ),
-                   "#{source} -> #{destination}"
-    end
-  end
-
-  test "app/org candidate graph fixture matches the Rails graph across all 81 ordered pairs" do
-    namespace_by_node = {
-      "auth-app-ww" => "AUTH_APP",
-      "auth-org-ww" => "AUTH_ORG",
-      "base-app-ww" => "BASE_APP",
-      "base-org-ww" => "BASE_ORG",
-      "core-app-jp" => "CORE_APP",
-      "core-org-jp" => "CORE_ORG",
-      "warp-app-jp" => "WARP_APP",
-      "warp-org-jp" => "WARP_ORG",
-      "palm-app-jp" => "PALM_APP",
-    }
-    origins = APP_ORG_CANDIDATE_GRAPH.fetch("nodes")
-    edges = APP_ORG_CANDIDATE_GRAPH.fetch("edges")
-    namespaces = origins.keys.index_with { |node| namespace_by_node.fetch(node) }
-    expected_edges = edges.map { |source, destination| [namespaces.fetch(source), namespaces.fetch(destination)] }
-
-    assert_equal 9, origins.size
-    assert_equal 14, edges.size
-    legacy_edges =
-      JumpRtReturnPolicy::ALLOWED_EDGES.reject { |source, destination|
-        source.start_with?("VISA_") ||
-          destination.start_with?("VISA_")
-      }
-
-    assert_equal expected_edges.sort, legacy_edges.sort
-
-    pairs = origins.to_a.product(origins.to_a)
-
-    assert_equal 81, pairs.size
-    pairs.each do |(source, source_origin), (destination, destination_origin)|
-      assert_equal edges.include?([source, destination]),
-                   JumpRtReturnPolicy.allowed_source?(
-                     destination_origin: destination_origin,
-                     source: source_origin,
-                   ),
-                   "#{source} -> #{destination}"
-    end
-  end
-
-  test "A02-10: the Visa handoff table matches the signed Jump edge catalog" do
-    document = Rails.root.join("docs/operations/jump-rt-visa-edges.md").read
-    rows = document.scan(/^\| `([A-Z_]+)` \| `([^`]+)` \| `([A-Z_]+)` \| `([^`]+)` \| ([^|]+) \|$/)
-    expected =
-      JumpRtReturnPolicy::EDGE_CATALOG.filter_map do |edge|
-        issuer = edge.fetch(:issuer_namespace)
-        destination = edge.fetch(:destination_namespace)
-        next unless issuer.start_with?("VISA_") || destination.start_with?("VISA_")
-
-        [issuer, JumpRtSurface.issuer_origin(issuer), destination, JumpRtSurface.issuer_origin(destination),
-         edge.fetch(:purpose).tr("_", " "),]
-      end
-
-    assert_equal expected.sort, rows.map { |row| row.map(&:strip) }.sort
-    expected.each do |namespace, source, _destination, destination_origin, _purpose|
-      token = JumpRtIssuer.call(namespace: namespace, url: "#{destination_origin}/", dst: "internal")
-      issuer = JitSecurityJwtRegistry.surface(namespace)
-      payload, = JWT.decode(
-        token, JitSecurityJwtRegistry.public_key_for(issuer.id, issuer.current_kid), true,
-        algorithms: ["ES384"], verify_iss: true, iss: source, verify_aud: true,
-        aud: Rails.configuration.x.boot_config.fetch(:jump).audience,
-      )
-
-      assert_equal destination_origin, URI.parse(payload.fetch("url")).origin
-      assert JumpRtReturnPolicy.allowed_source?(destination_origin: destination_origin, source: source)
-    end
-  end
-
-  test "the Jump edge catalog is the source of the allowed graph and names Visa origins" do
-    projected =
-      JumpRtReturnPolicy::EDGE_CATALOG.map do |edge|
-        [edge.fetch(:issuer_namespace), edge.fetch(:destination_namespace)]
-      end
-
-    assert_equal projected.sort, JumpRtReturnPolicy::ALLOWED_EDGES.sort
-    visa_edge_count =
-      JumpRtReturnPolicy::EDGE_CATALOG.count do |edge|
-        edge.fetch(:issuer_namespace).start_with?("VISA_") || edge.fetch(:destination_namespace).start_with?("VISA_")
-      end
-
-    assert_equal 18, visa_edge_count
-
-    JumpRtReturnPolicy::EDGE_CATALOG.select do |edge|
-      edge.fetch(:issuer_namespace).start_with?("VISA_") || edge.fetch(:destination_namespace).start_with?("VISA_")
-    end.each do |edge|
-      issuer = edge.fetch(:issuer_namespace)
-      destination = edge.fetch(:destination_namespace)
-      issuer_origin = JumpRtSurface.issuer_origin(issuer)
-      destination_origin = JumpRtSurface.issuer_origin(destination)
-      token = JumpRtIssuer.call(
-        namespace: issuer, url: "https://jump-contract.example/oauth/authorize",
-        dst: "internal",
-      )
-      payload, = JWT.decode(token, nil, false)
-
-      assert_equal issuer_origin, payload.fetch("iss")
-      assert_equal "https://jump-contract.example/oauth/authorize", payload.fetch("url")
-      assert JumpRtReturnPolicy.allowed_source?(
-        destination_origin: destination_origin,
-        source: issuer_origin,
-      ), "#{issuer} -> #{destination} (#{edge.fetch(:purpose)})"
+    origins.product(origins).each do |source, destination|
+      assert_not JumpRtReturnPolicy.allowed_source?(destination_origin: destination, source: source)
     end
   end
 
@@ -286,27 +121,6 @@ class JumpRtReturnPolicyTest < ActiveSupport::TestCase
         destination_origin: "https://www.jp.umaxica.#{tld}",
         source: "https://log.umaxica.#{tld}",
       ), tld
-    end
-  end
-
-  def with_env(values)
-    saved = {}
-    values.each_key { |key| saved[key.to_s] = ENV[key.to_s] }
-    values.each do |key, value|
-      if value.nil?
-        ENV.delete(key)
-      else
-        ENV[key] = value
-      end
-    end
-    yield
-  ensure
-    values.each_key do |key|
-      if saved[key.to_s].nil?
-        ENV.delete(key)
-      else
-        ENV[key] = saved[key.to_s]
-      end
     end
   end
 end

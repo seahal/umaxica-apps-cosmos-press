@@ -25,38 +25,39 @@ class ApplicationPolicyTest < ActiveSupport::TestCase
   class TestPolicy < ApplicationPolicy; end
 
   def setup
-    @user = nil
+    @user = RpEditOrgPrincipal.new(id: 381)
+    @claims = { "authn_ctx" => "normal" }
     @record = TestRecord.new
-    @policy = TestPolicy.new(@record, user: @user)
+    @policy = TestPolicy.new(@record, user: @user, access_token_claims: @claims)
   end
 
   # Default behavior tests
   def test_index_returns_false_by_default
-    assert_not @policy.send(:index?)
+    assert_not @policy.apply(:index?)
   end
 
   def test_show_returns_false_by_default
-    assert_not @policy.send(:show?)
+    assert_not @policy.apply(:show?)
   end
 
   def test_create_returns_false_by_default
-    assert_not @policy.send(:create?)
+    assert_not @policy.apply(:create?)
   end
 
   def test_new_delegates_to_create
-    assert_equal @policy.send(:create?), @policy.send(:new?)
+    assert_equal @policy.apply(:create?), @policy.apply(:new?)
   end
 
   def test_update_returns_false_by_default
-    assert_not @policy.send(:update?)
+    assert_not @policy.apply(:update?)
   end
 
   def test_edit_delegates_to_update
-    assert_equal @policy.send(:update?), @policy.send(:edit?)
+    assert_equal @policy.apply(:update?), @policy.apply(:edit?)
   end
 
   def test_destroy_returns_false_by_default
-    assert_not @policy.send(:destroy?)
+    assert_not @policy.apply(:destroy?)
   end
 
   def test_relation_scope_denies_all_by_default
@@ -67,14 +68,14 @@ class ApplicationPolicyTest < ActiveSupport::TestCase
   end
 
   # Attributes tests
-  def test_user_attribute_is_accessible
-    policy = ApplicationPolicy.new(@record, user: @user)
+  def test_explicit_nil_user_attribute_is_accessible_but_has_no_domain_authority
+    policy = ApplicationPolicy.new(@record, user: nil, access_token_claims: @claims)
 
     assert_nil policy.user
   end
 
   def test_record_attribute_is_accessible
-    policy = ApplicationPolicy.new(@record, user: @user)
+    policy = ApplicationPolicy.new(@record, user: @user, access_token_claims: @claims)
 
     assert_equal @record, policy.record
   end

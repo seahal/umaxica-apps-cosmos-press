@@ -11,9 +11,6 @@ scope module: :help, as: :help do
   ].compact do
     # App surface controllers.
     scope module: :app, as: :app do
-      # Thin landing endpoint.
-      root to: "roots#index"
-
       # Deployment identifier endpoint.
       resource :revision, only: :show, format: false
 
@@ -63,9 +60,6 @@ scope module: :help, as: :help do
   ].compact do
     # Corporate surface controllers.
     scope module: :com, as: :com do
-      # Thin landing endpoint.
-      root to: "roots#index"
-
       # Deployment identifier endpoint.
       resource :revision, only: :show, format: false
 
@@ -115,9 +109,6 @@ scope module: :help, as: :help do
   ].compact do
     # Staff surface controllers.
     scope module: :org, as: :org do
-      # Thin landing endpoint.
-      root to: "roots#index"
-
       # Deployment identifier endpoint.
       resource :revision, only: :show, format: false
 

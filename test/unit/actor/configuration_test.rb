@@ -50,6 +50,7 @@ class Actor::ConfigurationTest < ActiveSupport::TestCase
     assert_not_predicate null, :present?
     assert_predicate null, :null?
     assert_not null.enabled?
+    assert_not null.configured?
     assert_predicate null, :disabled?
     assert_empty null.to_a
     assert_empty null.to_h

@@ -8,44 +8,28 @@ class DocsRouteContractTest < ActionDispatch::IntegrationTest
   DOCS_APP_HOST = ENV.fetch("PRIVATE_DOCS_SERVICE_URL")
   DOCS_COM_HOST = ENV.fetch("PRIVATE_DOCS_CORPORATE_URL")
   DOCS_ORG_HOST = ENV.fetch("PRIVATE_DOCS_STAFF_URL")
-  PUBLIC_DOCS_HOSTS = {
-    "docs.jp.umaxica.app" => "docs/app/roots",
-    "docs.jp.umaxica.com" => "docs/com/roots",
-    "docs.jp.umaxica.org" => "docs/org/roots",
-  }.freeze
-  PRIVATE_ORIGIN_HOSTS = {
-    "docs.app.localhost" => "docs/app/roots",
-    "docs.com.localhost" => "docs/com/roots",
-    "docs.org.localhost" => "docs/org/roots",
-  }.freeze
+  PUBLIC_DOCS_HOSTS = %w(docs.jp.umaxica.app docs.jp.umaxica.com docs.jp.umaxica.org).freeze
+  PRIVATE_ORIGIN_HOSTS = %w(docs.app.localhost docs.com.localhost docs.org.localhost).freeze
 
-  test "docs private origin hosts route to the matching surface" do
-    PRIVATE_ORIGIN_HOSTS.each do |host, controller|
+  test "docs private origin hosts route roots to the unknown-host fallback" do
+    PRIVATE_ORIGIN_HOSTS.each do |host|
       recognized = Rails.application.routes.recognize_path("http://#{host}/", method: :get)
 
-      assert_equal controller, recognized[:controller]
-      assert_equal "index", recognized[:action]
+      assert_equal "unknown_hosts", recognized[:controller]
+      assert_equal "show", recognized[:action]
     end
   end
 
-  test "docs public host aliases route to the matching surface" do
-    PUBLIC_DOCS_HOSTS.each do |host, controller|
+  test "docs public host aliases route roots to the unknown-host fallback" do
+    PUBLIC_DOCS_HOSTS.each do |host|
       recognized = Rails.application.routes.recognize_path("http://#{host}/", method: :get)
 
-      assert_equal controller, recognized[:controller]
-      assert_equal "index", recognized[:action]
+      assert_equal "unknown_hosts", recognized[:controller]
+      assert_equal "show", recognized[:action]
     end
   end
 
   test "docs app route contract" do
-    recognized = Rails.application.routes.recognize_path(
-      "http://#{DOCS_APP_HOST}/",
-      method: :get,
-    )
-
-    assert_equal "docs/app/roots", recognized[:controller]
-    assert_equal "index", recognized[:action]
-
     recognized = Rails.application.routes.recognize_path(
       "http://#{DOCS_APP_HOST}/health",
       method: :get,
@@ -114,14 +98,6 @@ class DocsRouteContractTest < ActionDispatch::IntegrationTest
 
   test "docs com route contract" do
     recognized = Rails.application.routes.recognize_path(
-      "http://#{DOCS_COM_HOST}/",
-      method: :get,
-    )
-
-    assert_equal "docs/com/roots", recognized[:controller]
-    assert_equal "index", recognized[:action]
-
-    recognized = Rails.application.routes.recognize_path(
       "http://#{DOCS_COM_HOST}/health",
       method: :get,
     )
@@ -188,14 +164,6 @@ class DocsRouteContractTest < ActionDispatch::IntegrationTest
   end
 
   test "docs org route contract" do
-    recognized = Rails.application.routes.recognize_path(
-      "http://#{DOCS_ORG_HOST}/",
-      method: :get,
-    )
-
-    assert_equal "docs/org/roots", recognized[:controller]
-    assert_equal "index", recognized[:action]
-
     recognized = Rails.application.routes.recognize_path(
       "http://#{DOCS_ORG_HOST}/health",
       method: :get,

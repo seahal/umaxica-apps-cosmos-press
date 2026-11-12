@@ -241,7 +241,7 @@ module Publishing
 
         version_assignment_class.connection_pool.with_connection do |connection|
           table = connection.quote_table_name(version_assignment_class.table_name)
-          columns = version_assignment_class.column_names - ["id"]
+          columns = version_assignment_class.column_names - %w(id position_snapshot)
           quoted_columns = columns.map { |column| connection.quote_column_name(column) }.join(", ")
           [[nil, PG::NotNullViolation], [-1, PG::CheckViolation],
            [2_147_483_648, PG::NumericValueOutOfRange],].each do |position, cause_class|

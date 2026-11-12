@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module ConfigValues
-  OidcAuthorityValues = Data.define(:sign, :acme, :visa, :core)
+  OidcAuthorityValues = Data.define(:sign, :acme, :visa)
 end
 
 ConfigValuesOidcAuthorityValues = ConfigValues::OidcAuthorityValues
@@ -20,10 +20,6 @@ class << ConfigValues::OidcAuthorityValues
       visa: {
         app: host_family_values.visa_service.to_s,
         staff: host_family_values.visa_staff.to_s,
-      }.freeze,
-      core: {
-        app: host_family_values.core_service.to_s,
-        staff: host_family_values.core_staff.to_s,
       }.freeze,
     ).freeze
   end

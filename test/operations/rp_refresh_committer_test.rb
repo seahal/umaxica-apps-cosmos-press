@@ -5,11 +5,11 @@ require "test_helper"
 class RpRefreshCommitterTest < ActiveSupport::TestCase
   self.fixture_table_names = []
 
-  ISSUER = "https://www.umaxica.app"
+  ISSUER = "https://www.umaxica.org"
   Outcome = OidcOpTokenClient::Result
 
   setup do
-    @cell = RpCellBinding.fetch("rp_core_app")
+    @cell = RpCellBinding.fetch("rp_edit_org")
     @key = OpenSSL::PKey::EC.generate("secp384r1")
     @session = RpCallbackCommitter.call(
       cell: @cell, issuer: ISSUER, subject: "subject-a", sid: "sid-1",
@@ -36,12 +36,10 @@ class RpRefreshCommitterTest < ActiveSupport::TestCase
 
     assert_equal %i(client_id deadline refresh_token require_https token_url), sent.keys.sort
     assert_equal "refresh-plain", sent.fetch(:refresh_token)
-    # Locally the first-party OP is reached through the local HTTP port, as the Code Flow callback is.
+    # Access owns the OP; Press sends the registered external HTTPS destination.
     sent_url = URI.parse(sent.fetch(:token_url))
 
-    local_port = Integer(ENV.fetch("PORT"), exception: false) || 3000
-
-    assert_equal ["http", "www.umaxica.app", local_port, "/oauth/token", false],
+    assert_equal ["https", "www.umaxica.org", 443, "/oauth/token", true],
                  [sent_url.scheme, sent_url.host, sent_url.port, sent_url.path, sent.fetch(:require_https)]
   end
 
@@ -65,7 +63,7 @@ class RpRefreshCommitterTest < ActiveSupport::TestCase
   test "a session revoked during dispatch never installs the returned tokens" do
     token =
       lambda do |**|
-        RpCoreAppOpSessionBinding.where(id: @session.op_session_binding_id).update_all(revoked_at: Time.current)
+        RpEditOrgOpSessionBinding.where(id: @session.op_session_binding_id).update_all(revoked_at: Time.current)
         success
       end
 
@@ -101,13 +99,13 @@ class RpRefreshCommitterTest < ActiveSupport::TestCase
       now = Time.current.to_i
       token = JWT.encode(
         { "iss" => ISSUER,
-          "aud" => ["core-app-jp"],
+          "aud" => ["edit-org-ww"],
           "exp" => now + 300,
           "nbf" => now - 5,
           "iat" => now - 5,
           "sub" => subject,
           "sid" => "binding-#{subject}",
-          "client_id" => "core-app-jp",
+          "client_id" => "edit-org-ww",
           "jti" => "wrong-binding",
           "scope" => "openid",
           "authn_ctx" => "normal", },
@@ -136,7 +134,7 @@ class RpRefreshCommitterTest < ActiveSupport::TestCase
         cell: @cell, issuer: ISSUER, subject: "ended-#{cohort}", sid: "ended-#{cohort}",
         absolute_expires_at: 1.hour.from_now,
       ).session
-      anchor = RpCoreAppOpSessionBinding.includes(identity_binding: :principal).find(session.op_session_binding_id)
+      anchor = RpEditOrgOpSessionBinding.includes(identity_binding: :principal).find(session.op_session_binding_id)
       if cohort == :binding
         anchor.revoke!
       else
@@ -169,7 +167,7 @@ class RpRefreshCommitterTest < ActiveSupport::TestCase
   test "a caller in a reading role still checks the session on the cell writer" do
     response = Outcome.new(outcome: :refused, token_response: nil, error: "invalid_grant")
     OidcOpTokenClient.stub(:refresh, response) do
-      RpCoreAppRecord.connected_to(role: :reading) do
+      RpEditOrgRecord.connected_to(role: :reading) do
         result = RpRefreshCommitter.call(
           cell: @cell, local_session_id: @session.public_id, refresh_token: "refresh-plain", issuer: ISSUER,
           jwks_client: nil, token_url: "#{ISSUER}/oauth/token",
@@ -240,13 +238,13 @@ class RpRefreshCommitterTest < ActiveSupport::TestCase
     now = Time.current.to_i
     {
       "iss" => ISSUER,
-      "aud" => ["core-app-jp"],
+      "aud" => ["edit-org-ww"],
       "exp" => now + 300,
       "nbf" => now - 5,
       "iat" => now - 5,
       "sub" => "subject-a",
       "sid" => "sid-1",
-      "client_id" => "core-app-jp",
+      "client_id" => "edit-org-ww",
       "jti" => "jti-1",
       "scope" => "openid",
       "authn_ctx" => "normal",

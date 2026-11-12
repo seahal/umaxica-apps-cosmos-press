@@ -51,13 +51,12 @@ module Publishing
       assert_equal [0, 1], assignments.map(&:position_snapshot)
     end
 
-    test "renaming or moving a term afterwards does not change what the version published" do
+    test "renaming a term afterwards does not change what the version published" do
       entry = publishing_draft(audience: "app", surface: "docs", slug: "frozen", title: "Frozen")
       assign_category(entry.current_revision, @setup_term)
       version = PromoteRevisionOperation.call(revision: entry.current_revision)
 
       @setup_term.update!(name: "新しい名前", slug: "renamed")
-      MoveTaxonomySubtreeOperation.call(term: @setup_term, new_parent: nil)
 
       snapshot = Docs::App::VersionSingleTaxonomyAssignment.find_by!(entry_version_id: version.reload.id)
 
@@ -119,7 +118,23 @@ module Publishing
         connection.execute("UPDATE publishing_entry_revisions SET title = 'drifted' WHERE id = #{revision.id}")
       }
       assert_database_rejects { connection.execute("DELETE FROM publishing_entry_revisions WHERE id = #{revision.id}") }
-      assert_database_rejects { assign_tags(revision, [@rails]) }
+      assert_raises(ActiveRecord::RecordInvalid) { assign_tags(revision, [@rails]) }
+      error =
+        assert_raises(ActiveRecord::StatementInvalid) do
+          Docs::App::RevisionMultipleTaxonomyAssignment.transaction(requires_new: true) do
+            Docs::App::RevisionMultipleTaxonomyAssignment.insert_all!(
+              [
+                { entry_revision_id: revision.id,
+                  vocabulary_id: @tag.id,
+                  vocabulary_kind: @tag.kind,
+                  taxonomy_term_id: @rails.id,
+                  locale: "ja",
+                  position: 0, },
+              ],
+            )
+          end
+        end
+      assert_instance_of PG::RestrictViolation, error.cause
       assert_database_rejects do
         connection.execute(
           "DELETE FROM publishing_revision_multiple_taxonomy_assignments WHERE " \

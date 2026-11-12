@@ -1,15 +1,12 @@
 # typed: false
 # frozen_string_literal: true
 
-# Shared receiver checks for the Publishing authority API under
-# /api/v0/publishing/:surface/:audience (R5-WU13, one.md section 6.4).
-#
-# Server-to-server from the Edit RP: the caller proves itself with an edit-org-ww private_key_jwt
-# bound to this exact URL and presents the Operator's current Access JWT. The authority itself
-# resolves the real Operator, applies the existing PublishingEntryPolicy and calls the existing
-# Operations; an RP-supplied boolean or Operator ID is never trusted. Answers are allowlisted JSON.
+# Publishing management remains unavailable until its external authorization and author identity
+# contracts are established. Authentication never falls back to retired local Access state or to
+# the Edit cell's local principal identifier; no management action may reach a query or mutation.
 module PublishingAuthorityApiEndpoint
   extend ActiveSupport::Concern
+  include ProblemDetailsRendering
 
   EDIT_CLIENT_ID = "edit-org-ww"
 
@@ -25,22 +22,7 @@ module PublishingAuthorityApiEndpoint
 
   def authenticate_publishing_caller!
     response.headers["Cache-Control"] = "no-store"
-    unless OidcClientRegistry.authenticate_assertion(
-      # The assertion audience is the exact endpoint URL without its query string.
-      EDIT_CLIENT_ID, request.headers["X-Client-Assertion"].to_s, token_url: "#{request.base_url}#{request.path}",
-    )
-      return render(json: { error: "invalid_client" }, status: :unauthorized)
-    end
-
-    auth = OidcAccessTokenAuthenticator.call(
-      access_token: request.authorization.to_s.delete_prefix("Bearer "), resource_type: "operator",
-      host: request.host, authorization_scheme: "Bearer",
-    )
-    unless auth.success? && auth.payload["client_id"] == EDIT_CLIENT_ID
-      return render(json: { error: "invalid_token" }, status: :unauthorized)
-    end
-
-    @publishing_operator = auth.resource
+    render_problem(:service_unavailable)
   end
 
   def publishing_entry_class

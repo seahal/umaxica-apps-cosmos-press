@@ -44,6 +44,7 @@ class OperatorChronicle < ChronicleRecord
   include Retainable
 
   attribute :level_id, default: OperatorChronicleLevel::NOTHING
+  attr_readonly :sign_flow_transaction_public_id, :sign_flow_halt_generation
 
   # Alias for backward compatibility
   alias_attribute :timestamp, :occurred_at
@@ -58,28 +59,43 @@ class OperatorChronicle < ChronicleRecord
   # subject_id/subject_type for cross-DB compatibility (no FK)
   validates :subject_id, presence: true
   validates :subject_type, presence: true
+  validates :sign_flow_transaction_public_id,
+            uniqueness: {
+              scope: :sign_flow_halt_generation,
+              conditions: -> { where(event_id: OperatorChronicleEvent::SIGN_FLOW_HALTED) },
+            },
+            if: :sign_flow_halted?, on: :create
+  validate :halt_correlation_context_is_valid, on: :create
 
   validates :event_id, numericality: { only_integer: true }, allow_nil: true
   validates :level_id, numericality: { only_integer: true }, allow_nil: true
   # Validate that event_id exists in staff_chronicle_events table
   validate :event_id_must_exist
   before_validation :default_actor_to_subject
+  before_validation :derive_halt_correlation, on: :create
   # Helper methods for compatibility with existing code
   before_create :set_timestamp
 
   scope :recent_activity_first, -> { order(arel_table[:occurred_at].desc, arel_table[:created_at].desc) }
+
+  public
+
+  def actor
+    super
+  rescue NameError => e
+    raise DependencyUnavailableError, "Historical actor authority is unavailable", cause: e
+  end
 
   def set_timestamp
     self.timestamp ||= Time.current
   end
 
   def staff
-    Operator.find(subject_id) if subject_type == "Operator"
+    raise GovernanceUnavailableError, "Identity authority is unavailable"
   end
 
-  def staff=(staff)
-    self.subject_id = staff.id.to_s
-    self.subject_type = "Operator"
+  def staff=(_staff)
+    raise GovernanceUnavailableError, "Identity authority is unavailable"
   end
 
   def event_id_must_exist
@@ -106,5 +122,33 @@ class OperatorChronicle < ChronicleRecord
 
     self.actor_id = subject_id
     self.actor_type = subject_type
+  end
+  private
+
+  def sign_flow_halted?
+    event_id == OperatorChronicleEvent::SIGN_FLOW_HALTED
+  end
+
+  def derive_halt_correlation
+    if sign_flow_halted? && context.is_a?(Hash)
+      correlation = context.stringify_keys
+      self.sign_flow_transaction_public_id = correlation["transaction_public_id"]
+      self.sign_flow_halt_generation = correlation["halt_generation"]
+    else
+      self.sign_flow_transaction_public_id = nil
+      self.sign_flow_halt_generation = nil
+    end
+  end
+
+  def halt_correlation_context_is_valid
+    return unless sign_flow_halted?
+
+    correlation = context.is_a?(Hash) && context.stringify_keys
+    return if correlation && %w(transaction_public_id halt_generation).all? do |key|
+      value = correlation[key]
+      value.is_a?(String) && value.present?
+    end
+
+    errors.add(:context, :invalid)
   end
 end

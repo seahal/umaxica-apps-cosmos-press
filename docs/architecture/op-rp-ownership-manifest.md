@@ -5,10 +5,10 @@ development catalog, controller source). The `OidcCallback` reader entry was rec
 current controller and service references on 2026-11-01; model counts and other reader rows were not
 regenerated.
 
-Current authentication boundary update (2026-11-07): app and org are the active authenticated realms.
-The com Auth, Core, and Warp RP paths and Visitor token issuance were retired. The inventory and
-read rows below are historical R5 worklist evidence; their `Visitor` and com-cell entries describe
-persisted/model state at the dated snapshot, not current route or authentication capability.
+Current route boundary update (2026-11-10): Press serves Edit ORG, Docs, Help, Info, News and its
+operator tools. Local Auth/Base/Core/Palm/Tech/Visa/Warp controller trees are retired. The inventory
+and read rows below are historical R5 worklist evidence; they describe the dated model snapshot, not
+current route or authentication capability.
 
 Owner specification: `one.md` sections 4, 5.3 and R5-WU01.
 

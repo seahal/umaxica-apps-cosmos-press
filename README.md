@@ -5,23 +5,17 @@
 
 ## Routing
 
-- `app`: end-user application; Palm is its browser relying party
-- `org`: staff and organization surface; Tech is its global operator relying party
-- `com`: anonymous public and corporate surface; it serves public preference entry and public
-  read-only pages, with no credential, session, admission, or OIDC relying-party boundary
-- `visa`: OpenID Provider and browser-bound authority for the app and org realms
-- `www`: Base browser relying party and identity/session-management surface for the app and org
-  realms
-- `net`: network-facing surface supporting other TLDs (`app`/`com`/`org`), including
-  cookie-authentication-less access
-- `dev`: support and status surface
+This repository serves only its own Press surfaces:
 
-Multi-domain Rails application serving these audience surfaces. Routing is host-constrained, so
-domain and subdomain matter in both development and production.
+- `edit` (`org`): staff publishing management and the independent Edit browser relying party
+- `info`, `docs`, `news`, and `help`: public content surfaces for `app`, `com`, and `org`
+- the repository's operator tools: Mission, Flipper, Blazer, PgHero, Swagger, and Coverband
 
-The OIDC authority is hosted by Visa (`visa.umaxica.app`, `.org`). Base is the separate browser RP
-and identity/session surface (`www.umaxica.app`, `.org`); its host-only cookies are never shared
-with Visa. `www.umaxica.com` is the anonymous preference entry, not an identity or session surface.
+Routes for the owned Press surfaces and operator tools are host-constrained. One unconstrained
+fallback route handles unknown hosts. Auth, Base, Core, Palm, Tech, Visa, and Warp are not hosted by
+this repository. Edit still uses Access Auth/Visa for its external OIDC flow and retains the Base
+domain values required by its existing preference and mail-link contracts; those integrations do not
+make those surfaces local Press routes.
 
 ## Stack
 
@@ -33,10 +27,9 @@ with Visa. `www.umaxica.com` is the anonymous preference entry, not an identity 
 
 ### Frontend
 
-- Two coexisting frontend approaches: Inertia Rails (React) and Rails' own default Vite Rails +
-  Stimulus + Turbo stack
-- Tailwind CSS via Vite, Propshaft for static assets
-- Vite and Bun for JavaScript build, linting, formatting, and tests
+- Rails ERB views with one Tailwind CSS entrypoint per owned surface, built through Vite Rails
+- Propshaft serves static non-browser assets
+- Bun runs Vite CSS builds, formatting, linting, type checking and OpenAPI validation
 
 ### Infrastructure
 
@@ -51,12 +44,9 @@ with Visa. `www.umaxica.com` is the anonymous preference entry, not an identity 
 UI implementation should treat the Digital Agency of Japan Design System introduction as reading
 before inventing screen patterns. Start at
 [the introduction](https://design.digital.go.jp/dads/introduction/) and
-`docs/reference/digital-agency-design-system.md`. This application's primitives remain in
-`src/components/ui/` and `docs/design.md`.
+`docs/reference/digital-agency-design-system.md`. Current Rails markup and shared CSS tokens are
+documented in `docs/design.md`.
 
-- JavaScript entrypoints are bundled through Vite Rails from `src/entrypoints`.
-- Stimulus controllers live in `src/controllers`.
-- JavaScript tests live in `gait/` and run directly with Vitest.
 - Browser CSS is one Vite stylesheet per surface under `src/styles/surfaces/`; each imports the
   shared token and base layers (`src/styles/theme.css`, `src/styles/base.css`).
 - Static non-browser assets are served by Propshaft.
@@ -171,15 +161,18 @@ services to loopback as well (`5432`, `5433`, and `6379` to `6381` by default) s
 can use them; containers continue to use Compose DNS names. See
 `docs/operations/development-host-port-exposure.md`.
 
-| Surface                    | URL                                                                                                              |
-| :------------------------- | :--------------------------------------------------------------------------------------------------------------- |
-| Base                       | `http://base.{app,com,org}.localhost:3000`                                                                       |
-| Visa (OIDC authority)      | `http://visa.{app,org}.localhost:3000`                                                                           |
-| Base (developer / network) | `http://base.{dev,net}.localhost:3000`                                                                           |
-| Auth                       | `http://auth.{app,org}.localhost:3000`                                                                           |
-| Core                       | `http://core.{app,org,net,dev}.localhost:3000`                                                                   |
-| Warp / Palm / Tech         | `http://warp.{app,com,org}.localhost:3000` / `http://palm.app.localhost:3000` / `http://tech.org.localhost:3000` |
-| Info / Help / Docs / News  | `http://{info,help,docs,news}.{app,com,org}.localhost:3000`                                                      |
+| Surface        | URL                                                                           |
+| :------------- | :---------------------------------------------------------------------------- |
+| Edit           | `https://edit.umaxica.org` and `http://edit.org.localhost:3000`               |
+| Info           | `http://info.{app,com,org}.localhost:3000`                                    |
+| Docs           | `http://docs.{app,com,org}.localhost:3000`                                    |
+| News           | `http://news.{app,com,org}.localhost:3000`                                    |
+| Help           | `http://help.{app,com,org}.localhost:3000`                                    |
+| Operator tools | `https://{mission,flipper,blazer,pghero,swagger,coverband}-press.umaxica.dev` |
+
+Operator tools also retain their route-local development aliases under `*.core.dev.localhost`.
+Configured private and public origins remain in the environment files; this table lists the stable
+local and canonical hosts without copying environment values.
 
 The application contract supplies PUBLIC and PRIVATE URL values in both supported modes; Compose
 supplies only service topology. Each route host constraint lists the configured host alongside its
@@ -188,9 +181,6 @@ Access, not Host Authorization, keeps the development listener non-public. See
 `docs/architecture/cloudflare-request-paths.md` for the trust boundaries and
 `research/implementation/2026-08-10-development-tunnel-access-verification.md` for the measured
 end-to-end evidence.
-
-`sign.{app,org}.localhost` resolves only when `AUTH_*_URL` and `PUBLIC_AUTH_*_URL` are unset. Under
-Compose the canonical local names for the credential gateway are `auth.*`.
 
 ## Code Quality
 
@@ -276,19 +266,6 @@ COVERAGE=true bundle exec rails test test/
 Rails generates a Valkey test-run namespace when one is not supplied. Coverage reports are written
 to `coverage/`. Set `PARALLEL_WORKERS=1` for a focused run when diagnosing a failure.
 
-### JavaScript Tests
-
-Run JavaScript tests with Vitest:
-
-```bash
-bun run test
-bun run test:watch                            # Watch mode
-bun run test:coverage
-```
-
-JavaScript tests are located in `gait/` and use Vitest. Coverage reports are written under
-`coverage/vite/`.
-
 ## Security and Quality Checks
 
 ```bash
@@ -324,18 +301,18 @@ lefthook run pre-commit
 ```
 
 The pre-commit hook formats staged files with oxfmt, autocorrects them with oxlint and RuboCop, and
-compiles every ERB template when a view changed. The pre-push hook runs `bun run ci` (JavaScript
-checks, Vitest with coverage, and the production build). Security audits and the full Rails suite
-run in CI, not in the hooks.
+compiles every ERB template when a view changed. The pre-push hook runs `bun run ci` (CSS and
+OpenAPI checks plus the production asset build). Security audits and the full Rails suite run in CI,
+not in the hooks.
 
 ## Troubleshooting
 
-| Problem                                  | Fix                                                                          |
-| :--------------------------------------- | :--------------------------------------------------------------------------- |
-| Tailwind changes are not reflected       | Run `bin/rails assets:clobber` and restart `bin/dev`                         |
-| Tests fail because databases are missing | Run `bin/rails db:prepare`                                                   |
-| `bin/dev` stops during boot              | Check `PUBLIC_AUTH_*_URL` and database availability                          |
-| Credentials cannot be decrypted          | Obtain the key; see `docs/operations/development-credential-provisioning.md` |
+| Problem                                  | Fix                                                                                                 |
+| :--------------------------------------- | :-------------------------------------------------------------------------------------------------- |
+| Tailwind changes are not reflected       | Run `bin/rails assets:clobber` and restart `bin/dev`                                                |
+| Tests fail because databases are missing | Run `bin/rails db:prepare`                                                                          |
+| `bin/dev` stops during boot              | Check the required `PUBLIC_AUTH_SERVICE_URL` and `PUBLIC_AUTH_STAFF_URL` plus database availability |
+| Credentials cannot be decrypted          | Obtain the key; see `docs/operations/development-credential-provisioning.md`                        |
 
 ## Repository Knowledge Base
 
@@ -349,10 +326,11 @@ ownership, authority and lifecycle.
 - [Plans](plans/README.md): unaccepted proposals and useful planning history.
 - `evidence/`: actual observations against a stated revision, not expectations.
 - [Manuals](manuals/README.md): user guidance; presence does not mean published.
-- `test/`, `gait/`, `e2e/`: Minitest, Vitest and Playwright respectively.
+- `test/`: Rails Minitest checks.
 
 ## Acknowledgement
 
 - Secrets must stay in Rails credentials; do not commit plaintext secrets.
-- WebAuthn origins are derived from `PUBLIC_AUTH_*_URL`; `TRUSTED_ORIGINS` is additive only.
+- WebAuthn origins are derived from `PUBLIC_AUTH_SERVICE_URL` and `PUBLIC_AUTH_STAFF_URL`;
+  `TRUSTED_ORIGINS` is additive only.
 - Public availability of this repository is not guaranteed permanently.

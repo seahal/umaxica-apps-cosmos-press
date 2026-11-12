@@ -11,17 +11,17 @@ class InfoRouteContractTest < ActionDispatch::IntegrationTest
 
   test "info internal origin and cloudflared public hosts route to matching surfaces" do
     {
-      "info.app.localhost" => "info/app/roots",
-      "info.com.localhost" => "info/com/roots",
-      "info.org.localhost" => "info/org/roots",
-      "info.umaxica.app" => "info/app/roots",
-      "info.umaxica.com" => "info/com/roots",
-      "info.umaxica.org" => "info/org/roots",
+      "info.app.localhost" => "unknown_hosts",
+      "info.com.localhost" => "unknown_hosts",
+      "info.org.localhost" => "unknown_hosts",
+      "info.umaxica.app" => "unknown_hosts",
+      "info.umaxica.com" => "unknown_hosts",
+      "info.umaxica.org" => "unknown_hosts",
     }.each do |host, controller|
       recognized = Rails.application.routes.recognize_path("http://#{host}/", method: :get)
 
       assert_equal controller, recognized[:controller]
-      assert_equal "index", recognized[:action]
+      assert_equal "show", recognized[:action]
     end
   end
 
@@ -41,7 +41,7 @@ class InfoRouteContractTest < ActionDispatch::IntegrationTest
 
   def assert_info_surface_routes(host, controller_prefix)
     {
-      "/" => ["#{controller_prefix}/roots", "index", :get],
+      "/" => ["unknown_hosts", "show", :get],
       "/health" => ["#{controller_prefix}/healths", "show", :get],
       "/health/liveness" => ["#{controller_prefix}/health/livenesses", "show", :get],
       "/health/readiness" => ["#{controller_prefix}/health/readinesses", "show", :get],

@@ -15,9 +15,9 @@ to all three surfaces. The background to the design decision See
 ## Purpose
 
 The authentication entity of this application is JWT It is a cookie and is not included in the Rails
-session. The Rails session maintains the flow state before authentication (OIDC/social state/nonce,
-email cooldown, WebAuthn challenge, etc.) only. `reset_session` regenerates the session ID at the
-time of privilege transition and prevents the session ID planted by an attacker from being reused as
+session. The Rails session maintains the flow state before authentication (OIDC state/nonce, email
+cooldown, WebAuthn challenge, etc.) only. `reset_session` regenerates the session ID at the time of
+privilege transition and prevents the session ID planted by an attacker from being reused as
 authenticated (defense in depth + temporary state cleaning).
 
 ## Reset points
@@ -59,8 +59,6 @@ The placement order of `reset_session` upon completion of step-up is a safety re
 The following routes are outside the scope of this policy. Both go through `log_in`, so
 `reset_session` has already been reached and is safe from fixed attacks.
 
-- org Social Login (`sign/org/auth/omniauth_callbacks_controller`) `log_in` Direct call (excluded
-  from regular entry aggregation to maintain MFA judgment behavior of existing staff).
 - OIDC Direct call to `log_in` for RP login and passkey registration login.
 - AAL promotion without going through `consume_step_up_session!` (risk enforcement, self-promotion
   when registering credentials).

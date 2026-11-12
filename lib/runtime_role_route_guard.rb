@@ -8,7 +8,7 @@
 # runtime_role_route_guard.rb) so it runs before every controller callback, ahead of any
 # `prepend_before_action` a subclass declares, and therefore before credential lookup or database
 # access. The owner comes from the fixed table in RuntimeRole, never from request input. The shared
-# transitional role serves every controller.
+# development role serves all assigned routes; unowned controllers remain denied.
 module RuntimeRoleRouteGuard
   private
 

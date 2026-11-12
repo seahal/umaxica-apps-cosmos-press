@@ -46,21 +46,19 @@ boundary and use the established lifecycle for that surface.
 
 Enforced boundary (the only sanctioned exceptions):
 
-- `AuthenticationBase` overrides `skip_before_action` / `skip_action_callback` to **hard-block**
-  skipping `:enforce_access_policy!` (raises `SkipNotAllowedError`). The authorization gate can
-  never be skipped.
-- Skipping `:enforce_verification_if_required`, `:enforce_step_up_prereqs!`, or
-  `:authenticate_client!` is permitted only for controllers in the reviewed
-  `SENSITIVE_SKIP_ALLOWLIST`, mechanically enforced by
-  `test/unit/security/forbidden_rails_patterns_test.rb`. A new file that skips one of these fails
-  that test until the boundary change is deliberately reviewed.
+- `BrowserRpAuthentication` overrides `skip_before_action` to **hard-block** skipping
+  `:enforce_access_policy!` (raises `BrowserRpAuthentication::SkipNotAllowedError`). The
+  authorization gate can never be skipped.
+- Skipping `:enforce_verification_if_required` or `:enforce_step_up_prereqs!` is permitted only for
+  controllers in the reviewed `SENSITIVE_SKIP_ALLOWLIST`, mechanically enforced by
+  `test/unit/security/forbidden_rails_patterns_test.rb`. The current allowlist is empty.
 - Skipping `:set_region` is permitted only for controllers listed in `RI_SKIP_ALLOWLIST`,
   mechanically enforced by `test/unit/security/ri_routing_contract_test.rb`. The list is compared by
   equality, so both a new skip and a silently removed one fail that test. Every entry must be a
   machine-to-machine endpoint that renders no regional HTML: skipping the callback on a controller
   that renders HTML strips `ri` from every URL that controller generates, because
   `PreferenceGlobal#default_url_options` reads the request params only and has no fallback. That is
-  the auth sign-in/sign-up regression recorded in
+  the regional URL propagation regression recorded in
   `research/ri-preference-routing-regression-audit.md`.
 - Skipping the remaining non-security context/preference callbacks (for example
   `:set_preferences_cookie`, `:set_color_theme`) is allowed where an endpoint legitimately does not
@@ -91,12 +89,9 @@ Reason:
 
 Use the correct API, JSON, or browser controller boundary instead of disabling protection locally.
 
-The Visa APP and ORG OAuth revocation leaves are protocol endpoints authenticated by registered
-client credentials. They inherit directly from `ActionController::API`, which does not install the
-browser forgery-protection callback. This is limited to
-`Visa::App::Oauth::RevocationsController` and `Visa::Org::Oauth::RevocationsController`; it does not
-authorize cookie-based mutation and does not extend to their realm's other OAuth endpoints. Browser
-logout confirmation remains forgery-protected.
+The local Auth, Base, Core, Palm, Tech, Visa and Warp controller roots were removed in the
+2026-11-10 Press surface hard reset. Protocol exceptions documented for those roots no longer
+describe current routes.
 
 ## Models
 

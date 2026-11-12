@@ -12,12 +12,12 @@
 require "test_helper"
 
 class OperatorChronicleLevelTest < ActiveSupport::TestCase
-  fixtures :operators, :operator_statuses, :operator_chronicle_levels, :operator_chronicle_events
+  fixtures :operator_chronicle_levels, :operator_chronicle_events
 
   test "restrict_with_error on destroy when audits exist" do
     level = OperatorChronicleLevel.find(OperatorChronicleLevel::NOTHING)
     OperatorChronicle.create!(
-      staff: Operator.find_by!(public_id: "BCDE2345FGHJ67KM"),
+      subject_id: 479, subject_type: "Operator", actor: level,
       staff_chronicle_event: OperatorChronicleEvent.find(OperatorChronicleEvent::LOGIN_SUCCESS),
       staff_chronicle_level: level,
       timestamp: Time.current,

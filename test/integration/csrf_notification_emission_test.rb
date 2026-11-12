@@ -15,8 +15,6 @@ require "test_helper"
 # Rails actually emits anything here or that the subscription is attached. These tests
 # close that gap by driving a real request.
 class CsrfNotificationEmissionTest < ActionDispatch::IntegrationTest
-  self.fixture_table_names = []
-
   SUBSCRIBED_EVENTS = %w(
     csrf_request_blocked.action_controller
     csrf_javascript_blocked.action_controller
@@ -43,33 +41,6 @@ class CsrfNotificationEmissionTest < ActionDispatch::IntegrationTest
                  "#{SUBSCRIBED_EVENTS.inspect}. A renamed or added event would go unrecorded."
   end
 
-  test "a cross-site POST is blocked and emits csrf_request_blocked with a usable payload" do
-    prepare_auth_sign_in_admission!
-    events =
-      capture_csrf_events do
-        post_cross_site_sign_in
-      end
-
-    blocked = events.find { |event| event.name == "csrf_request_blocked.action_controller" }
-
-    assert_not_nil blocked, "A cross-site POST must emit csrf_request_blocked. Got: #{events.map(&:name).inspect}"
-    assert_equal "cross-site", blocked.payload[:sec_fetch_site]
-    assert_predicate blocked.payload[:controller], :present?
-    assert_predicate blocked.payload[:action], :present?
-  end
-
-  test "the subscriber records a blocked request without logging the request or message" do
-    prepare_auth_sign_in_admission!
-    output = capture_logs { post_cross_site_sign_in }
-
-    assert_match "security.csrf.request_blocked", output,
-                 "The subscriber must turn the Rails event into an application log event."
-    # The Rails payload also carries :request and :message. Neither is safe to log:
-    # the request object and the unverified-request warning both quote the URL.
-    assert_no_match(/csrf-probe@example\.com/, output)
-    assert_no_match(/#<ActionDispatch::Request/, output)
-  end
-
   # Every phrasing unverified_request_warning_message can produce. Rails'
   # ActionController::LogSubscriber writes payload[:message] verbatim when
   # log_warning_on_csrf_failure is on, which puts an Origin/base_url pair into the log
@@ -83,27 +54,19 @@ class CsrfNotificationEmissionTest < ActionDispatch::IntegrationTest
     /\ACan't verify CSRF token authenticity/,
   ].freeze
 
-  # A blocked request also produces `rescue_from handled ActionController::
-  # InvalidCrossOriginRequest (<message>) - <backtrace>` from
-  # ActionController::LogSubscriber#rescue_from_handled (log_subscriber.rb:48-58). That is
-  # a different event (`rescue_from_handled.action_controller`), it is not governed by
-  # log_warning_on_csrf_failure, and it applies to every rescue_from in the application
-  # rather than to CSRF specifically. It is excluded here so this test measures only what
-  # the CSRF setting controls.
-  #
-  # It is worth knowing that the exception message it prints is the same
-  # unverified_request_warning_message, so on the Origin-mismatch branch that line does
-  # carry an Origin/base_url pair outside JitLogEvent.format. Narrowing it is an
-  # application-wide decision about rescue_from reporting, not a CSRF change, so it is
-  # deliberately out of scope for this test.
   RESCUE_FROM_LINE_MARKER = "rescue_from handled"
 
-  test "a blocked request is recorded once, by the subscriber, with no framework CSRF warning" do
-    prepare_auth_sign_in_admission!
-    output = capture_logs { post_cross_site_sign_in }
+  test "a cross-site POST is rejected by Edit before Rails CSRF verification" do
+    events = nil
+    output =
+      capture_logs do
+        events = capture_csrf_events { post_cross_site_sign_in }
+      end
 
-    assert_equal 1, output.scan("security.csrf.request_blocked").size,
-                 "The blocked request must be recorded exactly once."
+    assert_response :unprocessable_content
+    assert_empty events, "Edit's browser request guard rejects cross-site requests before Rails CSRF verification."
+    assert_no_match(/csrf-probe@example\.com/, output)
+    assert_no_match(/#<ActionDispatch::Request/, output)
 
     csrf_warning_lines =
       output.lines
@@ -111,33 +74,19 @@ class CsrfNotificationEmissionTest < ActionDispatch::IntegrationTest
         .select { |line| FRAMEWORK_WARNING_SHAPES.any? { |shape| line.match?(shape) } }
 
     assert_empty csrf_warning_lines,
-                 "Rails' own CSRF warning is still being written. It carries the Origin and " \
-                 "base_url as free text, which bypasses ObservabilityRedactor. Set " \
-                 "config.action_controller.log_warning_on_csrf_failure = false."
+                 "A rejected Edit request must not write the unredacted Rails CSRF warning."
   end
 
   private
 
   def post_cross_site_sign_in
-    with_forgery_protection do
-      post(
-        "/sign/in/email?ri=jp",
-        params: { user_email: { address: "csrf-probe@example.com" } },
-        headers: { "Sec-Fetch-Site" => "cross-site" },
-      )
-    end
-  end
-
-  def prepare_auth_sign_in_admission!
-    host!(ENV.fetch("PUBLIC_AUTH_SERVICE_URL"))
+    host!(Rails.configuration.x.boot_config.fetch(:hosts).edit_staff.host)
     https!
-    admission = OidcTestEntry.issue!(
-      surface: "app", intent: "sign_in",
-      base_browser_nonce: "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn", base_token: nil,
+    post(
+      "/sign?ri=jp",
+      params: { ri: "jp" },
+      headers: { "Origin" => "https://attacker.example", "Sec-Fetch-Site" => "cross-site" },
     )
-    admit_auth_ceremony_entry!("/sign/in", reference: admission.reference, params: { ri: "jp" })
-
-    assert_response :see_other
   end
 
   # Both loggers have to be swapped: the application subscriber writes through
@@ -171,14 +120,6 @@ class CsrfNotificationEmissionTest < ActionDispatch::IntegrationTest
     captured
   ensure
     subscriptions&.each { |subscription| ActiveSupport::Notifications.unsubscribe(subscription) }
-  end
-
-  def with_forgery_protection
-    previous = ActionController::Base.allow_forgery_protection
-    ActionController::Base.allow_forgery_protection = true
-    yield
-  ensure
-    ActionController::Base.allow_forgery_protection = previous
   end
 end
 

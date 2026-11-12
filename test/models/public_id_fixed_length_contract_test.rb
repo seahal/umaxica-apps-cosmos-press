@@ -8,6 +8,7 @@ require "test_helper"
 # assert_public_id_fixed_length; this guard keeps a newly added PublicId model from skipping it.
 class PublicIdFixedLengthContractTest < ActiveSupport::TestCase
   APP_ROOT = Rails.root.join("app").to_s
+  PRESS_RECORD_CLASSES = [PublishingRecord, RpEditOrgRecord].freeze
 
   Rails.application.eager_load!
 
@@ -16,6 +17,7 @@ class PublicIdFixedLengthContractTest < ActiveSupport::TestCase
       .reject(&:abstract_class?)
       .select { |model| model.name && model.include?(PublicId) }
       .select { |model| Object.const_source_location(model.name)&.first&.start_with?(APP_ROOT) }
+      .select { |model| PRESS_RECORD_CLASSES.include?(model.connection_class_for_self) }
       .select { |model| model.with_connection { |connection| connection.table_exists?(model.table_name) } }
       .select { |model| model.columns_hash.key?("public_id") }
       .sort_by(&:name)

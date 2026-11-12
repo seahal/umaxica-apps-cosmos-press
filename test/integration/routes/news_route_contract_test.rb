@@ -8,44 +8,28 @@ class NewsRouteContractTest < ActionDispatch::IntegrationTest
   NEWS_APP_HOST = ENV.fetch("PRIVATE_NEWS_SERVICE_URL")
   NEWS_COM_HOST = ENV.fetch("PRIVATE_NEWS_CORPORATE_URL")
   NEWS_ORG_HOST = ENV.fetch("PRIVATE_NEWS_STAFF_URL")
-  PUBLIC_NEWS_HOSTS = {
-    "news.jp.umaxica.app" => "news/app/roots",
-    "news.jp.umaxica.com" => "news/com/roots",
-    "news.jp.umaxica.org" => "news/org/roots",
-  }.freeze
-  PRIVATE_ORIGIN_HOSTS = {
-    "news.app.localhost" => "news/app/roots",
-    "news.com.localhost" => "news/com/roots",
-    "news.org.localhost" => "news/org/roots",
-  }.freeze
+  PUBLIC_NEWS_HOSTS = %w(news.jp.umaxica.app news.jp.umaxica.com news.jp.umaxica.org).freeze
+  PRIVATE_ORIGIN_HOSTS = %w(news.app.localhost news.com.localhost news.org.localhost).freeze
 
-  test "news private origin hosts route to the matching surface" do
-    PRIVATE_ORIGIN_HOSTS.each do |host, controller|
+  test "news private origin hosts route roots to the unknown-host fallback" do
+    PRIVATE_ORIGIN_HOSTS.each do |host|
       recognized = Rails.application.routes.recognize_path("http://#{host}/", method: :get)
 
-      assert_equal controller, recognized[:controller]
-      assert_equal "index", recognized[:action]
+      assert_equal "unknown_hosts", recognized[:controller]
+      assert_equal "show", recognized[:action]
     end
   end
 
-  test "news public host aliases route to the matching surface" do
-    PUBLIC_NEWS_HOSTS.each do |host, controller|
+  test "news public host aliases route roots to the unknown-host fallback" do
+    PUBLIC_NEWS_HOSTS.each do |host|
       recognized = Rails.application.routes.recognize_path("http://#{host}/", method: :get)
 
-      assert_equal controller, recognized[:controller]
-      assert_equal "index", recognized[:action]
+      assert_equal "unknown_hosts", recognized[:controller]
+      assert_equal "show", recognized[:action]
     end
   end
 
   test "news app route contract" do
-    recognized = Rails.application.routes.recognize_path(
-      "http://#{NEWS_APP_HOST}/",
-      method: :get,
-    )
-
-    assert_equal "news/app/roots", recognized[:controller]
-    assert_equal "index", recognized[:action]
-
     recognized = Rails.application.routes.recognize_path(
       "http://#{NEWS_APP_HOST}/health",
       method: :get,
@@ -114,14 +98,6 @@ class NewsRouteContractTest < ActionDispatch::IntegrationTest
 
   test "news com route contract" do
     recognized = Rails.application.routes.recognize_path(
-      "http://#{NEWS_COM_HOST}/",
-      method: :get,
-    )
-
-    assert_equal "news/com/roots", recognized[:controller]
-    assert_equal "index", recognized[:action]
-
-    recognized = Rails.application.routes.recognize_path(
       "http://#{NEWS_COM_HOST}/health",
       method: :get,
     )
@@ -188,14 +164,6 @@ class NewsRouteContractTest < ActionDispatch::IntegrationTest
   end
 
   test "news org route contract" do
-    recognized = Rails.application.routes.recognize_path(
-      "http://#{NEWS_ORG_HOST}/",
-      method: :get,
-    )
-
-    assert_equal "news/org/roots", recognized[:controller]
-    assert_equal "index", recognized[:action]
-
     recognized = Rails.application.routes.recognize_path(
       "http://#{NEWS_ORG_HOST}/health",
       method: :get,

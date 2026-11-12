@@ -6,10 +6,10 @@ require "test_helper"
 class OidcOpProtocolVerifiersTest < ActiveSupport::TestCase
   self.fixture_table_names = []
 
-  CLIENT_ID = "core-app-jp"
-  REALM = "app"
-  ISSUER = "https://base.example/app"
-  AUDIENCE = "core-app-jp"
+  CLIENT_ID = "edit-org-ww"
+  REALM = "org"
+  ISSUER = "https://visa.example/org"
+  AUDIENCE = "edit-org-ww"
 
   setup do
     @private_key = OpenSSL::PKey::EC.generate("secp384r1")
@@ -19,7 +19,7 @@ class OidcOpProtocolVerifiersTest < ActiveSupport::TestCase
   test "id token verifier names the failed check without disclosing token values" do
     {
       "nonce" => id_payload.merge("nonce" => "other-nonce"),
-      "act" => id_payload.merge("act" => "operator"),
+      "act" => id_payload.merge("act" => "client"),
     }.each do |detail, payload|
       result = id_verifier(token: encode(payload, typ: OidcOpIdTokenVerifier::TOKEN_TYPE)).call
 
@@ -48,7 +48,7 @@ class OidcOpProtocolVerifiersTest < ActiveSupport::TestCase
       issuer: ISSUER,
       expected_nonce_digest: Digest::SHA256.hexdigest(nonce),
       expected_max_age: 60,
-      expected_resource_type: "client",
+      expected_resource_type: "operator",
       jwks_client: jwks_client,
     )
 
@@ -88,7 +88,7 @@ class OidcOpProtocolVerifiersTest < ActiveSupport::TestCase
       "wrong issuer" => [valid_payload.merge("iss" => "https://other.example/app"), {}],
       "wrong audience" => [valid_payload.merge("aud" => ["other-client"]), {}],
       "wrong client" => [valid_payload.merge("client_id" => "warp-app-jp"), {}],
-      "wrong realm scope" => [valid_payload.merge("scope" => "openid domain:operator"), {}],
+      "wrong realm scope" => [valid_payload.merge("scope" => "openid domain:client"), {}],
       "unknown authentication context" => [valid_payload.merge("authn_ctx" => "standby"), {}],
       "missing session binding" => [valid_payload.except("sid"), {}],
     }
@@ -295,7 +295,7 @@ class OidcOpProtocolVerifiersTest < ActiveSupport::TestCase
       "wrong nonce" => id_payload.merge("nonce" => "other-nonce"),
       "wrong audience" => id_payload.merge("aud" => ["other-client"]),
       "wrong payload type" => id_payload.merge("typ" => "at+jwt"),
-      "wrong resource" => id_payload.merge("act" => "operator"),
+      "wrong resource" => id_payload.merge("act" => "client"),
       "stale authentication" => id_payload.merge("auth_time" => 1),
     }
 
@@ -330,7 +330,7 @@ class OidcOpProtocolVerifiersTest < ActiveSupport::TestCase
       issuer: ISSUER,
       expected_nonce: "nonce-1",
       expected_max_age: 60,
-      expected_resource_type: "client",
+      expected_resource_type: "operator",
       jwks_client: jwks_client,
     )
   end
@@ -385,7 +385,7 @@ class OidcOpProtocolVerifiersTest < ActiveSupport::TestCase
       "sid" => "sid-1",
       "client_id" => CLIENT_ID,
       "jti" => "jti-1",
-      "scope" => "openid domain:client read:self",
+      "scope" => "openid domain:operator read:org",
       "authn_ctx" => "normal",
     }
   end
@@ -407,7 +407,7 @@ class OidcOpProtocolVerifiersTest < ActiveSupport::TestCase
       "jti" => "jti-1",
       "sid" => "sid-1",
       "typ" => OidcOpIdTokenVerifier::TOKEN_TYPE,
-      "act" => "client",
+      "act" => "operator",
       "auth_time" => now - 5,
     }
   end

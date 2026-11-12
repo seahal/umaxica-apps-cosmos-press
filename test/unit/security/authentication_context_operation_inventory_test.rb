@@ -15,16 +15,14 @@ require "test_helper"
 class AuthenticationContextOperationInventoryTest < ActiveSupport::TestCase
   self.fixture_table_names = []
 
-  # The authorization engine reads this trusted context from the installed token claims.
+  # The authorization engine receives this verified request context explicitly.
   CONTEXTS_UNDER_COMPARISON = {
     normal: -> { AuthenticationContextValue.normal },
     standby: -> { AuthenticationContextValue.standby },
   }.freeze
-
   test "every declared policy operation decides identically for normal and standby sessions" do
     compared = 0
 
-    Actor.reset
     policy_classes.each do |policy_class|
       declared_rules(policy_class).each do |rule|
         outcomes =
@@ -34,12 +32,19 @@ class AuthenticationContextOperationInventoryTest < ActiveSupport::TestCase
               "scope" => "authenticated domain:operator read:org write:org",
               AuthenticationContextValue::CLAIM => authentication_context.key,
             }
-            Actor.install_context!(
-              authz: Actor::Authz.new(policy_user: nil, token_claims: token_claims, surface: "org"),
-            )
 
-            policy = policy_class.new(policy_record(policy_class), user: nil)
-            [name, !!policy.apply(rule)]
+            principal = RpEditOrgPrincipal.new(id: 381, disabled_at: nil)
+            policy = policy_class.new(
+              record_for(policy_class, principal), user: principal, access_token_claims: token_claims,
+            )
+            outcome =
+              begin
+                !!policy.apply(rule)
+              rescue GovernanceUnavailableError
+                # An unavailable authoritative owner is a closed outcome, never a permission.
+                :governance_unavailable
+              end
+            [name, outcome]
           end
 
         assert_equal outcomes.fetch(:normal), outcomes.fetch(:standby),
@@ -50,30 +55,25 @@ class AuthenticationContextOperationInventoryTest < ActiveSupport::TestCase
     end
 
     assert_operator compared, :>, 0, "the policy inventory must not be empty"
-  ensure
-    Actor.reset
   end
 
   test "an unrecognised authentication context denies every declared operation" do
-    Actor.reset
     token_claims = {
       "scope" => "authenticated domain:operator read:org write:org",
       AuthenticationContextValue::CLAIM => "elevated",
     }
-    Actor.install_context!(
-      authz: Actor::Authz.new(policy_user: nil, token_claims: token_claims, surface: "org"),
-    )
 
     policy_classes.each do |policy_class|
       declared_rules(policy_class).each do |rule|
-        policy = policy_class.new(policy_record(policy_class), user: nil)
+        principal = RpEditOrgPrincipal.new(id: 381, disabled_at: nil)
+        policy = policy_class.new(
+          record_for(policy_class, principal), user: principal, access_token_claims: token_claims,
+        )
 
         assert_not policy.apply(rule),
                    "#{policy_class}##{rule} must fail closed for an unrecognised context"
       end
     end
-  ensure
-    Actor.reset
   end
 
   test "the one session capability is step-up, and the named scope privileges stay closed" do
@@ -88,47 +88,35 @@ class AuthenticationContextOperationInventoryTest < ActiveSupport::TestCase
                  AuthenticationContextValue.standby.constrain_scopes(operator_scopes)
   end
 
-  test "an ordinary publishing write keeps the active-operator policy in normal and standby" do
-    operator = Operator.new
-
-    assert_predicate operator, :active?
-
+  test "publishing requires governance in normal and standby and denies unknown contexts" do
+    principal = RpEditOrgPrincipal.new(disabled_at: nil)
     entry = Publishing::Docs::Org::Entry.new
-    outcomes =
-      {
-        normal: AuthenticationContextValue::NORMAL_KEY,
-        standby: AuthenticationContextValue::STANDBY_KEY,
-        unknown: "elevated",
-      }.to_h do |name, context|
-        claims = {
-          "scope" => "authenticated domain:operator read:org write:org",
-          AuthenticationContextValue::CLAIM => context,
-        }
-        Actor.install_context!(
-          authz: Actor::Authz.new(policy_user: operator, token_claims: claims, surface: "org"),
-        )
-        policy = PublishingEntryPolicy.new(entry, user: operator)
-        [name, !!policy.apply(:create?)]
-      end
 
-    assert_equal({ normal: true, standby: true, unknown: false }, outcomes)
-  ensure
-    Actor.reset
+    [AuthenticationContextValue::NORMAL_KEY, AuthenticationContextValue::STANDBY_KEY].each do |context|
+      claims = {
+        "scope" => "authenticated domain:operator read:org write:org",
+        AuthenticationContextValue::CLAIM => context,
+      }
+      policy = PublishingEntryPolicy.new(entry, user: principal, access_token_claims: claims)
+
+      assert_raises(GovernanceUnavailableError) { policy.apply(:create?) }
+    end
+
+    assert_not PublishingEntryPolicy.new(
+      entry, user: principal, access_token_claims: { AuthenticationContextValue::CLAIM => "elevated" },
+    ).apply(:create?)
   end
 
   private
 
-  def policy_record(policy_class)
-    return nil unless policy_class == Authentication::AccessPolicy
-
-    AuthenticationBase::AccessPolicyContext.new(
-      policy: :public_strict,
-      options: {},
-      controller_name: "PolicyInventoryTestController",
-      action_name: "index",
-      logged_in: true,
-      current_resource_deactivated: false,
-    )
+  def record_for(policy_class, principal)
+    if policy_class == RpPrincipalPolicy
+      principal
+    elsif policy_class == PublishingEntryPolicy
+      Publishing::Docs::Org::Entry.new(locale: "en")
+    elsif policy_class == PublishingRemoteResultPolicy
+      PublishingAuthorityClient::Result.new(status: :ok, data: {}, errors: nil)
+    end
   end
 
   def policy_classes

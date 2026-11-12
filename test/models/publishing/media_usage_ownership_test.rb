@@ -78,12 +78,17 @@ module Publishing
     end
 
     test "duplicate revision media positions are rejected" do
-      publishing_revision_media_usage(revision: @revision, media_file: @media_file, position: 0)
+      usage = publishing_revision_media_usage(revision: @revision, media_file: @media_file, position: 0)
 
-      assert_raises(ActiveRecord::RecordNotUnique) do
+      assert_raises(ActiveRecord::RecordInvalid) do
         publishing_revision_media_usage(
           revision: @revision, media_file: publishing_media_file, position: 0,
         )
+      end
+      assert_raises(ActiveRecord::RecordNotUnique) do
+        usage.class.transaction(requires_new: true) do
+          usage.class.insert_all!([usage.attributes.except("id").merge("public_id" => "z" * 21)])
+        end
       end
     end
 
@@ -137,22 +142,6 @@ module Publishing
           revision: @revision, media_file: publishing_media_file, position: 1, field_path: "body.blocks.1",
         )
       end
-    end
-
-    test "restore copies version media onto a new editable revision" do
-      publishing_revision_media_usage(
-        revision: @revision, media_file: @media_file, role: "hero", field_path: "hero",
-      )
-      version = PromoteRevisionOperation.call(revision: @revision)
-
-      restored = RestoreVersionOperation.call(version:)
-      copied = Docs::App::RevisionMediaUsage.find_by!(entry_revision_id: restored.id)
-
-      assert_equal @media_file.id, copied.media_file_id
-      assert_equal "hero", copied.role
-      copied.update!(caption: "restored draft")
-
-      assert_equal "restored draft", copied.reload.caption
     end
 
     test "canonical schema creates owner-explicit media tables and never the union table" do

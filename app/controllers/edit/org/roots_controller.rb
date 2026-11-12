@@ -11,6 +11,7 @@ module Edit
       public
 
       def index
+        @region = RequestContextContract.normalize_region(params[:ri])
         response.headers["Cache-Control"] = "private, no-store"
       end
     end

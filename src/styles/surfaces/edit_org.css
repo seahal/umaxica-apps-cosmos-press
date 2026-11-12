@@ -13,10 +13,6 @@
 
 @plugin "@tailwindcss/typography";
 @plugin "@tailwindcss/forms";
-@plugin "tailwindcss-react-aria-components";
 
-@source "../../pages/edit/org";
-@source "../../layouts";
-@source "../../components";
-@source "../../features";
 @source "../../../app/views/edit/org";
+@source "../../../app/views/edit/shared";

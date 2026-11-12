@@ -1,5 +1,11 @@
 # Current transition inventory
 
+> **Route boundary update (2026-11-10):** Local Auth, Base, Core, Palm, Tech, Visa and Warp
+> controller trees and their route writers were retired. Transition rows naming those writers are
+> historical; token, identity, ceremony and status models were retained for the separate database
+> and model cleanup step. Use the Press surface hard-reset evidence for current routes and model
+> callers.
+
 ## O-9 sensitive admission (implementation in progress)
 
 `idp-sensitive-admission.mmd` describes the additive APP passkey, APP social-link, and ORG passkey
@@ -332,8 +338,8 @@ lifecycle status. Diagram: `idp-credential-registration-otp-challenge.mmd`.
 
 Legacy Source checks and immutable-proof triggers remain until remaining callers are retired. The
 Email series uses bounded keyed receipts and an original bootstrap FK bound into proof; Source
-binding/audit commit before Ticket receipts. APP Email HTTP and encrypted Notifier journeys
-passed targeted tests. `EmailCredentialRegistrationOtpDeliveryGuard` checks original
+binding/audit commit before Ticket receipts. APP Email HTTP and encrypted Notifier journeys passed
+targeted tests. `EmailCredentialRegistrationOtpDeliveryGuard` checks original
 owner/device/Root/candidate/generation and bootstrap Parent/Session/admission under locks through
 transport without a state transition. Resend and verification reject cancelled or invalid original
 bootstrap authority rather than adopting a later permission. Whole-suite checks, HTTP receipt-fault
@@ -342,17 +348,17 @@ production queue or secret was changed.
 
 ## idp-sign-up-otp-challenge
 
-Storage: APP typed Email/Telephone Ticket ceremonies' OTP verifier, generation, expiry,
-consumption and bounded receipt columns. This is a derived issued/verified proof axis, not a new
-signup flow status. Sources are the independently implemented `EmailSignUpOtpIssuer`,
+Storage: APP typed Email/Telephone Ticket ceremonies' OTP verifier, generation, expiry, consumption
+and bounded receipt columns. This is a derived issued/verified proof axis, not a new signup flow
+status. Sources are the independently implemented `EmailSignUpOtpIssuer`,
 `EmailSignUpOtpVerificationCommitter`, `EmailSignUpOtpDeliveryGuard` and corresponding Telephone
 operations. The old Source context/HOTP implementation is superseded for these wired signup paths;
 remaining legacy callers and column removal are separately tracked implementation work.
 
-The service requires the original browser nonce from the explicit APP locator session, compares
-its digest with the original Ticket and repeats admission after taking its row lock. The public
-Ticket ID is not a browser credential. Missing, mistyped, malformed, foreign or rotated nonces
-refuse without proof consumption; Rails CSRF and the separate HTTP phase gate remain intact.
+The service requires the original browser nonce from the explicit APP locator session, compares its
+digest with the original Ticket and repeats admission after taking its row lock. The public Ticket
+ID is not a browser credential. Missing, mistyped, malformed, foreign or rotated nonces refuse
+without proof consumption; Rails CSRF and the separate HTTP phase gate remain intact.
 
 | Transition ID                  | From               | Event                      | To                    | Guard and effect                                                                                                                             |
 | ------------------------------ | ------------------ | -------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -412,8 +418,7 @@ transition.
 ## idp-contact-audit-outbox
 
 Storage: `client_contact_audit_outboxes` in app Zenith. Sources: `ContactAuditOutbox`,
-`ContactBindingAuditRecorder`,
-`IdentityEmailPreferenceCommitter`, `ContactAuditDeliveryJob`. Tests:
+`ContactBindingAuditRecorder`, `IdentityEmailPreferenceCommitter`, `ContactAuditDeliveryJob`. Tests:
 `contact_audit_delivery_job_test.rb`, `contact_ceremony_source_audit_test.rb`,
 `identity_email_preference_committer_test.rb`, `identity_email_preference_commit_order_test.rb`.
 
@@ -719,11 +724,11 @@ continuation. The RP callback renders `/sign/interruption`; it does not return t
 is refused without changing the actor or terminal facts. HTTP coverage:
 `test/integration/email_signup_http_delivery_commit_test.rb`.
 
-APP contact entry is fail-closed (D-177): a second entry submit while the browser's attempt
-is not terminal-and-cleaned is refused and writes nothing; no entry path halts or cleans an earlier
-Flow. The former `superseded_by_restart` HALTED writer is removed. The birthdate checkpoint no
-longer halts by age (ADR `sign-up-one-day-minimum-age-and-feature-level-age-restrictions`, R-AU-50):
-an ineligible birthdate — today or later — is refused with the public date copy before it is written
+APP contact entry is fail-closed (D-177): a second entry submit while the browser's attempt is not
+terminal-and-cleaned is refused and writes nothing; no entry path halts or cleans an earlier Flow.
+The former `superseded_by_restart` HALTED writer is removed. The birthdate checkpoint no longer
+halts by age (ADR `sign-up-one-day-minimum-age-and-feature-level-age-restrictions`, R-AU-50): an
+ineligible birthdate — today or later — is refused with the public date copy before it is written
 (D-178) and the checkpoint stays active; other events still halt through `SignUpTermination` with
 same-request cleanup. The lifecycle edges and terminal absorption remain unchanged.
 
@@ -739,10 +744,10 @@ owner and the exact Ticket deadline refuse. This adds no state edge and does not
 complete fault/concurrency matrix.
 
 Signup policies compare expiry with the owning Ticket database clock; authorization is refused at
-and after the deadline. Real app Ticket policy tests cover the microsecond before, exact
-deadline and microsecond after. The controller rebuilds context and revalidates finalization policy
-after acquiring the Ticket lock, before Source mutation. Email HTTP deadline-crossing tests verify
-that refusal creates neither binding nor Source intent. Email and telephone Source finalizers
+and after the deadline. Real app Ticket policy tests cover the microsecond before, exact deadline
+and microsecond after. The controller rebuilds context and revalidates finalization policy after
+acquiring the Ticket lock, before Source mutation. Email HTTP deadline-crossing tests verify that
+refusal creates neither binding nor Source intent. Email and telephone Source finalizers
 additionally require an active owner under its lock; suspended-owner public tests preserve the
 candidate proof and create no intent. The complete fault/concurrency and exact recovery matrix
 remains unfinished.
@@ -769,54 +774,54 @@ Tests read: `test/services/sign_up/state_machine_test.rb`,
 `test/services/sign_up_expiry_race_test.rb`,
 `test/services/sign_up_termination_idempotence_test.rb`.
 
-| Transition ID           | Mutation kind         | From                    | Event / Trigger                            | To                      | Guard                                                                                               | Side effect                                           | Source file                           | Confidence |
-| ----------------------- | --------------------- | ----------------------- | ------------------------------------------ | ----------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------- | ---------- |
-| idp-client-sign-up:T001 | DOCUMENTED_TRANSITION | STARTED                 | submit_contact                             | CONTACT_PENDING         | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T002 | DOCUMENTED_TRANSITION | STARTED                 | advance_sign_up_to_credential! / model map | CREDENTIAL_PENDING      | Named helper; model-permitted source; DB clock and row lock                                         | status_id/state/step; terminal timestamp when defined | app/models/concerns/flow_sign_up.rb   | CONFIRMED  |
-| idp-client-sign-up:T003 | DOCUMENTED_TRANSITION | STARTED                 | start_social_callback                      | SOCIAL_CALLBACK_PENDING | Verified APP callback; Binding then Ceremony lock; active sign-up admission; no prior Flow/evidence | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T004 | DOCUMENTED_TRANSITION | STARTED                 | halt                                       | HALTED                  | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T005 | DOCUMENTED_TRANSITION | STARTED                 | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T006 | DOCUMENTED_TRANSITION | STARTED                 | cancel                                     | CANCELLED               | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T007 | DOCUMENTED_TRANSITION | CONTACT_PENDING         | advance_sign_up_to_credential! / model map | CREDENTIAL_PENDING      | Named helper; model-permitted source; DB clock and row lock                                         | status_id/state/step; terminal timestamp when defined | app/models/concerns/flow_sign_up.rb   | CONFIRMED  |
-| idp-client-sign-up:T008 | DOCUMENTED_TRANSITION | CONTACT_PENDING         | verify_contact                             | CONTACT_VERIFIED        | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T009 | DOCUMENTED_TRANSITION | CONTACT_PENDING         | halt                                       | HALTED                  | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T010 | DOCUMENTED_TRANSITION | CONTACT_PENDING         | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T011 | DOCUMENTED_TRANSITION | CONTACT_PENDING         | cancel                                     | CANCELLED               | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T012 | DOCUMENTED_TRANSITION | CREDENTIAL_PENDING      | verify_contact                             | CONTACT_VERIFIED        | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T013 | DOCUMENTED_TRANSITION | CREDENTIAL_PENDING      | halt                                       | HALTED                  | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T014 | DOCUMENTED_TRANSITION | CREDENTIAL_PENDING      | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T015 | DOCUMENTED_TRANSITION | CREDENTIAL_PENDING      | cancel                                     | CANCELLED               | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T016 | DOCUMENTED_TRANSITION | CONTACT_VERIFIED        | enter_guardrail                            | GUARDRAIL_PENDING       | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T017 | DOCUMENTED_TRANSITION | CONTACT_VERIFIED        | halt                                       | HALTED                  | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T018 | DOCUMENTED_TRANSITION | CONTACT_VERIFIED        | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T019 | DOCUMENTED_TRANSITION | CONTACT_VERIFIED        | cancel                                     | CANCELLED               | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T020 | DOCUMENTED_TRANSITION | SOCIAL_CALLBACK_PENDING | verify_sign_up_contact! / model map        | CONTACT_VERIFIED        | Caller reachability UNCONFIRMED                                                                     | status_id/state/step; terminal timestamp when defined | app/models/client_sign_up_flow.rb     | CONFIRMED  |
-| idp-client-sign-up:T021 | DOCUMENTED_TRANSITION | SOCIAL_CALLBACK_PENDING | advance_sign_up_to_guardrail! / model map  | GUARDRAIL_PENDING       | Caller reachability UNCONFIRMED                                                                     | status_id/state/step; terminal timestamp when defined | app/models/client_sign_up_flow.rb     | CONFIRMED  |
-| idp-client-sign-up:T022 | DOCUMENTED_TRANSITION | SOCIAL_CALLBACK_PENDING | complete_social_callback new identity      | CHECKPOINT_PENDING      | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T023 | DOCUMENTED_TRANSITION | SOCIAL_CALLBACK_PENDING | halt                                       | HALTED                  | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T024 | DOCUMENTED_TRANSITION | SOCIAL_CALLBACK_PENDING | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T025 | DOCUMENTED_TRANSITION | SOCIAL_CALLBACK_PENDING | cancel                                     | CANCELLED               | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T026 | DOCUMENTED_TRANSITION | GUARDRAIL_PENDING       | enter_checkpoint                           | CHECKPOINT_PENDING      | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T027 | DOCUMENTED_TRANSITION | GUARDRAIL_PENDING       | halt                                       | HALTED                  | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T028 | DOCUMENTED_TRANSITION | GUARDRAIL_PENDING       | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T029 | DOCUMENTED_TRANSITION | GUARDRAIL_PENDING       | cancel                                     | CANCELLED               | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T030 | DOCUMENTED_TRANSITION | CHECKPOINT_PENDING      | finalize accepted                          | FINALIZING              | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T031 | DOCUMENTED_TRANSITION | CHECKPOINT_PENDING      | halt                                       | HALTED                  | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T032 | DOCUMENTED_TRANSITION | CHECKPOINT_PENDING      | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T033 | DOCUMENTED_TRANSITION | CHECKPOINT_PENDING      | cancel                                     | CANCELLED               | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T034 | DOCUMENTED_TRANSITION | FINALIZING              | complete                                   | COMPLETED               | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T035 | DOCUMENTED_TRANSITION | FINALIZING              | halt                                       | HALTED                  | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T036 | DOCUMENTED_TRANSITION | FINALIZING              | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                               | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
-| idp-client-sign-up:T037 | DOCUMENTED_TRANSITION | FINALIZING              | cancel_sign_up! / model map                | CANCELLED               | Named helper permits this edge; StateMachine cancel rejects FINALIZING                              | status_id/state/step; terminal timestamp when defined | app/models/concerns/flow_sign_up.rb   | CONFIRMED  |
-| idp-client-sign-up:T040 | DOCUMENTED_TRANSITION | CHECKPOINT_PENDING      | clear_requirement                          | CHECKPOINT_PENDING      | Matching checkpoint_version; in-order uncleared registry requirement                                | completed_requirements; checkpoint_version +1         | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| Transition ID           | Mutation kind         | From                    | Event / Trigger                            | To                      | Guard                                                                                     | Side effect                                           | Source file                           | Confidence |
+| ----------------------- | --------------------- | ----------------------- | ------------------------------------------ | ----------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------- | ---------- |
+| idp-client-sign-up:T001 | DOCUMENTED_TRANSITION | STARTED                 | submit_contact                             | CONTACT_PENDING         | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T002 | DOCUMENTED_TRANSITION | STARTED                 | advance_sign_up_to_credential! / model map | CREDENTIAL_PENDING      | Named helper; model-permitted source; DB clock and row lock                               | status_id/state/step; terminal timestamp when defined | app/models/concerns/flow_sign_up.rb   | CONFIRMED  |
+| idp-client-sign-up:T003 | DOCUMENTED_TRANSITION | STARTED                 | start_social_callback                      | SOCIAL_CALLBACK_PENDING | Social-provider entry is retired in Press; the persisted status remains for existing rows | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | RETIRED    |
+| idp-client-sign-up:T004 | DOCUMENTED_TRANSITION | STARTED                 | halt                                       | HALTED                  | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T005 | DOCUMENTED_TRANSITION | STARTED                 | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T006 | DOCUMENTED_TRANSITION | STARTED                 | cancel                                     | CANCELLED               | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T007 | DOCUMENTED_TRANSITION | CONTACT_PENDING         | advance_sign_up_to_credential! / model map | CREDENTIAL_PENDING      | Named helper; model-permitted source; DB clock and row lock                               | status_id/state/step; terminal timestamp when defined | app/models/concerns/flow_sign_up.rb   | CONFIRMED  |
+| idp-client-sign-up:T008 | DOCUMENTED_TRANSITION | CONTACT_PENDING         | verify_contact                             | CONTACT_VERIFIED        | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T009 | DOCUMENTED_TRANSITION | CONTACT_PENDING         | halt                                       | HALTED                  | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T010 | DOCUMENTED_TRANSITION | CONTACT_PENDING         | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T011 | DOCUMENTED_TRANSITION | CONTACT_PENDING         | cancel                                     | CANCELLED               | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T012 | DOCUMENTED_TRANSITION | CREDENTIAL_PENDING      | verify_contact                             | CONTACT_VERIFIED        | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T013 | DOCUMENTED_TRANSITION | CREDENTIAL_PENDING      | halt                                       | HALTED                  | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T014 | DOCUMENTED_TRANSITION | CREDENTIAL_PENDING      | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T015 | DOCUMENTED_TRANSITION | CREDENTIAL_PENDING      | cancel                                     | CANCELLED               | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T016 | DOCUMENTED_TRANSITION | CONTACT_VERIFIED        | enter_guardrail                            | GUARDRAIL_PENDING       | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T017 | DOCUMENTED_TRANSITION | CONTACT_VERIFIED        | halt                                       | HALTED                  | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T018 | DOCUMENTED_TRANSITION | CONTACT_VERIFIED        | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T019 | DOCUMENTED_TRANSITION | CONTACT_VERIFIED        | cancel                                     | CANCELLED               | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T020 | DOCUMENTED_TRANSITION | SOCIAL_CALLBACK_PENDING | verify_sign_up_contact! / model map        | CONTACT_VERIFIED        | Retired; the model no longer advances this legacy status                                  | status_id/state/step; terminal timestamp when defined | app/models/client_sign_up_flow.rb     | RETIRED    |
+| idp-client-sign-up:T021 | DOCUMENTED_TRANSITION | SOCIAL_CALLBACK_PENDING | advance_sign_up_to_guardrail! / model map  | GUARDRAIL_PENDING       | Retired; the model no longer advances this legacy status                                  | status_id/state/step; terminal timestamp when defined | app/models/client_sign_up_flow.rb     | RETIRED    |
+| idp-client-sign-up:T022 | DOCUMENTED_TRANSITION | SOCIAL_CALLBACK_PENDING | complete_social_callback new identity      | CHECKPOINT_PENDING      | Retired; Press has no social callback transition                                          | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | RETIRED    |
+| idp-client-sign-up:T023 | DOCUMENTED_TRANSITION | SOCIAL_CALLBACK_PENDING | halt                                       | HALTED                  | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T024 | DOCUMENTED_TRANSITION | SOCIAL_CALLBACK_PENDING | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T025 | DOCUMENTED_TRANSITION | SOCIAL_CALLBACK_PENDING | cancel                                     | CANCELLED               | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T026 | DOCUMENTED_TRANSITION | GUARDRAIL_PENDING       | enter_checkpoint                           | CHECKPOINT_PENDING      | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T027 | DOCUMENTED_TRANSITION | GUARDRAIL_PENDING       | halt                                       | HALTED                  | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T028 | DOCUMENTED_TRANSITION | GUARDRAIL_PENDING       | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T029 | DOCUMENTED_TRANSITION | GUARDRAIL_PENDING       | cancel                                     | CANCELLED               | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T030 | DOCUMENTED_TRANSITION | CHECKPOINT_PENDING      | finalize accepted                          | FINALIZING              | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T031 | DOCUMENTED_TRANSITION | CHECKPOINT_PENDING      | halt                                       | HALTED                  | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T032 | DOCUMENTED_TRANSITION | CHECKPOINT_PENDING      | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T033 | DOCUMENTED_TRANSITION | CHECKPOINT_PENDING      | cancel                                     | CANCELLED               | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T034 | DOCUMENTED_TRANSITION | FINALIZING              | complete                                   | COMPLETED               | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T035 | DOCUMENTED_TRANSITION | FINALIZING              | halt                                       | HALTED                  | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T036 | DOCUMENTED_TRANSITION | FINALIZING              | expire                                     | EXPIRED                 | Model map; event-specific guard below                                                     | status_id/state/step; terminal timestamp when defined | app/services/sign_up_state_machine.rb | CONFIRMED  |
+| idp-client-sign-up:T037 | DOCUMENTED_TRANSITION | FINALIZING              | cancel_sign_up! / model map                | CANCELLED               | Named helper permits this edge; StateMachine cancel rejects FINALIZING                    | status_id/state/step; terminal timestamp when defined | app/models/concerns/flow_sign_up.rb   | CONFIRMED  |
+| idp-client-sign-up:T040 | DOCUMENTED_TRANSITION | CHECKPOINT_PENDING      | clear_requirement                          | CHECKPOINT_PENDING      | Matching checkpoint_version; in-order uncleared registry requirement                      | completed_requirements; checkpoint_version +1         | app/services/sign_up_state_machine.rb | CONFIRMED  |
 
 Current terminals are COMPLETED=100, EXPIRED=910, CANCELLED=920 and HALTED=930. FAILED=900,
 FINALIZED=70 and SIGN_IN_HANDOFF_PENDING=80 are retained tombstones with no incoming runtime
 transitions. `start` may return ok without writing but never reopens a terminal. StateMachine cancel
 is allowed only through CHECKPOINT_PENDING; CANCELLED replay is idempotent. The model's named
-cancel_sign_up! also permits FINALIZING, as explicitly distinguished in its row. Social transitions
-exist only for client/app; complete_social_callback advances the new identity to CHECKPOINT_PENDING
-without a sign-in handoff branch.
+cancel_sign_up! also permits FINALIZING, as explicitly distinguished in its row. The client model
+retains SOCIAL_CALLBACK_PENDING and terminal cleanup edges for existing rows; Press has no provider
+entry or checkpoint transition for that status.
 
 The checkpoint HTTP finalizer maps a pre-commit registration authorization refusal to HTTP 422
 without creating a Source completion. If the Flow is overdue, it calls the existing state-machine
@@ -1260,8 +1265,8 @@ same resolver. Re-verification retains its separate purpose check.
 
 WU-24c/d store one immutable `curfew_at` at OP database issuance time + 30 minutes; Switch copies
 the original deadline and refuses inconsistent history. `entry_intent` is NOT NULL and immutable:
-APP binding collection also locks every owned sign-up Flow in ID order and retains the whole set
-if any child is in progress, not physically purgeable, or awaiting artifact cleanup. A completed
+APP binding collection also locks every owned sign-up Flow in ID order and retains the whole set if
+any child is in progress, not physically purgeable, or awaiting artifact cleanup. A completed
 registration does not require artifact cleanup, but still obeys its own physical-retention boundary;
 the default infinite retention is not shortened here. Eligible Flow rows are deleted before their
 restrictive Binding. The collector does not delete principals or Auth-session rows.
@@ -1620,51 +1625,19 @@ Tests read: `test/models/concerns/ceremony_transactionable_test.rb`,
 | ----------------------------- | --------------------- | ------- | -------------------------------------- | -------- | -------------------------------------------- | ------------------------------- | ---------------------------------------------------- | ---------- |
 | idp-client-totp-ceremony:T001 | DOCUMENTED_TRANSITION | pending | consume_result! / Base final committer | consumed | unconsumed; TTL; row lock; unique result_jti | consumed_at and result evidence | app/models/concerns/totp_ceremony_transactionable.rb | CONFIRMED  |
 
-These concrete machines exist only in app/client. pending default; consumed terminal; TTL 10 minutes
-is predicate-only and background purge retires rows after retention. No canceled/failed state or
-persisted expiry edge. Social supports provider-specific signed Auth-to-Base link/login/signup
-results; provider outcome does not create a social transaction state. TOTP is enrollment rather than
-primary login; new step-up enrollment final committer directly writes child consumed along with
-candidate and parent transaction under ticket locks. Results are unique and repeated consumption
-rejects. Credential creation may occur in a separate principal DB; failures and replay tests
-describe compensation/retained proof, not a guaranteed distributed transaction.
+Client social ceremony model transitions and scheduled row cleanup remain. The former local
+Auth-to-Base callback/link completion workflow and social candidate store were removed 2026-11-10.
+Social provider outcomes do not create a separate ceremony transaction state. TOTP remains an
+enrollment flow rather than primary login; the active step-up enrollment committer writes its child
+state with the candidate and parent transaction under ticket locks. Results are unique, and repeated
+consumption rejects. Credential creation may occur in a separate principal database; compensation
+and retained-proof behavior does not provide a distributed transaction.
 
-For APP login callbacks, verified L1/L2 results matching the admitted sign-in/sign-up entry return
-localized HTTP 400 guidance to a new Base `/sign` request with normalized `ri` only. The refusal
-clears Auth continuity and creates no Root, authentication evidence, account or social Flow. Other
-callback failures retain the generic response; OTP requests do not disclose subject registration.
-
-## idp-client-social-ceremony
-
-Implementation: `SocialCeremonyTransactionable`. Storage: `client_social_ceremony_transactions` /
-`status`.
-
-Sources: `app/models/client_social_ceremony_transaction.rb`,
-`app/models/concerns/social_ceremony_transactionable.rb`,
-`app/controllers/auth/app/social/link_completions_controller.rb`.
-
-Tests: `test/models/concerns/social_ceremony_transactionable_test.rb`.
-
-| Transition ID                   | Mutation kind         | From    | Event / Trigger                          | To                         | Guard                                                 | Side effect                                                   | Source file                                                    | Confidence |
-| ------------------------------- | --------------------- | ------- | ---------------------------------------- | -------------------------- | ----------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------- | ---------- |
-| idp-client-social-ceremony:T001 | DOCUMENTED_TRANSITION | pending | consume_result! (no writer since WU-05g) | consumed                   | unconsumed; TTL; row lock; unique result_jti          | consumed_at and result evidence                               | app/models/concerns/social_ceremony_transactionable.rb         | CONFIRMED  |
-| idp-client-social-ceremony:T002 | DOCUMENTED_TRANSITION | pending | app link completion                      | pending with expired grant | pending; unconsumed; TTL; candidate and session match | expires_at set to current DB time after candidate consumption | app/controllers/auth/app/social/link_completions_controller.rb | CONFIRMED  |
-
-These concrete machines exist only in app/client. pending default; consumed terminal; TTL 10 minutes
-is predicate-only and background purge retires rows after retention. No canceled/failed state or
-persisted expiry edge. Social supports provider-specific signed Auth-to-Base link/login/signup
-results; provider outcome does not create a social transaction state. TOTP is enrollment rather than
-primary login; new step-up enrollment final committer directly writes child consumed along with
-Signup commit and committed-receipt lookup require the signed session reference to identify a
-redeemed sign-up Admission whose `id` matches the Flow's immutable `auth_admission_binding_id`. The
-committer reads this ownership on the OP writer before principal creation or fresh result and
-candidate consumption. The Base receiver also scopes completion-reference access to that Binding. A
-valid signature or independent browser proof does not authorize another Binding's Flow, and a
-rejected receipt leaves registered identities intact.
-
-candidate and parent transaction under ticket locks. Results are unique and repeated consumption
-rejects. Credential creation may occur in a separate principal DB; failures and replay tests
-describe compensation/retained proof, not a guaranteed distributed transaction.
+Sign-up commit and committed-receipt lookup require a signed session reference for a redeemed
+sign-up Admission whose `id` matches the Flow's immutable `auth_admission_binding_id`. The committer
+reads ownership on the OP writer before principal creation or fresh result; the Base receiver scopes
+completion-reference access to that Binding. A valid signature or independent browser proof does not
+authorize another Binding's Flow, and a rejected receipt leaves registered identities intact.
 
 ## idp-client-step-up-ceremony
 
@@ -2096,36 +2069,9 @@ indexed.
 
 ## idp-client-dbsc
 
-Implementation: `DbscBindable / DbscRegistrationService`. Storage: `client_tokens` /
-`actor token DBSC status FK`.
-
-Sources: `app/models/concerns/dbsc_bindable.rb`, `app/services/dbsc_registration_service.rb`,
-`app/services/dbsc_record_adapter.rb`, `app/controllers/concerns/authentication_base.rb`.
-
-Tests read: `test/models/concerns/dbsc_bindable_test.rb`,
-`test/services/dbsc/registration_service_test.rb`.
-
-| Transition ID        | Mutation kind         | From    | Event / Trigger                       | To      | Guard                                                                         | Side effect                                                  | Source file                               | Confidence |
-| -------------------- | --------------------- | ------- | ------------------------------------- | ------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------- | ---------- |
-| idp-client-dbsc:T001 | DOCUMENTED_TRANSITION | NOTHING | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-client-dbsc:T002 | DOCUMENTED_TRANSITION | ACTIVE  | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-client-dbsc:T003 | DOCUMENTED_TRANSITION | ACTIVE  | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-| idp-client-dbsc:T004 | DOCUMENTED_TRANSITION | PENDING | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-client-dbsc:T005 | DOCUMENTED_TRANSITION | PENDING | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-| idp-client-dbsc:T006 | DOCUMENTED_TRANSITION | FAILED  | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-client-dbsc:T007 | DOCUMENTED_TRANSITION | FAILED  | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-| idp-client-dbsc:T008 | DOCUMENTED_TRANSITION | REVOKE  | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-client-dbsc:T009 | DOCUMENTED_TRANSITION | REVOKE  | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-
-DBSC is independent of login token lifecycle and device-session dbsc_bound_at. FAILED/REVOKE are
-reference/predicate vocabulary with no located production setter; proof failure returns ok:false
-without writing FAILED. Token creation selects PENDING when a challenge is offered, otherwise
-NOTHING. No PENDING expiry state write: refresh downgrade to NOTHING leaves legacy binding explicit.
-Preference creation defaults are in topology; no preference pending writer was confirmed.
-Registration validates proof before acquiring record lock and does not recheck source state in its
-write; concurrency/replay is controlled by proof validation and challenge transport, not a
-transition map. Public downgrade can change any non-NOTHING status. No terminal state is universally
-enforced. Tests are inspected, not executed.
+Client token DBSC registration and verification writers were removed on 2026-11-10. Client token
+DBSC columns and reference models remain under the task boundary; this axis has no current
+application transition writer or HTTP route.
 
 ## idp-client-device-session
 
@@ -2230,39 +2176,9 @@ indexed.
 
 ## idp-visitor-dbsc
 
-Retired in WU-5 (2026-10-29): the `visitor_*` models/tables/writers and the com realm databases are
-deleted; this section is history only, preserved for traceability.
-
-Implementation: `DbscBindable / DbscRegistrationService`. Storage: `visitor_tokens` /
-`actor token DBSC status FK`.
-
-Sources: `app/models/concerns/dbsc_bindable.rb`, `app/services/dbsc_registration_service.rb`,
-`app/services/dbsc_record_adapter.rb`, `app/controllers/concerns/authentication_base.rb`.
-
-Tests read: `test/models/concerns/dbsc_bindable_test.rb`,
-`test/services/dbsc/registration_service_test.rb`.
-
-| Transition ID         | Mutation kind         | From    | Event / Trigger                       | To      | Guard                                                                         | Side effect                                                  | Source file                               | Confidence |
-| --------------------- | --------------------- | ------- | ------------------------------------- | ------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------- | ---------- |
-| idp-visitor-dbsc:T001 | DOCUMENTED_TRANSITION | NOTHING | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-visitor-dbsc:T002 | DOCUMENTED_TRANSITION | ACTIVE  | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-visitor-dbsc:T003 | DOCUMENTED_TRANSITION | ACTIVE  | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-| idp-visitor-dbsc:T004 | DOCUMENTED_TRANSITION | PENDING | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-visitor-dbsc:T005 | DOCUMENTED_TRANSITION | PENDING | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-| idp-visitor-dbsc:T006 | DOCUMENTED_TRANSITION | FAILED  | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-visitor-dbsc:T007 | DOCUMENTED_TRANSITION | FAILED  | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-| idp-visitor-dbsc:T008 | DOCUMENTED_TRANSITION | REVOKE  | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-visitor-dbsc:T009 | DOCUMENTED_TRANSITION | REVOKE  | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-
-DBSC is independent of login token lifecycle and device-session dbsc_bound_at. FAILED/REVOKE are
-reference/predicate vocabulary with no located production setter; proof failure returns ok:false
-without writing FAILED. Token creation selects PENDING when a challenge is offered, otherwise
-NOTHING. No PENDING expiry state write: refresh downgrade to NOTHING leaves legacy binding explicit.
-Preference creation defaults are in topology; no preference pending writer was confirmed.
-Registration validates proof before acquiring record lock and does not recheck source state in its
-write; concurrency/replay is controlled by proof validation and challenge transport, not a
-transition map. Public downgrade can change any non-NOTHING status. No terminal state is universally
-enforced. Tests are inspected, not executed.
+Visitor DBSC registration and verification writers were removed on 2026-11-10. Any persisted token
+columns and reference models remain under the task boundary; this axis has no current application
+transition writer or HTTP route.
 
 ## idp-com-preference-status
 
@@ -2305,41 +2221,8 @@ copy it to the replacement.
 
 ## idp-visitor-preference-dbsc
 
-Retired in WU-5 (2026-10-29): the `visitor_*` models/tables/writers and the com realm databases are
-deleted; this section is history only, preserved for traceability.
-
-Implementation: `DbscBindable / DbscRegistrationService`. Storage: `com_preferences` /
-`dbsc_status_id`.
-
-Sources: `app/models/concerns/dbsc_bindable.rb`, `app/services/dbsc_registration_service.rb`,
-`app/services/dbsc_record_adapter.rb`,
-`app/controllers/concerns/preference_dbsc_registration_endpoint.rb`.
-
-Tests read: `test/models/concerns/dbsc_bindable_test.rb`,
-`test/services/dbsc/registration_service_test.rb`,
-`test/controllers/concerns/preference/dbsc_registration_endpoint_test.rb`.
-
-| Transition ID                    | Mutation kind         | From    | Event / Trigger                       | To      | Guard                                                                         | Side effect                                                  | Source file                               | Confidence |
-| -------------------------------- | --------------------- | ------- | ------------------------------------- | ------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------- | ---------- |
-| idp-visitor-preference-dbsc:T001 | DOCUMENTED_TRANSITION | NOTHING | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-visitor-preference-dbsc:T002 | DOCUMENTED_TRANSITION | ACTIVE  | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-visitor-preference-dbsc:T003 | DOCUMENTED_TRANSITION | ACTIVE  | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-| idp-visitor-preference-dbsc:T004 | DOCUMENTED_TRANSITION | PENDING | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-visitor-preference-dbsc:T005 | DOCUMENTED_TRANSITION | PENDING | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-| idp-visitor-preference-dbsc:T006 | DOCUMENTED_TRANSITION | FAILED  | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-visitor-preference-dbsc:T007 | DOCUMENTED_TRANSITION | FAILED  | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-| idp-visitor-preference-dbsc:T008 | DOCUMENTED_TRANSITION | REVOKE  | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-visitor-preference-dbsc:T009 | DOCUMENTED_TRANSITION | REVOKE  | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-
-DBSC is independent of login token lifecycle and device-session dbsc_bound_at. FAILED/REVOKE are
-reference/predicate vocabulary with no located production setter; proof failure returns ok:false
-without writing FAILED. Token creation selects PENDING when a challenge is offered, otherwise
-NOTHING. No PENDING expiry state write: refresh downgrade to NOTHING leaves legacy binding explicit.
-Preference creation defaults are in topology; no preference pending writer was confirmed.
-Registration validates proof before acquiring record lock and does not recheck source state in its
-write; concurrency/replay is controlled by proof validation and challenge transport, not a
-transition map. Public downgrade can change any non-NOTHING status. No terminal state is universally
-enforced. Tests are inspected, not executed.
+The former Visitor Preference DBSC writer is retired. Any persisted model/schema state remains
+untouched; no current route or application transition writer is present.
 
 ## idp-visitor-device-session
 
@@ -2447,36 +2330,9 @@ indexed.
 
 ## idp-operator-dbsc
 
-Implementation: `DbscBindable / DbscRegistrationService`. Storage: `operator_tokens` /
-`actor token DBSC status FK`.
-
-Sources: `app/models/concerns/dbsc_bindable.rb`, `app/services/dbsc_registration_service.rb`,
-`app/services/dbsc_record_adapter.rb`, `app/controllers/concerns/authentication_base.rb`.
-
-Tests read: `test/models/concerns/dbsc_bindable_test.rb`,
-`test/services/dbsc/registration_service_test.rb`.
-
-| Transition ID          | Mutation kind         | From    | Event / Trigger                       | To      | Guard                                                                         | Side effect                                                  | Source file                               | Confidence |
-| ---------------------- | --------------------- | ------- | ------------------------------------- | ------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------- | ---------- |
-| idp-operator-dbsc:T001 | DOCUMENTED_TRANSITION | NOTHING | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-operator-dbsc:T002 | DOCUMENTED_TRANSITION | ACTIVE  | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-operator-dbsc:T003 | DOCUMENTED_TRANSITION | ACTIVE  | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-| idp-operator-dbsc:T004 | DOCUMENTED_TRANSITION | PENDING | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-operator-dbsc:T005 | DOCUMENTED_TRANSITION | PENDING | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-| idp-operator-dbsc:T006 | DOCUMENTED_TRANSITION | FAILED  | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-operator-dbsc:T007 | DOCUMENTED_TRANSITION | FAILED  | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-| idp-operator-dbsc:T008 | DOCUMENTED_TRANSITION | REVOKE  | verified DbscRegistrationService.call | ACTIVE  | Proof/challenge/signature accepted; row lock; no explicit source-status guard | binding_method DBSC; public key; session id; clear challenge | app/services/dbsc_registration_service.rb | CONFIRMED  |
-| idp-operator-dbsc:T009 | DOCUMENTED_TRANSITION | REVOKE  | downgrade_dbsc_status_to_nothing!     | NOTHING | Public helper only tests already NOTHING                                      | status only; keeps binding method                            | app/models/concerns/dbsc_bindable.rb      | CONFIRMED  |
-
-DBSC is independent of login token lifecycle and device-session dbsc_bound_at. FAILED/REVOKE are
-reference/predicate vocabulary with no located production setter; proof failure returns ok:false
-without writing FAILED. Token creation selects PENDING when a challenge is offered, otherwise
-NOTHING. No PENDING expiry state write: refresh downgrade to NOTHING leaves legacy binding explicit.
-Preference creation defaults are in topology; no preference pending writer was confirmed.
-Registration validates proof before acquiring record lock and does not recheck source state in its
-write; concurrency/replay is controlled by proof validation and challenge transport, not a
-transition map. Public downgrade can change any non-NOTHING status. No terminal state is universally
-enforced. Tests are inspected, not executed.
+Operator token DBSC registration and verification writers were removed on 2026-11-10. Operator token
+DBSC columns and reference models remain under the task boundary; this axis has no current
+application transition writer or HTTP route.
 
 ## idp-operator-device-session
 
@@ -2872,12 +2728,12 @@ so HTTP runtime wiring is UNCONFIRMED. Legacy email ceremonies allow evp_outcome
 Storage: auth-state Valkey integer at
 `otp-verification:<surface>:<purpose>:<channel>:<destination digest>`; existing test-run namespace
 isolation prefixes the scope in test runs. Owner, candidate, flow and browser do not partition the
-key. Connected to app signup email/telephone, app email sign-in and app/org
-authenticated destination confirmation. Independent Email/Telephone enforcement recovery and
-withdrawal reentry use their explicit purpose scopes; credential-distribution recovery is unchanged.
-Dummy app email sign-in counts well-formed six-digit input in its authentication scope and
-always refuses, including `000000`. Malformed input does not spend the budget. No transient dummy
-Contact is persisted or validated as an owned credential.
+key. Connected to app signup email/telephone, app email sign-in and app/org authenticated
+destination confirmation. Independent Email/Telephone enforcement recovery and withdrawal reentry
+use their explicit purpose scopes; credential-distribution recovery is unchanged. Dummy app email
+sign-in counts well-formed six-digit input in its authentication scope and always refuses, including
+`000000`. Malformed input does not spend the budget. No transient dummy Contact is persisted or
+validated as an owned credential.
 
 Sources: `app/models/email_otp_verification_failure_budget.rb`,
 `app/models/telephone_otp_verification_failure_budget.rb`, the independent ceremony OTP concerns and
@@ -2888,8 +2744,7 @@ candidate/flow/browser recreations, not a shared Email/Telephone policy implemen
 `test/models/otp_verification_failure_budget_test.rb` and
 `test/operations/email_sign_up_otp_verification_committer_test.rb` (independent current APIs).
 Public sign-in integration coverage is in `test/controllers/auth/app/in/emails_controller_test.rb`;
-complete lifecycle/timing parity
-remains open.
+complete lifecycle/timing parity remains open.
 
 | Transition ID                           | From          | Trigger                 | To        | Guard and effect                                                                                                  |
 | --------------------------------------- | ------------- | ----------------------- | --------- | ----------------------------------------------------------------------------------------------------------------- |
@@ -3592,8 +3447,8 @@ Sources: `app/models/concerns/session_limit_resolution_transactionable.rb`,
 
 The browser gate carries an opaque raw challenge; its lookup uses the model's digest primitive and
 the persisted `challenge_digest`, never a nonexistent raw `challenge` column. Actor, browser
-binding, original parent and expiry checks still precede selection or revocation. APP
-session-limit promotion and APP controller/gate checks passed the 18-test selection recorded in
+binding, original parent and expiry checks still precede selection or revocation. APP session-limit
+promotion and APP controller/gate checks passed the 18-test selection recorded in
 `evidence/2026-10-08-email-login-capacity-query-3Q7M.md`.
 
 Tests executed: `test/models/session_limit_resolution_transactionable_test.rb`.
@@ -3834,23 +3689,24 @@ must be rechecked by final committer, not supplied by consume(ref) itself. TOTP 
 preverified store path and new step-up-bound unverified enrollment. Expired candidate may be marked
 consumed by delete; terminal arrows describe proof usability rather than immutable row state.
 
-## idp-identity-social-candidate
+## idp-identity-social-candidate (local store retired 2026-11-10)
 
-Implementation:
-`IdentityCeremonyCandidateRecord / app/services/identity_social_ceremony_candidate_store.rb`.
-Storage: `identity_social_ceremony_candidates` / `consumed_at / expires_at`.
+Implementation: the retained `IdentityCeremonyCandidateRecord` model concern. The local social
+candidate store was removed. Storage: `identity_social_ceremony_candidates` /
+`consumed_at / expires_at`.
 
-Sources: `app/models/concerns/identity_ceremony_candidate_record.rb`,
-`app/services/identity_social_ceremony_candidate_store.rb`.
+Sources: `app/models/concerns/identity_ceremony_candidate_record.rb`, the former candidate store
+(removed 2026-11-10).
 
-Tests read: `test/services/identity_social_ceremony_candidate_store_failures_test.rb`.
+The former store tests were removed with the local social link flow; model and schema remain for
+database review.
 
 | Transition ID                      | Mutation kind         | From      | Event / Trigger        | To       | Guard                                                               | Side effect                   | Source file                                               | Confidence |
 | ---------------------------------- | --------------------- | --------- | ---------------------- | -------- | ------------------------------------------------------------------- | ----------------------------- | --------------------------------------------------------- | ---------- |
 | idp-identity-social-candidate:T001 | DOCUMENTED_TRANSITION | available | store.consume!         | consumed | Row lock; ref exists; unconsumed; expiry checked at integer seconds | consumed_at; payload returned | app/models/concerns/identity_ceremony_candidate_record.rb | CONFIRMED  |
-| idp-identity-social-candidate:T002 | OUT_OF_BAND           | available | store.delete           | consumed | Ref exists; no expiry/consumed guard or row lock                    | Direct consumed_at update     | app/services/identity_social_ceremony_candidate_store.rb  | CONFIRMED  |
-| idp-identity-social-candidate:T003 | OUT_OF_BAND           | expired   | store.delete           | consumed | Ref exists; no expiry guard                                         | Direct consumed_at update     | app/services/identity_social_ceremony_candidate_store.rb  | CONFIRMED  |
-| idp-identity-social-candidate:T004 | DOCUMENTED_TRANSITION | consumed  | store.delete           | consumed | Ref exists; no immutability guard                                   | Replaces consumed_at          | app/services/identity_social_ceremony_candidate_store.rb  | CONFIRMED  |
+| idp-identity-social-candidate:T002 | OUT_OF_BAND           | available | store.delete           | consumed | Ref exists; no expiry/consumed guard or row lock                    | Direct consumed_at update     | former candidate store (removed 2026-11-10)               | HISTORICAL |
+| idp-identity-social-candidate:T003 | OUT_OF_BAND           | expired   | store.delete           | consumed | Ref exists; no expiry guard                                         | Direct consumed_at update     | former candidate store (removed 2026-11-10)               | HISTORICAL |
+| idp-identity-social-candidate:T004 | DOCUMENTED_TRANSITION | consumed  | store.delete           | consumed | Ref exists; no immutability guard                                   | Replaces consumed_at          | former candidate store (removed 2026-11-10)               | HISTORICAL |
 | idp-identity-social-candidate:T005 | DOCUMENTED_TRANSITION | available | clock reaches deadline | expired  | expires_at <= now                                                   | Predicate only                | app/models/concerns/identity_ceremony_candidate_record.rb | CONFIRMED  |
 
 Shared AppTicket candidate, no state FK. Store consume is single-use and TTL guarded; delete is
@@ -3862,46 +3718,45 @@ consumed by delete; terminal arrows describe proof usability rather than immutab
 
 ## idp-operator-organization-invitation
 
-Implementation: `OrganizationInvitation / OrgOperatorLifecycleInvitationAcceptance`. Storage:
-`organization_invitations` / `consumed_at / expires_at`.
+Model-only axis after the 2026-11-10 surface reset: the low-level OrganizationInvitation consume!
+method and model tests remain, but the admission route, application service, and controller caller
+were removed.
 
-Sources: `app/models/organization_invitation.rb`,
-`app/services/org_operator_lifecycle_invitation_acceptance.rb`.
+Implementation: `OrganizationInvitation` model API only; the application workflow is removed.
+Storage: `organization_invitations` / `consumed_at / expires_at`.
 
-Tests read: `test/models/organization_invitation_test.rb`,
-`test/services/org/operator_lifecycle/invitation_acceptance_test.rb`.
+Sources: `app/models/organization_invitation.rb`.
+
+Tests read: `test/models/organization_invitation_test.rb`.
 
 | Transition ID                             | Mutation kind         | From   | Event / Trigger        | To       | Guard                                 | Side effect    | Source file                           | Confidence |
 | ----------------------------------------- | --------------------- | ------ | ---------------------- | -------- | ------------------------------------- | -------------- | ------------------------------------- | ---------- |
 | idp-operator-organization-invitation:T001 | DOCUMENTED_TRANSITION | active | consume!               | consumed | Row lock; active? repeated under lock | consumed_at    | app/models/organization_invitation.rb | CONFIRMED  |
 | idp-operator-organization-invitation:T002 | DOCUMENTED_TRANSITION | active | clock reaches deadline | expired  | expires_at <= now                     | No state write | app/models/organization_invitation.rb | CONFIRMED  |
 
-Default TTL7days. find_valid optionally checks case-insensitive email; consumption lock prevents
-duplicate wins for low-level consumption. Legacy issuance and admission are held pending an explicit
-Bureau target and authority contract. Acceptance validates then refuses without consumption or
-Principal/Identity/Agent/Bureau writes; it no longer bootstraps an unrelated Bureau. Logical
-cross-DB IDs are not FKs merely because belongs_to exists. No stored cancel/failure state.
-Expired_at remains independent of consumed_at, so expired? can be true for already-consumed row.
+The model sets a seven-day default TTL. `find_valid` can check email case-insensitively, and
+`consume!` uses a row lock. No application route, invitation issuer, or admission workflow calls
+this model after the surface reset. Expiry remains derived from `expires_at`; it is independent of
+`consumed_at`.
 
 ## idp-operator-operator-lifecycle
 
-Implementation: `OrgOperatorLifecycleApprove / Reject / Execute`. Storage:
-`operator_lifecycle_requests` / `status`.
+Historical axis after the 2026-11-10 surface reset: lifecycle services, policies, routes, and
+application callers were removed. OperatorLifecycleRequest model/schema and model tests remain for
+the next database/model review.
 
-Sources: `app/models/operator_lifecycle_request.rb`,
-`app/services/org_operator_lifecycle_approve.rb`, `app/services/org_operator_lifecycle_reject.rb`,
-`app/services/org_operator_lifecycle_execute.rb`.
+Historical implementation: `OrgOperatorLifecycleApprove / Reject / Execute` (removed 2026-11-10).
+Storage: `operator_lifecycle_requests` / `status`.
 
-Tests read: `test/models/operator_lifecycle_request_test.rb`,
-`test/services/org/operator_lifecycle/approve_test.rb`,
-`test/services/org/operator_lifecycle/execute_test.rb`,
-`test/services/org_operator_lifecycle_reject_test.rb`.
+Sources: `app/models/operator_lifecycle_request.rb`; former service paths are historical.
+
+Tests read: `test/models/operator_lifecycle_request_test.rb`; former service tests were removed.
 
 | Transition ID                        | Mutation kind         | From     | Event / Trigger | To       | Guard                                                             | Side effect                                                                                              | Source file                                    | Confidence |
 | ------------------------------------ | --------------------- | -------- | --------------- | -------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ---------- |
-| idp-operator-operator-lifecycle:T001 | DOCUMENTED_TRANSITION | pending  | approve         | approved | Pending; actor differs requester                                  | Approver and timestamp                                                                                   | app/services/org_operator_lifecycle_approve.rb | CONFIRMED  |
-| idp-operator-operator-lifecycle:T002 | DOCUMENTED_TRANSITION | pending  | reject          | rejected | Pending; actor differs requester                                  | Rejector/time/reason                                                                                     | app/services/org_operator_lifecycle_reject.rb  | CONFIRMED  |
-| idp-operator-operator-lifecycle:T003 | DOCUMENTED_TRANSITION | approved | execute         | executed | Approved; actor differs requester; last active operator preserved | JOIN refused pending Bureau migration; actor/Entra updates and stop event commit before OP stop delivery | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
+| idp-operator-operator-lifecycle:T001 | DOCUMENTED_TRANSITION | pending  | approve         | approved | Pending; actor differs requester                                  | Approver and timestamp                                                                                   | app/services/org_operator_lifecycle_approve.rb | HISTORICAL |
+| idp-operator-operator-lifecycle:T002 | DOCUMENTED_TRANSITION | pending  | reject          | rejected | Pending; actor differs requester                                  | Rejector/time/reason                                                                                     | app/services/org_operator_lifecycle_reject.rb  | HISTORICAL |
+| idp-operator-operator-lifecycle:T003 | DOCUMENTED_TRANSITION | approved | execute         | executed | Approved; actor differs requester; last active operator preserved | JOIN refused pending Bureau migration; actor/Entra updates and stop event commit before OP stop delivery | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
 
 New JOIN requests and issuance from approved legacy JOIN requests are refused pending Bureau
 migration; an approved JOIN stays approved with no invitation or executed timestamp written.
@@ -3912,40 +3767,36 @@ the consolidated org_zenith transaction. Stop delivery follows its commit; OP wr
 distributed-atomic with it. Restore clears actor withdrawal facts but deliberately does not
 reactivate Entra. Failed service result leaves request unchanged, not a FAILED state.
 
-## idp-operator-entra-identity
+## idp-operator-entra-identity (local login retired 2026-11-10)
 
-Implementation: `OperatorEntraIdentityProvisioner / Activation / OrgOperatorLifecycleExecute`.
-Storage: `operator_entra_identities` / `status_id`.
+Implementation: no local login, provisioning or activation writer remains; the model is retained for
+stored identity data and retention cleanup. Storage: `operator_entra_identities` / `status_id`.
 
-Sources: `app/models/operator_entra_identity.rb`, `app/models/operator_entra_identity_state.rb`,
-`app/operations/operator_entra_identity_provisioner.rb`,
-`app/services/operator_entra_identity_activation.rb`,
-`app/services/org_operator_lifecycle_execute.rb`.
+Sources: `app/models/operator_entra_identity.rb`, `app/models/operator_entra_identity_state.rb`, The
+provisioning operation, activation service, resolver and rake tasks were removed with the local
+Entra sign-in surface.
 
-Tests read: `test/models/operator_entra_identity_test.rb`,
-`test/services/operator_entra_identity_activation_test.rb`,
-`test/operations/operator_entra_identity_provisioner_test.rb`.
+Model tests remain; provisioning, activation and local sign-in tests were removed with their
+callers.
 
-| Transition ID                    | Mutation kind | From      | Event / Trigger | To        | Guard                                                                  | Side effect             | Source file                                        | Confidence |
-| -------------------------------- | ------------- | --------- | --------------- | --------- | ---------------------------------------------------------------------- | ----------------------- | -------------------------------------------------- | ---------- |
-| idp-operator-entra-identity:T001 | OUT_OF_BAND   | NOTHING   | activate        | ACTIVE    | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | app/services/operator_entra_identity_activation.rb | CONFIRMED  |
-| idp-operator-entra-identity:T002 | OUT_OF_BAND   | NOTHING   | suspend         | SUSPENDED | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | app/services/operator_entra_identity_activation.rb | CONFIRMED  |
-| idp-operator-entra-identity:T003 | OUT_OF_BAND   | NOTHING   | revoke          | REVOKED   | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | app/services/operator_entra_identity_activation.rb | CONFIRMED  |
-| idp-operator-entra-identity:T004 | OUT_OF_BAND   | ACTIVE    | activate        | ACTIVE    | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | app/services/operator_entra_identity_activation.rb | CONFIRMED  |
-| idp-operator-entra-identity:T005 | OUT_OF_BAND   | ACTIVE    | suspend         | SUSPENDED | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | app/services/operator_entra_identity_activation.rb | CONFIRMED  |
-| idp-operator-entra-identity:T006 | OUT_OF_BAND   | ACTIVE    | revoke          | REVOKED   | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | app/services/operator_entra_identity_activation.rb | CONFIRMED  |
-| idp-operator-entra-identity:T007 | OUT_OF_BAND   | SUSPENDED | activate        | ACTIVE    | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | app/services/operator_entra_identity_activation.rb | CONFIRMED  |
-| idp-operator-entra-identity:T008 | OUT_OF_BAND   | SUSPENDED | suspend         | SUSPENDED | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | app/services/operator_entra_identity_activation.rb | CONFIRMED  |
-| idp-operator-entra-identity:T009 | OUT_OF_BAND   | SUSPENDED | revoke          | REVOKED   | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | app/services/operator_entra_identity_activation.rb | CONFIRMED  |
-| idp-operator-entra-identity:T010 | OUT_OF_BAND   | REVOKED   | activate        | ACTIVE    | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | app/services/operator_entra_identity_activation.rb | CONFIRMED  |
-| idp-operator-entra-identity:T011 | OUT_OF_BAND   | REVOKED   | suspend         | SUSPENDED | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | app/services/operator_entra_identity_activation.rb | CONFIRMED  |
-| idp-operator-entra-identity:T012 | OUT_OF_BAND   | REVOKED   | revoke          | REVOKED   | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | app/services/operator_entra_identity_activation.rb | CONFIRMED  |
+| Transition ID                    | Mutation kind | From      | Event / Trigger | To        | Guard                                                                  | Side effect             | Source file                             | Confidence |
+| -------------------------------- | ------------- | --------- | --------------- | --------- | ---------------------------------------------------------------------- | ----------------------- | --------------------------------------- | ---------- |
+| idp-operator-entra-identity:T001 | OUT_OF_BAND   | NOTHING   | activate        | ACTIVE    | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | removed activation service (2026-11-10) | HISTORICAL |
+| idp-operator-entra-identity:T002 | OUT_OF_BAND   | NOTHING   | suspend         | SUSPENDED | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | removed activation service (2026-11-10) | HISTORICAL |
+| idp-operator-entra-identity:T003 | OUT_OF_BAND   | NOTHING   | revoke          | REVOKED   | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | removed activation service (2026-11-10) | HISTORICAL |
+| idp-operator-entra-identity:T004 | OUT_OF_BAND   | ACTIVE    | activate        | ACTIVE    | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | removed activation service (2026-11-10) | HISTORICAL |
+| idp-operator-entra-identity:T005 | OUT_OF_BAND   | ACTIVE    | suspend         | SUSPENDED | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | removed activation service (2026-11-10) | HISTORICAL |
+| idp-operator-entra-identity:T006 | OUT_OF_BAND   | ACTIVE    | revoke          | REVOKED   | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | removed activation service (2026-11-10) | HISTORICAL |
+| idp-operator-entra-identity:T007 | OUT_OF_BAND   | SUSPENDED | activate        | ACTIVE    | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | removed activation service (2026-11-10) | HISTORICAL |
+| idp-operator-entra-identity:T008 | OUT_OF_BAND   | SUSPENDED | suspend         | SUSPENDED | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | removed activation service (2026-11-10) | HISTORICAL |
+| idp-operator-entra-identity:T009 | OUT_OF_BAND   | SUSPENDED | revoke          | REVOKED   | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | removed activation service (2026-11-10) | HISTORICAL |
+| idp-operator-entra-identity:T010 | OUT_OF_BAND   | REVOKED   | activate        | ACTIVE    | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | removed activation service (2026-11-10) | HISTORICAL |
+| idp-operator-entra-identity:T011 | OUT_OF_BAND   | REVOKED   | suspend         | SUSPENDED | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | removed activation service (2026-11-10) | HISTORICAL |
+| idp-operator-entra-identity:T012 | OUT_OF_BAND   | REVOKED   | revoke          | REVOKED   | Supported requested state; existing identity; no source guard/row lock | Direct status_id update | removed activation service (2026-11-10) | HISTORICAL |
 
-Provisioning explicit NOTHING=0 denies sign-in; resolver requires ACTIVE. Admin rake activation
-accepts all previous states, including REVOKED->ACTIVE; therefore no universally absorbing terminal.
-Lifecycle withdraw/suspend writes SUSPENDED and terminate writes REVOKED directly (same source
-permissiveness); restore does not reactivate. Model inherits semantic OrgRpRecord, whose current
-connection owner is OrgZenithRecord; SQL topology is org_zenith. No clock expiry/cancel.
+The former resolver and rake lifecycle tools are gone. `OperatorEntraIdentity` and its state model
+remain in `org_zenith`, and the retained cross-database retention purger can delete matching records
+when an operator is removed. No local Press route authenticates through this identity.
 
 ## idp-shared-sequence-carrier
 
@@ -3990,21 +3841,22 @@ labels. Finish can rewrite terminals; clear removes payload. state and terminal_
 terminal authority; validity checks actor/surface/participant/TTL but advance itself ignores TTL.
 Surface-specific session keys plus legacy migration; not DB authoritative.
 
-## idp-shared-authorization-code
+## idp-shared-authorization-code (retired 2026-11-10)
 
-Implementation: `Valkey::AuthState::AuthorizationCodeStore`. Storage: `None (session / Valkey)` /
-`state`.
+The transitions below describe the retired local implementation and are retained as history, not
+current runtime behavior. Implementation: None in Press; local code issuance and storage were
+removed. Edit consumes external provider authorization-code responses. `state`.
 
-Sources: `app/services/valkey/auth_state/authorization_code_store.rb`,
+Historical sources (removed): `app/services/valkey/auth_state/authorization_code_store.rb`,
 `app/operations/oidc_authorization_code_issuer.rb`.
 
-Tests read: `test/services/valkey/auth_state/authorization_code_store_test.rb`.
+Historical tests (removed): `test/services/valkey/auth_state/authorization_code_store_test.rb`.
 
 | Transition ID                      | Mutation kind         | From     | Event / Trigger    | To       | Guard                                                                                  | Side effect                                                      | Source file                                                | Confidence |
 | ---------------------------------- | --------------------- | -------- | ------------------ | -------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------- | ---------- |
-| idp-shared-authorization-code:T001 | DOCUMENTED_TRANSITION | issued   | consume! / Lua CAS | consumed | Expected binding matches; state issued; atomic EVAL; logical expiry checked before CAS | Consumed tombstone; replay returns outcome with no state rewrite | app/services/valkey/auth_state/authorization_code_store.rb | CONFIRMED  |
-| idp-shared-authorization-code:T002 | DOCUMENTED_TRANSITION | consumed | link_family!       | consumed | Atomic same-owner idempotency; refuse changed owner or replay marker                   | RP session/refresh family refs                                   | app/services/valkey/auth_state/authorization_code_store.rb | CONFIRMED  |
-| idp-shared-authorization-code:T003 | DOCUMENTED_TRANSITION | consumed | mark_replay!       | consumed | Atomic; consumed; first marker retained                                                | Replay evidence; exchange caller can revoke family               | app/services/valkey/auth_state/authorization_code_store.rb | CONFIRMED  |
+| idp-shared-authorization-code:T001 | DOCUMENTED_TRANSITION | issued   | consume! / Lua CAS | consumed | Expected binding matches; state issued; atomic EVAL; logical expiry checked before CAS | Consumed tombstone; replay returns outcome with no state rewrite | app/services/valkey/auth_state/authorization_code_store.rb | HISTORICAL |
+| idp-shared-authorization-code:T002 | DOCUMENTED_TRANSITION | consumed | link_family!       | consumed | Atomic same-owner idempotency; refuse changed owner or replay marker                   | RP session/refresh family refs                                   | app/services/valkey/auth_state/authorization_code_store.rb | HISTORICAL |
+| idp-shared-authorization-code:T003 | DOCUMENTED_TRANSITION | consumed | mark_replay!       | consumed | Atomic; consumed; first marker retained                                                | Replay evidence; exchange caller can revoke family               | app/services/valkey/auth_state/authorization_code_store.rb | HISTORICAL |
 
 No SQL FK. Code TTL10s with longer retained key for logical expiry/replay; consumed tombstone
 minimum60s. PKCE S256 issue; expected field check precedes replay classification. Link/replay Lua
@@ -4309,8 +4161,8 @@ result/grant/operation/browser/actor/candidate/digest provenance and an identity
 intent; released bindings and consumed Tickets without a committed Source fact remain refused.
 Initial consumption requires the same Ticket candidate reference and digest; final binding mutation
 rechecks the digest under the Source lock, rejecting same-owner candidate substitution. Base app
-settings confirmation commits finalization and its Source intent under the owner lock. App
-telephone signup OTP success retains the original signed flow binding when redirecting to the guard
+settings confirmation commits finalization and its Source intent under the owner lock. App telephone
+signup OTP success retains the original signed flow binding when redirecting to the guard
 checkpoint; the next endpoint does not infer another Ticket from destination or browser input.
 Replacement releases the old effective binding without overwriting its status, clears its old OTP
 and finalizes the new candidate with both Source intents in that transaction. Wrong OTP leaves the
@@ -4637,52 +4489,45 @@ lifecycle is a separate ceremony axis rather than an identifier status.
 
 ## idp-operator-actor-withdrawal
 
+Historical operator axis after the 2026-11-10 surface reset: the operator lifecycle writer and route
+were removed, and Operator does not include Withdrawable. Operator timestamp columns remain; Client
+withdrawal is a separate active axis.
+
 The last-active check uses the same status, access, withdrawal and retention conditions as Operator
 capability eligibility. Administrative locks and lifecycle stops take the same transaction-level
 availability lock before any Operator row lock.
 
-Implementation: `Withdrawable / app/services/org_operator_lifecycle_execute.rb`. Storage:
-`operators` /
+Historical implementation: `org_operator_lifecycle_execute` (removed 2026-11-10); `Operator` does
+not include `Withdrawable`. Storage: `operators` /
 `withdrawal_started_at / deactivated_at / withdrawn_at / discard_at / purge_eligible_at`.
 
-Sources: `app/models/concerns/withdrawable.rb`, `app/services/org_operator_lifecycle_execute.rb`,
-`app/controllers/concerns/authentication_withdrawal_gate.rb`.
+Sources: Operator timestamp columns remain in schema; active Client withdrawal is documented on its
+own axis.
 
-Tests read: `test/services/withdrawal_lifecycle_test.rb`,
-`test/services/org/operator_lifecycle/execute_test.rb`,
-`test/integration/withdrawal_lifecycle_security_test.rb`.
+Tests read: No current operator lifecycle tests; Client withdrawal tests cover the separate active
+axis.
 
 | Transition ID                      | Mutation kind         | From       | Event / Trigger                     | To         | Guard                                                                                 | Side effect                                                                                    | Source file                                    | Confidence |
 | ---------------------------------- | --------------------- | ---------- | ----------------------------------- | ---------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------- | ---------- |
-| idp-operator-actor-withdrawal:T001 | OUT_OF_BAND           | active     | suspend / withdraw                  | suspended  | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T002 | OUT_OF_BAND           | active     | terminate                           | terminated | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T003 | OUT_OF_BAND           | active     | restore                             | active     | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T004 | OUT_OF_BAND           | closing    | suspend / withdraw                  | suspended  | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T005 | OUT_OF_BAND           | closing    | terminate                           | terminated | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T006 | OUT_OF_BAND           | closing    | restore                             | active     | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T007 | OUT_OF_BAND           | suspended  | suspend / withdraw                  | suspended  | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T008 | OUT_OF_BAND           | suspended  | terminate                           | terminated | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T009 | OUT_OF_BAND           | suspended  | restore                             | active     | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T010 | OUT_OF_BAND           | terminated | suspend / withdraw                  | suspended  | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T011 | OUT_OF_BAND           | terminated | terminate                           | terminated | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T012 | OUT_OF_BAND           | terminated | restore                             | active     | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T013 | OUT_OF_BAND           | withdrawn  | suspend / withdraw                  | suspended  | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T014 | OUT_OF_BAND           | withdrawn  | terminate                           | terminated | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T015 | OUT_OF_BAND           | withdrawn  | restore                             | active     | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | CONFIRMED  |
-| idp-operator-actor-withdrawal:T016 | DOCUMENTED_TRANSITION | suspended  | clock reaches finite purge deadline | terminated | Finite purge_eligible_at <= now                                                       | Derived predicate, no status write                                                             | app/models/concerns/withdrawable.rb            | CONFIRMED  |
+| idp-operator-actor-withdrawal:T001 | OUT_OF_BAND           | active     | suspend / withdraw                  | suspended  | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T002 | OUT_OF_BAND           | active     | terminate                           | terminated | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T003 | OUT_OF_BAND           | active     | restore                             | active     | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T004 | OUT_OF_BAND           | closing    | suspend / withdraw                  | suspended  | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T005 | OUT_OF_BAND           | closing    | terminate                           | terminated | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T006 | OUT_OF_BAND           | closing    | restore                             | active     | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T007 | OUT_OF_BAND           | suspended  | suspend / withdraw                  | suspended  | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T008 | OUT_OF_BAND           | suspended  | terminate                           | terminated | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T009 | OUT_OF_BAND           | suspended  | restore                             | active     | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T010 | OUT_OF_BAND           | terminated | suspend / withdraw                  | suspended  | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T011 | OUT_OF_BAND           | terminated | terminate                           | terminated | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T012 | OUT_OF_BAND           | terminated | restore                             | active     | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T013 | OUT_OF_BAND           | withdrawn  | suspend / withdraw                  | suspended  | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T014 | OUT_OF_BAND           | withdrawn  | terminate                           | terminated | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T015 | OUT_OF_BAND           | withdrawn  | restore                             | active     | Approved request; actor differs requester; last active operator guard on deactivation | Direct actor facts; session revoke and Entra SUSPENDED/REVOKED; restore leaves Entra unchanged | app/services/org_operator_lifecycle_execute.rb | HISTORICAL |
+| idp-operator-actor-withdrawal:T016 | DOCUMENTED_TRANSITION | suspended  | clock reaches finite purge deadline | terminated | Finite purge_eligible_at <= now                                                       | Derived predicate, no status write                                                             | app/models/concerns/withdrawable.rb            | HISTORICAL |
 
-For operator lifecycle stop actions, the actor-side stop event commits before OP delivery; rollback
-does not deliver it. This does not make the actor and OP databases atomic.
-
-Derived predicates overlap: withdrawn_at independent; terminated wins over suspended; active
-excludes all, while closing uses withdrawal_started_at. closing is declared but start! currently
-only writes REQUESTED flow, no actor withdrawal_started_at; incoming actor closing writer
-UNCONFIRMED. Client/visitor suspend public method has no source guard and can preserve expired purge
-facts, so a call can remain derived terminated rather than enter suspended; diagram applies
-resulting future-purge condition only. Operator restore can clear termination facts via approved
-action; no absorbing terminal assumed. Eligibility gates act separately from actor status_id and
-access_state. Flow/token/audit/child operations include separate DB owners; no distributed atomicity
-is inferred. Actor and Entra rows share org_zenith in the current consolidated checkout.
+Operator timestamp state has no current application writer. The former rows above are retained only
+as implementation history; physical retention cleanup remains separate.
 
 ## idp-client-actor-provisioning
 

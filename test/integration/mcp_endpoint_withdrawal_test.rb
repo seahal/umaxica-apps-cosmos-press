@@ -4,22 +4,20 @@
 require "test_helper"
 
 # `POST /mcp` was withdrawn on 2026-09-19 (adr/mcp-endpoint-withdrawal.md): an unauthenticated
-# JSON-RPC entry point on six user-facing hosts, kept in the repository but unrouted until a
-# follow-up ADR records its authentication, transport review and tool-ownership rules. This pins
-# that the entry point stays off on every host it used to answer, so restoring it has to be a
-# deliberate route change reviewed against that ADR.
+# JSON-RPC entry point kept unrouted until a follow-up ADR records its authentication, transport
+# review and tool-ownership rules. This pins that the entry point stays off on the retained hosts.
 class McpEndpointWithdrawalTest < ActionDispatch::IntegrationTest
-  WITHDRAWN_HOSTS = [
-    ENV.fetch("PUBLIC_BASE_SERVICE_URL", "base.app.localhost"),
-    ENV.fetch("PUBLIC_BASE_CORPORATE_URL", "base.com.localhost"),
-    ENV.fetch("PUBLIC_BASE_STAFF_URL", "base.org.localhost"),
-    ENV.fetch("PUBLIC_WARP_SERVICE_URL", "warp.app.localhost"),
-    ENV.fetch("PUBLIC_WARP_CORPORATE_URL", "warp.com.localhost"),
-    ENV.fetch("PUBLIC_WARP_STAFF_URL", "warp.org.localhost"),
-  ].freeze
+  BOOT_HOSTS = Rails.configuration.x.boot_config.fetch(:hosts)
+  RETAINED_HOSTS = %i(
+    edit_staff
+    info_service info_corporate info_staff
+    news_service news_corporate news_staff
+    help_service help_corporate help_staff
+    docs_service docs_corporate docs_staff
+  ).map { |surface| BOOT_HOSTS.public_send(surface).host }.freeze
 
-  test "POST /mcp is not routed on any host that used to serve it" do
-    WITHDRAWN_HOSTS.each do |host|
+  test "POST /mcp remains unrouted on retained hosts" do
+    RETAINED_HOSTS.each do |host|
       assert_raises(ActionController::RoutingError, host) do
         Rails.application.routes.recognize_path("http://#{host}/mcp", method: :post)
       end
@@ -27,7 +25,7 @@ class McpEndpointWithdrawalTest < ActionDispatch::IntegrationTest
   end
 
   test "a JSON-RPC request to a withdrawn endpoint is answered not found" do
-    WITHDRAWN_HOSTS.each do |host|
+    RETAINED_HOSTS.each do |host|
       host! host
       post "/mcp",
            params: { jsonrpc: "2.0", id: 1, method: "tools/list" }.to_json,

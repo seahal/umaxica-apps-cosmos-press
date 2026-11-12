@@ -47,4 +47,11 @@ module PublishingTaxonomySnapshot
     self.locale_snapshot = term.locale
     self
   end
+
+  private
+
+  # Generated positions accept omission only; explicit nil and equal values are still caller input.
+  def reject_user_supplied_position_snapshot
+    errors.add(:position_snapshot, :invalid) if position_snapshot_came_from_user?
+  end
 end

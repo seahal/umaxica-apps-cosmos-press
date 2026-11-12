@@ -37,4 +37,24 @@ class UmaxicaValkeyResponsibilityUrlsTest < ActiveSupport::TestCase
       Umaxica::Valkey::ResponsibilityUrls.assert_nonprod_db!(parsed, env: "development")
     end
   end
+
+  test "requires an explicit URL and validates its nonproduction database assignment" do
+    parsed = Umaxica::Valkey::ResponsibilityUrls.require_url(
+      :cache,
+      "CACHE_REDIS_URL",
+      environment: { "CACHE_REDIS_URL" => "redis://cache:6379/2" },
+      env: "test",
+    )
+
+    assert_equal "cache", parsed.host
+    assert_equal 2, parsed.db
+    assert_raises(Umaxica::Valkey::ConfigurationError) do
+      Umaxica::Valkey::ResponsibilityUrls.require_url(
+        :cache,
+        "CACHE_REDIS_URL",
+        environment: { "CACHE_REDIS_URL" => "redis://cache:6379/1" },
+        env: "test",
+      )
+    end
+  end
 end

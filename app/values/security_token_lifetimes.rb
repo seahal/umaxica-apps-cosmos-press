@@ -13,7 +13,6 @@ module SecurityTokenLifetimes
   # Fixed clock-skew leeway (seconds) for Access JWT exp/nbf/iat - must
   # match SecurityJwtRfc9068AccessTokenProfile::CLOCK_SKEW_LEEWAY_SECONDS.
   OIDC_ACCESS_JWT_CLOCK_LEEWAY_SECONDS = 30
-  OIDC_ID_TOKEN_TTL = 5.minutes
   JUMP_RT_TTL = 30.seconds
 
   JWKS_ROTATION_LEEWAY = 1.hour
@@ -38,7 +37,7 @@ module SecurityTokenLifetimes
 
   # Minimum gap between per-request last_used_at writes. Activity tracking is
   # throttled so an authenticated request does not write to the session row on
-  # every hit (see AuthenticationCurrentResourceResolver#touch_session_activity!).
+  # every hit.
   ACTIVITY_TOUCH_THROTTLE = 60.seconds
 
   module_function

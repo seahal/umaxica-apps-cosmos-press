@@ -1,5 +1,5 @@
-%% Confirmed unit 2 behavior: StepUpAuditOutboxWriter and StepUpAuditDeliveryJob.
+%% Historical outbox rows remain eligible for delivery after the producer was removed in the Press reset.
 flowchart LR
-  ABSENT((absent)) --> PENDING["PENDING (10)"]
+  PENDING["PENDING (10), retained row"]
   PENDING -->|Matching Chronicle UUID; delivered attempt and state commit under row lock| DELIVERED["DELIVERED (20)"]
   PENDING -->|Failed attempt recorded; recurring sweep retries| PENDING

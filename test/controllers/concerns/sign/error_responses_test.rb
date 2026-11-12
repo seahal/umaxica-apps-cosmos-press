@@ -2,7 +2,6 @@
 # frozen_string_literal: true
 
 require "test_helper"
-# require "helpers/global_test_support"
 
 class SignErrorResponsesTest < ActiveSupport::TestCase
   class FormatCollector
@@ -76,8 +75,10 @@ class SignErrorResponsesTest < ActiveSupport::TestCase
     harness.format_kind = :html
     harness.handle_application_error(error)
 
-    assert_equal "boom", harness.flash[:alert]
-    assert_equal "/", harness.redirected
+    assert_equal "boom", harness.rendered[:plain]
+    assert_equal :unprocessable_content, harness.rendered[:status]
+    assert_empty harness.flash
+    assert_nil harness.redirected
 
     harness.format_kind = :json
     harness.handle_application_error(error)

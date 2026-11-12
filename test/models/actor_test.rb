@@ -10,7 +10,7 @@ class ActorTest < ActiveSupport::TestCase
   teardown { Actor.reset }
 
   test "stores actor state in current attributes" do
-    user = Client.new(security_mode_id: SecurityModeConfigurable::NORMAL, id: 123)
+    user = RpEditOrgPrincipal.new(id: 123)
     Actor.actor = user
     Actor.actor_type = :client
 
@@ -22,7 +22,6 @@ class ActorTest < ActiveSupport::TestCase
   end
 
   test "stores request context values in current attributes" do
-    preference = Actor::Preference.new(language: "en", theme: "dr")
     Actor.account = "account-1"
     Actor.tenant = "tenant-1"
     Actor.tld = :app
@@ -32,7 +31,6 @@ class ActorTest < ActiveSupport::TestCase
         access_claims: { "sub" => "123" },
       ),
     )
-    Actor.install_context!(preferences: preference)
     Actor.trace_id = "trace-1"
     Actor.span_id = "span-1"
 
@@ -41,9 +39,17 @@ class ActorTest < ActiveSupport::TestCase
     assert_equal :app, Actor.tld
     assert_equal "session-1", Actor.authn.login_public_id
     assert_equal({ "sub" => "123" }, Actor.authn.access_claims)
-    assert_equal preference, Actor.preferences
     assert_equal "trace-1", Actor.trace_id
     assert_equal "span-1", Actor.span_id
+  end
+
+  test "exposes credential transport separately from caller channel" do
+    Actor.install_context!(transport: :bearer, channel: :browser)
+
+    assert_equal :bearer, Actor.transport
+    assert_equal :browser, Actor.channel
+    assert_predicate Actor, :bearer?
+    assert_predicate Actor, :browser?
   end
 
   test "old authentication and preference compatibility readers are removed" do
@@ -59,7 +65,7 @@ class ActorTest < ActiveSupport::TestCase
     end
 
     assert_raises(ArgumentError) do
-      Actor.install_context!(preference: Actor::Preference::NULL)
+      Actor.install_context!(preference: Object.new)
     end
   end
 
@@ -88,7 +94,7 @@ class ActorTest < ActiveSupport::TestCase
   end
 
   test "clear empties current actor context" do
-    Actor.actor = Client.new(security_mode_id: SecurityModeConfigurable::NORMAL, id: 123)
+    Actor.actor = RpEditOrgPrincipal.new(id: 123)
     Actor.actor_type = :client
     Actor.install_context!(
       authn: Actor::Authentication.new(
@@ -97,7 +103,6 @@ class ActorTest < ActiveSupport::TestCase
       ),
     )
     Actor.configuration = Actor::Configuration.new(foo: "bar")
-    Actor.install_context!(preferences: Actor::Preference.new(language: "en"))
     Actor.trace_id = "trace-1"
     Actor.span_id = "span-1"
 
@@ -107,7 +112,6 @@ class ActorTest < ActiveSupport::TestCase
     assert_equal :unauthenticated, Actor.actor_type
     assert_equal Actor::Authentication::NULL, Actor.authn
     assert_equal Actor::Configuration::NULL, Actor.configuration
-    assert_equal Actor::Preference::NULL, Actor.preferences
     assert_nil Actor.trace_id
     assert_nil Actor.span_id
   end
@@ -152,6 +156,18 @@ class ActorTest < ActiveSupport::TestCase
     assert_predicate Actor::StepUp::NULL, :null?
     assert_not Actor::StepUp::NULL.with(scope: "email").null?
     assert_not Actor::StepUp::NULL.with(satisfied: true).null?
+  end
+
+  test "StepUp.null exposes its unqualified missing sentinel constant" do
+    # This records the current defect; a future implementation fix must replace this assertion.
+    error = assert_raises(NameError) { Actor::StepUp.null }
+
+    assert_match(/Actor::NULL/, error.message)
+  end
+
+  test "step up usable token reflects the persisted token usability flag" do
+    assert_not_predicate Actor::StepUp::NULL, :usable_token?
+    assert_predicate Actor::StepUp::NULL.with(usable_token: true), :usable_token?
   end
 
   test "step up predicates are false when no step up is required" do
@@ -213,7 +229,7 @@ class ActorTest < ActiveSupport::TestCase
   end
 
   test "subject and actor are the same compatibility slot" do
-    user = Client.new(security_mode_id: SecurityModeConfigurable::NORMAL, id: 7)
+    user = RpEditOrgPrincipal.new(id: 7)
     Actor.actor = user
 
     assert_equal user, Actor.subject
@@ -221,19 +237,17 @@ class ActorTest < ActiveSupport::TestCase
   end
 
   test "compatibility setters update the installed context" do
-    user = Client.new(security_mode_id: SecurityModeConfigurable::NORMAL, id: 8)
+    user = RpEditOrgPrincipal.new(id: 8)
 
     Actor.subject = user
     Actor.authn = Actor::Authentication.new(login_public_id: "session-8")
     Actor.authz = nil
-    Actor.preferences = nil
     Actor.selection = nil
     Actor.step_up = nil
 
     assert_equal user, Actor.subject
     assert_equal user, Actor.actor
     assert_equal Actor::Authz::NULL, Actor.authz
-    assert_equal Actor::Preference::NULL, Actor.preferences
     assert_equal Actor::SelectedContext::NULL, Actor.selection
     assert_equal Actor::StepUp::NULL, Actor.step_up
   end

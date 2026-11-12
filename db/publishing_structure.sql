@@ -111,7 +111,7 @@ CREATE FUNCTION public.publishing_valid_term_path(path jsonb) RETURNS boolean
 CREATE FUNCTION public.publishing_version_assignment_snapshot() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog', 'public'
-    AS $_$ DECLARE vocab_table text := TG_ARGV[0]; terms_table text := TG_ARGV[1]; ordered boolean := TG_ARGV[2] = 'ordered'; vocabulary_public_id text; vocabulary_key text; vocabulary_kind text; term_public_id text; term_slug text; term_name text; term_locale text; BEGIN EXECUTE format('SELECT public_id, key, kind FROM public.%I WHERE id = $1', vocab_table) INTO vocabulary_public_id, vocabulary_key, vocabulary_kind USING NEW.vocabulary_id; EXECUTE format('SELECT public_id, slug, name, locale FROM public.%I WHERE id = $1', terms_table) INTO term_public_id, term_slug, term_name, term_locale USING NEW.taxonomy_term_id; IF vocabulary_public_id IS NULL OR term_public_id IS NULL THEN RAISE EXCEPTION 'publishing taxonomy: cannot snapshot a missing vocabulary or term' USING ERRCODE = 'foreign_key_violation'; END IF; NEW.vocabulary_public_id_snapshot := vocabulary_public_id; NEW.vocabulary_key_snapshot := vocabulary_key; NEW.vocabulary_kind_snapshot := vocabulary_kind; NEW.term_public_id_snapshot := term_public_id; NEW.term_slug_snapshot := term_slug; NEW.term_name_snapshot := term_name; NEW.term_path_snapshot := publishing_taxonomy_term_path(terms_table, NEW.taxonomy_term_id); NEW.locale_snapshot := term_locale; IF ordered THEN NEW.position_snapshot := NEW.position; END IF; RETURN NEW; END; $_$;
+    AS $_$ DECLARE vocab_table text := TG_ARGV[0]; terms_table text := TG_ARGV[1]; vocabulary_public_id text; vocabulary_key text; vocabulary_kind text; term_public_id text; term_slug text; term_name text; term_locale text; BEGIN EXECUTE format('SELECT public_id, key, kind FROM public.%I WHERE id = $1', vocab_table) INTO vocabulary_public_id, vocabulary_key, vocabulary_kind USING NEW.vocabulary_id; EXECUTE format('SELECT public_id, slug, name, locale FROM public.%I WHERE id = $1', terms_table) INTO term_public_id, term_slug, term_name, term_locale USING NEW.taxonomy_term_id; IF vocabulary_public_id IS NULL OR term_public_id IS NULL THEN RAISE EXCEPTION 'publishing taxonomy: cannot snapshot a missing vocabulary or term' USING ERRCODE = 'foreign_key_violation'; END IF; NEW.vocabulary_public_id_snapshot := vocabulary_public_id; NEW.vocabulary_key_snapshot := vocabulary_key; NEW.vocabulary_kind_snapshot := vocabulary_kind; NEW.term_public_id_snapshot := term_public_id; NEW.term_slug_snapshot := term_slug; NEW.term_name_snapshot := term_name; NEW.term_path_snapshot := publishing_taxonomy_term_path(terms_table, NEW.taxonomy_term_id); NEW.locale_snapshot := term_locale; RETURN NEW; END; $_$;
 
 
 --
@@ -593,9 +593,9 @@ CREATE TABLE public.publishing_docs_app_version_multiple_taxonomy_assignments (
     term_name_snapshot character varying CONSTRAINT publishing_docs_app_version_multipl_term_name_snapshot_not_null NOT NULL,
     term_path_snapshot jsonb CONSTRAINT publishing_docs_app_version_multipl_term_path_snapshot_not_null NOT NULL,
     locale_snapshot character varying CONSTRAINT publishing_docs_app_version_multiple_t_locale_snapshot_not_null NOT NULL,
-    position_snapshot integer CONSTRAINT publishing_docs_app_version_multiple_position_snapshot_not_null NOT NULL,
     created_at timestamp(6) with time zone CONSTRAINT publishing_docs_app_version_multiple_taxono_created_at_not_null NOT NULL,
     updated_at timestamp(6) with time zone CONSTRAINT publishing_docs_app_version_multiple_taxono_updated_at_not_null NOT NULL,
+    position_snapshot integer GENERATED ALWAYS AS ("position") STORED CONSTRAINT publishing_docs_app_version_multiple_position_snapshot_not_null NOT NULL,
     CONSTRAINT chk_docs_app_vm_kind CHECK (((vocabulary_kind)::text = 'multiple_ordered_flat'::text)),
     CONSTRAINT chk_docs_app_vm_ks CHECK (((vocabulary_kind_snapshot)::text = ANY ((ARRAY['single_hierarchical'::character varying, 'multiple_ordered_flat'::character varying])::text[]))),
     CONSTRAINT chk_docs_app_vm_ls CHECK (((locale_snapshot)::text = ANY ((ARRAY['ja'::character varying, 'en'::character varying])::text[]))),
@@ -1171,9 +1171,9 @@ CREATE TABLE public.publishing_docs_com_version_multiple_taxonomy_assignments (
     term_name_snapshot character varying CONSTRAINT publishing_docs_com_version_multipl_term_name_snapshot_not_null NOT NULL,
     term_path_snapshot jsonb CONSTRAINT publishing_docs_com_version_multipl_term_path_snapshot_not_null NOT NULL,
     locale_snapshot character varying CONSTRAINT publishing_docs_com_version_multiple_t_locale_snapshot_not_null NOT NULL,
-    position_snapshot integer CONSTRAINT publishing_docs_com_version_multiple_position_snapshot_not_null NOT NULL,
     created_at timestamp(6) with time zone CONSTRAINT publishing_docs_com_version_multiple_taxono_created_at_not_null NOT NULL,
     updated_at timestamp(6) with time zone CONSTRAINT publishing_docs_com_version_multiple_taxono_updated_at_not_null NOT NULL,
+    position_snapshot integer GENERATED ALWAYS AS ("position") STORED CONSTRAINT publishing_docs_com_version_multiple_position_snapshot_not_null NOT NULL,
     CONSTRAINT chk_docs_com_vm_kind CHECK (((vocabulary_kind)::text = 'multiple_ordered_flat'::text)),
     CONSTRAINT chk_docs_com_vm_ks CHECK (((vocabulary_kind_snapshot)::text = ANY ((ARRAY['single_hierarchical'::character varying, 'multiple_ordered_flat'::character varying])::text[]))),
     CONSTRAINT chk_docs_com_vm_ls CHECK (((locale_snapshot)::text = ANY ((ARRAY['ja'::character varying, 'en'::character varying])::text[]))),
@@ -1749,9 +1749,9 @@ CREATE TABLE public.publishing_docs_org_version_multiple_taxonomy_assignments (
     term_name_snapshot character varying CONSTRAINT publishing_docs_org_version_multipl_term_name_snapshot_not_null NOT NULL,
     term_path_snapshot jsonb CONSTRAINT publishing_docs_org_version_multipl_term_path_snapshot_not_null NOT NULL,
     locale_snapshot character varying CONSTRAINT publishing_docs_org_version_multiple_t_locale_snapshot_not_null NOT NULL,
-    position_snapshot integer CONSTRAINT publishing_docs_org_version_multiple_position_snapshot_not_null NOT NULL,
     created_at timestamp(6) with time zone CONSTRAINT publishing_docs_org_version_multiple_taxono_created_at_not_null NOT NULL,
     updated_at timestamp(6) with time zone CONSTRAINT publishing_docs_org_version_multiple_taxono_updated_at_not_null NOT NULL,
+    position_snapshot integer GENERATED ALWAYS AS ("position") STORED CONSTRAINT publishing_docs_org_version_multiple_position_snapshot_not_null NOT NULL,
     CONSTRAINT chk_docs_org_vm_kind CHECK (((vocabulary_kind)::text = 'multiple_ordered_flat'::text)),
     CONSTRAINT chk_docs_org_vm_ks CHECK (((vocabulary_kind_snapshot)::text = ANY ((ARRAY['single_hierarchical'::character varying, 'multiple_ordered_flat'::character varying])::text[]))),
     CONSTRAINT chk_docs_org_vm_ls CHECK (((locale_snapshot)::text = ANY ((ARRAY['ja'::character varying, 'en'::character varying])::text[]))),
@@ -2327,9 +2327,9 @@ CREATE TABLE public.publishing_help_app_version_multiple_taxonomy_assignments (
     term_name_snapshot character varying CONSTRAINT publishing_help_app_version_multipl_term_name_snapshot_not_null NOT NULL,
     term_path_snapshot jsonb CONSTRAINT publishing_help_app_version_multipl_term_path_snapshot_not_null NOT NULL,
     locale_snapshot character varying CONSTRAINT publishing_help_app_version_multiple_t_locale_snapshot_not_null NOT NULL,
-    position_snapshot integer CONSTRAINT publishing_help_app_version_multiple_position_snapshot_not_null NOT NULL,
     created_at timestamp(6) with time zone CONSTRAINT publishing_help_app_version_multiple_taxono_created_at_not_null NOT NULL,
     updated_at timestamp(6) with time zone CONSTRAINT publishing_help_app_version_multiple_taxono_updated_at_not_null NOT NULL,
+    position_snapshot integer GENERATED ALWAYS AS ("position") STORED CONSTRAINT publishing_help_app_version_multiple_position_snapshot_not_null NOT NULL,
     CONSTRAINT chk_help_app_vm_kind CHECK (((vocabulary_kind)::text = 'multiple_ordered_flat'::text)),
     CONSTRAINT chk_help_app_vm_ks CHECK (((vocabulary_kind_snapshot)::text = ANY ((ARRAY['single_hierarchical'::character varying, 'multiple_ordered_flat'::character varying])::text[]))),
     CONSTRAINT chk_help_app_vm_ls CHECK (((locale_snapshot)::text = ANY ((ARRAY['ja'::character varying, 'en'::character varying])::text[]))),
@@ -2905,9 +2905,9 @@ CREATE TABLE public.publishing_help_com_version_multiple_taxonomy_assignments (
     term_name_snapshot character varying CONSTRAINT publishing_help_com_version_multipl_term_name_snapshot_not_null NOT NULL,
     term_path_snapshot jsonb CONSTRAINT publishing_help_com_version_multipl_term_path_snapshot_not_null NOT NULL,
     locale_snapshot character varying CONSTRAINT publishing_help_com_version_multiple_t_locale_snapshot_not_null NOT NULL,
-    position_snapshot integer CONSTRAINT publishing_help_com_version_multiple_position_snapshot_not_null NOT NULL,
     created_at timestamp(6) with time zone CONSTRAINT publishing_help_com_version_multiple_taxono_created_at_not_null NOT NULL,
     updated_at timestamp(6) with time zone CONSTRAINT publishing_help_com_version_multiple_taxono_updated_at_not_null NOT NULL,
+    position_snapshot integer GENERATED ALWAYS AS ("position") STORED CONSTRAINT publishing_help_com_version_multiple_position_snapshot_not_null NOT NULL,
     CONSTRAINT chk_help_com_vm_kind CHECK (((vocabulary_kind)::text = 'multiple_ordered_flat'::text)),
     CONSTRAINT chk_help_com_vm_ks CHECK (((vocabulary_kind_snapshot)::text = ANY ((ARRAY['single_hierarchical'::character varying, 'multiple_ordered_flat'::character varying])::text[]))),
     CONSTRAINT chk_help_com_vm_ls CHECK (((locale_snapshot)::text = ANY ((ARRAY['ja'::character varying, 'en'::character varying])::text[]))),
@@ -3483,9 +3483,9 @@ CREATE TABLE public.publishing_help_org_version_multiple_taxonomy_assignments (
     term_name_snapshot character varying CONSTRAINT publishing_help_org_version_multipl_term_name_snapshot_not_null NOT NULL,
     term_path_snapshot jsonb CONSTRAINT publishing_help_org_version_multipl_term_path_snapshot_not_null NOT NULL,
     locale_snapshot character varying CONSTRAINT publishing_help_org_version_multiple_t_locale_snapshot_not_null NOT NULL,
-    position_snapshot integer CONSTRAINT publishing_help_org_version_multiple_position_snapshot_not_null NOT NULL,
     created_at timestamp(6) with time zone CONSTRAINT publishing_help_org_version_multiple_taxono_created_at_not_null NOT NULL,
     updated_at timestamp(6) with time zone CONSTRAINT publishing_help_org_version_multiple_taxono_updated_at_not_null NOT NULL,
+    position_snapshot integer GENERATED ALWAYS AS ("position") STORED CONSTRAINT publishing_help_org_version_multiple_position_snapshot_not_null NOT NULL,
     CONSTRAINT chk_help_org_vm_kind CHECK (((vocabulary_kind)::text = 'multiple_ordered_flat'::text)),
     CONSTRAINT chk_help_org_vm_ks CHECK (((vocabulary_kind_snapshot)::text = ANY ((ARRAY['single_hierarchical'::character varying, 'multiple_ordered_flat'::character varying])::text[]))),
     CONSTRAINT chk_help_org_vm_ls CHECK (((locale_snapshot)::text = ANY ((ARRAY['ja'::character varying, 'en'::character varying])::text[]))),
@@ -4061,9 +4061,9 @@ CREATE TABLE public.publishing_info_app_version_multiple_taxonomy_assignments (
     term_name_snapshot character varying CONSTRAINT publishing_info_app_version_multipl_term_name_snapshot_not_null NOT NULL,
     term_path_snapshot jsonb CONSTRAINT publishing_info_app_version_multipl_term_path_snapshot_not_null NOT NULL,
     locale_snapshot character varying CONSTRAINT publishing_info_app_version_multiple_t_locale_snapshot_not_null NOT NULL,
-    position_snapshot integer CONSTRAINT publishing_info_app_version_multiple_position_snapshot_not_null NOT NULL,
     created_at timestamp(6) with time zone CONSTRAINT publishing_info_app_version_multiple_taxono_created_at_not_null NOT NULL,
     updated_at timestamp(6) with time zone CONSTRAINT publishing_info_app_version_multiple_taxono_updated_at_not_null NOT NULL,
+    position_snapshot integer GENERATED ALWAYS AS ("position") STORED CONSTRAINT publishing_info_app_version_multiple_position_snapshot_not_null NOT NULL,
     CONSTRAINT chk_info_app_vm_kind CHECK (((vocabulary_kind)::text = 'multiple_ordered_flat'::text)),
     CONSTRAINT chk_info_app_vm_ks CHECK (((vocabulary_kind_snapshot)::text = ANY ((ARRAY['single_hierarchical'::character varying, 'multiple_ordered_flat'::character varying])::text[]))),
     CONSTRAINT chk_info_app_vm_ls CHECK (((locale_snapshot)::text = ANY ((ARRAY['ja'::character varying, 'en'::character varying])::text[]))),
@@ -4639,9 +4639,9 @@ CREATE TABLE public.publishing_info_com_version_multiple_taxonomy_assignments (
     term_name_snapshot character varying CONSTRAINT publishing_info_com_version_multipl_term_name_snapshot_not_null NOT NULL,
     term_path_snapshot jsonb CONSTRAINT publishing_info_com_version_multipl_term_path_snapshot_not_null NOT NULL,
     locale_snapshot character varying CONSTRAINT publishing_info_com_version_multiple_t_locale_snapshot_not_null NOT NULL,
-    position_snapshot integer CONSTRAINT publishing_info_com_version_multiple_position_snapshot_not_null NOT NULL,
     created_at timestamp(6) with time zone CONSTRAINT publishing_info_com_version_multiple_taxono_created_at_not_null NOT NULL,
     updated_at timestamp(6) with time zone CONSTRAINT publishing_info_com_version_multiple_taxono_updated_at_not_null NOT NULL,
+    position_snapshot integer GENERATED ALWAYS AS ("position") STORED CONSTRAINT publishing_info_com_version_multiple_position_snapshot_not_null NOT NULL,
     CONSTRAINT chk_info_com_vm_kind CHECK (((vocabulary_kind)::text = 'multiple_ordered_flat'::text)),
     CONSTRAINT chk_info_com_vm_ks CHECK (((vocabulary_kind_snapshot)::text = ANY ((ARRAY['single_hierarchical'::character varying, 'multiple_ordered_flat'::character varying])::text[]))),
     CONSTRAINT chk_info_com_vm_ls CHECK (((locale_snapshot)::text = ANY ((ARRAY['ja'::character varying, 'en'::character varying])::text[]))),
@@ -5217,9 +5217,9 @@ CREATE TABLE public.publishing_info_org_version_multiple_taxonomy_assignments (
     term_name_snapshot character varying CONSTRAINT publishing_info_org_version_multipl_term_name_snapshot_not_null NOT NULL,
     term_path_snapshot jsonb CONSTRAINT publishing_info_org_version_multipl_term_path_snapshot_not_null NOT NULL,
     locale_snapshot character varying CONSTRAINT publishing_info_org_version_multiple_t_locale_snapshot_not_null NOT NULL,
-    position_snapshot integer CONSTRAINT publishing_info_org_version_multiple_position_snapshot_not_null NOT NULL,
     created_at timestamp(6) with time zone CONSTRAINT publishing_info_org_version_multiple_taxono_created_at_not_null NOT NULL,
     updated_at timestamp(6) with time zone CONSTRAINT publishing_info_org_version_multiple_taxono_updated_at_not_null NOT NULL,
+    position_snapshot integer GENERATED ALWAYS AS ("position") STORED CONSTRAINT publishing_info_org_version_multiple_position_snapshot_not_null NOT NULL,
     CONSTRAINT chk_info_org_vm_kind CHECK (((vocabulary_kind)::text = 'multiple_ordered_flat'::text)),
     CONSTRAINT chk_info_org_vm_ks CHECK (((vocabulary_kind_snapshot)::text = ANY ((ARRAY['single_hierarchical'::character varying, 'multiple_ordered_flat'::character varying])::text[]))),
     CONSTRAINT chk_info_org_vm_ls CHECK (((locale_snapshot)::text = ANY ((ARRAY['ja'::character varying, 'en'::character varying])::text[]))),
@@ -5366,7 +5366,7 @@ CREATE TABLE public.publishing_media_files (
     CONSTRAINT chk_media_files_pid CHECK ((char_length((public_id)::text) = 21)),
     CONSTRAINT chk_publishing_media_archive CHECK ((((archived_at IS NULL) AND (archive_reason IS NULL)) OR ((archived_at IS NOT NULL) AND (archive_reason IS NOT NULL)))),
     CONSTRAINT chk_publishing_media_digest CHECK ((((digest_algorithm)::text = 'sha256'::text) AND ((digest)::text ~ '^[0-9a-f]{64}$'::text))),
-    CONSTRAINT chk_publishing_media_dimensions CHECK ((((width IS NULL) AND (height IS NULL)) OR ((width > 0) AND (height > 0)))),
+    CONSTRAINT chk_publishing_media_dimensions CHECK ((((width IS NULL) AND (height IS NULL)) OR ((width IS NOT NULL) AND (height IS NOT NULL) AND (width > 0) AND (height > 0)))),
     CONSTRAINT chk_publishing_media_metadata CHECK ((jsonb_typeof(metadata) = 'object'::text)),
     CONSTRAINT chk_publishing_media_size CHECK ((byte_size >= 0))
 );
@@ -5844,9 +5844,9 @@ CREATE TABLE public.publishing_news_app_version_multiple_taxonomy_assignments (
     term_name_snapshot character varying CONSTRAINT publishing_news_app_version_multipl_term_name_snapshot_not_null NOT NULL,
     term_path_snapshot jsonb CONSTRAINT publishing_news_app_version_multipl_term_path_snapshot_not_null NOT NULL,
     locale_snapshot character varying CONSTRAINT publishing_news_app_version_multiple_t_locale_snapshot_not_null NOT NULL,
-    position_snapshot integer CONSTRAINT publishing_news_app_version_multiple_position_snapshot_not_null NOT NULL,
     created_at timestamp(6) with time zone CONSTRAINT publishing_news_app_version_multiple_taxono_created_at_not_null NOT NULL,
     updated_at timestamp(6) with time zone CONSTRAINT publishing_news_app_version_multiple_taxono_updated_at_not_null NOT NULL,
+    position_snapshot integer GENERATED ALWAYS AS ("position") STORED CONSTRAINT publishing_news_app_version_multiple_position_snapshot_not_null NOT NULL,
     CONSTRAINT chk_news_app_vm_kind CHECK (((vocabulary_kind)::text = 'multiple_ordered_flat'::text)),
     CONSTRAINT chk_news_app_vm_ks CHECK (((vocabulary_kind_snapshot)::text = ANY ((ARRAY['single_hierarchical'::character varying, 'multiple_ordered_flat'::character varying])::text[]))),
     CONSTRAINT chk_news_app_vm_ls CHECK (((locale_snapshot)::text = ANY ((ARRAY['ja'::character varying, 'en'::character varying])::text[]))),
@@ -6422,9 +6422,9 @@ CREATE TABLE public.publishing_news_com_version_multiple_taxonomy_assignments (
     term_name_snapshot character varying CONSTRAINT publishing_news_com_version_multipl_term_name_snapshot_not_null NOT NULL,
     term_path_snapshot jsonb CONSTRAINT publishing_news_com_version_multipl_term_path_snapshot_not_null NOT NULL,
     locale_snapshot character varying CONSTRAINT publishing_news_com_version_multiple_t_locale_snapshot_not_null NOT NULL,
-    position_snapshot integer CONSTRAINT publishing_news_com_version_multiple_position_snapshot_not_null NOT NULL,
     created_at timestamp(6) with time zone CONSTRAINT publishing_news_com_version_multiple_taxono_created_at_not_null NOT NULL,
     updated_at timestamp(6) with time zone CONSTRAINT publishing_news_com_version_multiple_taxono_updated_at_not_null NOT NULL,
+    position_snapshot integer GENERATED ALWAYS AS ("position") STORED CONSTRAINT publishing_news_com_version_multiple_position_snapshot_not_null NOT NULL,
     CONSTRAINT chk_news_com_vm_kind CHECK (((vocabulary_kind)::text = 'multiple_ordered_flat'::text)),
     CONSTRAINT chk_news_com_vm_ks CHECK (((vocabulary_kind_snapshot)::text = ANY ((ARRAY['single_hierarchical'::character varying, 'multiple_ordered_flat'::character varying])::text[]))),
     CONSTRAINT chk_news_com_vm_ls CHECK (((locale_snapshot)::text = ANY ((ARRAY['ja'::character varying, 'en'::character varying])::text[]))),
@@ -7000,9 +7000,9 @@ CREATE TABLE public.publishing_news_org_version_multiple_taxonomy_assignments (
     term_name_snapshot character varying CONSTRAINT publishing_news_org_version_multipl_term_name_snapshot_not_null NOT NULL,
     term_path_snapshot jsonb CONSTRAINT publishing_news_org_version_multipl_term_path_snapshot_not_null NOT NULL,
     locale_snapshot character varying CONSTRAINT publishing_news_org_version_multiple_t_locale_snapshot_not_null NOT NULL,
-    position_snapshot integer CONSTRAINT publishing_news_org_version_multiple_position_snapshot_not_null NOT NULL,
     created_at timestamp(6) with time zone CONSTRAINT publishing_news_org_version_multiple_taxono_created_at_not_null NOT NULL,
     updated_at timestamp(6) with time zone CONSTRAINT publishing_news_org_version_multiple_taxono_updated_at_not_null NOT NULL,
+    position_snapshot integer GENERATED ALWAYS AS ("position") STORED CONSTRAINT publishing_news_org_version_multiple_position_snapshot_not_null NOT NULL,
     CONSTRAINT chk_news_org_vm_kind CHECK (((vocabulary_kind)::text = 'multiple_ordered_flat'::text)),
     CONSTRAINT chk_news_org_vm_ks CHECK (((vocabulary_kind_snapshot)::text = ANY ((ARRAY['single_hierarchical'::character varying, 'multiple_ordered_flat'::character varying])::text[]))),
     CONSTRAINT chk_news_org_vm_ls CHECK (((locale_snapshot)::text = ANY ((ARRAY['ja'::character varying, 'en'::character varying])::text[]))),
@@ -9602,6 +9602,20 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
+-- Name: idx_docs_app_rev_restored_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_docs_app_rev_restored_revision ON public.publishing_docs_app_entry_revisions USING btree (restored_from_revision_id);
+
+
+--
+-- Name: idx_docs_app_rev_restored_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_docs_app_rev_restored_version ON public.publishing_docs_app_entry_revisions USING btree (restored_from_version_id);
+
+
+--
 -- Name: idx_docs_app_rm_term; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9676,6 +9690,20 @@ CREATE INDEX idx_docs_app_vs_term ON public.publishing_docs_app_version_single_t
 --
 
 CREATE INDEX idx_docs_app_vs_voc ON public.publishing_docs_app_version_single_taxonomy_assignments USING btree (vocabulary_id);
+
+
+--
+-- Name: idx_docs_com_rev_restored_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_docs_com_rev_restored_revision ON public.publishing_docs_com_entry_revisions USING btree (restored_from_revision_id);
+
+
+--
+-- Name: idx_docs_com_rev_restored_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_docs_com_rev_restored_version ON public.publishing_docs_com_entry_revisions USING btree (restored_from_version_id);
 
 
 --
@@ -9756,6 +9784,20 @@ CREATE INDEX idx_docs_com_vs_voc ON public.publishing_docs_com_version_single_ta
 
 
 --
+-- Name: idx_docs_org_rev_restored_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_docs_org_rev_restored_revision ON public.publishing_docs_org_entry_revisions USING btree (restored_from_revision_id);
+
+
+--
+-- Name: idx_docs_org_rev_restored_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_docs_org_rev_restored_version ON public.publishing_docs_org_entry_revisions USING btree (restored_from_version_id);
+
+
+--
 -- Name: idx_docs_org_rm_term; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9830,6 +9872,20 @@ CREATE INDEX idx_docs_org_vs_term ON public.publishing_docs_org_version_single_t
 --
 
 CREATE INDEX idx_docs_org_vs_voc ON public.publishing_docs_org_version_single_taxonomy_assignments USING btree (vocabulary_id);
+
+
+--
+-- Name: idx_help_app_rev_restored_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_help_app_rev_restored_revision ON public.publishing_help_app_entry_revisions USING btree (restored_from_revision_id);
+
+
+--
+-- Name: idx_help_app_rev_restored_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_help_app_rev_restored_version ON public.publishing_help_app_entry_revisions USING btree (restored_from_version_id);
 
 
 --
@@ -9910,6 +9966,20 @@ CREATE INDEX idx_help_app_vs_voc ON public.publishing_help_app_version_single_ta
 
 
 --
+-- Name: idx_help_com_rev_restored_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_help_com_rev_restored_revision ON public.publishing_help_com_entry_revisions USING btree (restored_from_revision_id);
+
+
+--
+-- Name: idx_help_com_rev_restored_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_help_com_rev_restored_version ON public.publishing_help_com_entry_revisions USING btree (restored_from_version_id);
+
+
+--
 -- Name: idx_help_com_rm_term; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9984,6 +10054,20 @@ CREATE INDEX idx_help_com_vs_term ON public.publishing_help_com_version_single_t
 --
 
 CREATE INDEX idx_help_com_vs_voc ON public.publishing_help_com_version_single_taxonomy_assignments USING btree (vocabulary_id);
+
+
+--
+-- Name: idx_help_org_rev_restored_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_help_org_rev_restored_revision ON public.publishing_help_org_entry_revisions USING btree (restored_from_revision_id);
+
+
+--
+-- Name: idx_help_org_rev_restored_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_help_org_rev_restored_version ON public.publishing_help_org_entry_revisions USING btree (restored_from_version_id);
 
 
 --
@@ -10064,6 +10148,20 @@ CREATE INDEX idx_help_org_vs_voc ON public.publishing_help_org_version_single_ta
 
 
 --
+-- Name: idx_info_app_rev_restored_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_info_app_rev_restored_revision ON public.publishing_info_app_entry_revisions USING btree (restored_from_revision_id);
+
+
+--
+-- Name: idx_info_app_rev_restored_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_info_app_rev_restored_version ON public.publishing_info_app_entry_revisions USING btree (restored_from_version_id);
+
+
+--
 -- Name: idx_info_app_rm_term; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10138,6 +10236,20 @@ CREATE INDEX idx_info_app_vs_term ON public.publishing_info_app_version_single_t
 --
 
 CREATE INDEX idx_info_app_vs_voc ON public.publishing_info_app_version_single_taxonomy_assignments USING btree (vocabulary_id);
+
+
+--
+-- Name: idx_info_com_rev_restored_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_info_com_rev_restored_revision ON public.publishing_info_com_entry_revisions USING btree (restored_from_revision_id);
+
+
+--
+-- Name: idx_info_com_rev_restored_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_info_com_rev_restored_version ON public.publishing_info_com_entry_revisions USING btree (restored_from_version_id);
 
 
 --
@@ -10218,6 +10330,20 @@ CREATE INDEX idx_info_com_vs_voc ON public.publishing_info_com_version_single_ta
 
 
 --
+-- Name: idx_info_org_rev_restored_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_info_org_rev_restored_revision ON public.publishing_info_org_entry_revisions USING btree (restored_from_revision_id);
+
+
+--
+-- Name: idx_info_org_rev_restored_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_info_org_rev_restored_version ON public.publishing_info_org_entry_revisions USING btree (restored_from_version_id);
+
+
+--
 -- Name: idx_info_org_rm_term; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10292,6 +10418,20 @@ CREATE INDEX idx_info_org_vs_term ON public.publishing_info_org_version_single_t
 --
 
 CREATE INDEX idx_info_org_vs_voc ON public.publishing_info_org_version_single_taxonomy_assignments USING btree (vocabulary_id);
+
+
+--
+-- Name: idx_news_app_rev_restored_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_news_app_rev_restored_revision ON public.publishing_news_app_entry_revisions USING btree (restored_from_revision_id);
+
+
+--
+-- Name: idx_news_app_rev_restored_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_news_app_rev_restored_version ON public.publishing_news_app_entry_revisions USING btree (restored_from_version_id);
 
 
 --
@@ -10372,6 +10512,20 @@ CREATE INDEX idx_news_app_vs_voc ON public.publishing_news_app_version_single_ta
 
 
 --
+-- Name: idx_news_com_rev_restored_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_news_com_rev_restored_revision ON public.publishing_news_com_entry_revisions USING btree (restored_from_revision_id);
+
+
+--
+-- Name: idx_news_com_rev_restored_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_news_com_rev_restored_version ON public.publishing_news_com_entry_revisions USING btree (restored_from_version_id);
+
+
+--
 -- Name: idx_news_com_rm_term; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10446,6 +10600,20 @@ CREATE INDEX idx_news_com_vs_term ON public.publishing_news_com_version_single_t
 --
 
 CREATE INDEX idx_news_com_vs_voc ON public.publishing_news_com_version_single_taxonomy_assignments USING btree (vocabulary_id);
+
+
+--
+-- Name: idx_news_org_rev_restored_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_news_org_rev_restored_revision ON public.publishing_news_org_entry_revisions USING btree (restored_from_revision_id);
+
+
+--
+-- Name: idx_news_org_rev_restored_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_news_org_rev_restored_version ON public.publishing_news_org_entry_revisions USING btree (restored_from_version_id);
 
 
 --
@@ -11747,7 +11915,7 @@ CREATE UNIQUE INDEX uidx_docs_app_rev_id_locale ON public.publishing_docs_app_en
 -- Name: uidx_docs_app_rev_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_docs_app_rev_media_pos ON public.publishing_docs_app_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_docs_app_rev_media_pos ON public.publishing_docs_app_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -11838,7 +12006,7 @@ CREATE UNIQUE INDEX uidx_docs_app_ver_id_locale ON public.publishing_docs_app_en
 -- Name: uidx_docs_app_ver_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_docs_app_ver_media_pos ON public.publishing_docs_app_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_docs_app_ver_media_pos ON public.publishing_docs_app_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -11922,7 +12090,7 @@ CREATE UNIQUE INDEX uidx_docs_com_rev_id_locale ON public.publishing_docs_com_en
 -- Name: uidx_docs_com_rev_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_docs_com_rev_media_pos ON public.publishing_docs_com_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_docs_com_rev_media_pos ON public.publishing_docs_com_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -12013,7 +12181,7 @@ CREATE UNIQUE INDEX uidx_docs_com_ver_id_locale ON public.publishing_docs_com_en
 -- Name: uidx_docs_com_ver_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_docs_com_ver_media_pos ON public.publishing_docs_com_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_docs_com_ver_media_pos ON public.publishing_docs_com_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -12097,7 +12265,7 @@ CREATE UNIQUE INDEX uidx_docs_org_rev_id_locale ON public.publishing_docs_org_en
 -- Name: uidx_docs_org_rev_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_docs_org_rev_media_pos ON public.publishing_docs_org_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_docs_org_rev_media_pos ON public.publishing_docs_org_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -12188,7 +12356,7 @@ CREATE UNIQUE INDEX uidx_docs_org_ver_id_locale ON public.publishing_docs_org_en
 -- Name: uidx_docs_org_ver_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_docs_org_ver_media_pos ON public.publishing_docs_org_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_docs_org_ver_media_pos ON public.publishing_docs_org_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -12272,7 +12440,7 @@ CREATE UNIQUE INDEX uidx_help_app_rev_id_locale ON public.publishing_help_app_en
 -- Name: uidx_help_app_rev_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_help_app_rev_media_pos ON public.publishing_help_app_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_help_app_rev_media_pos ON public.publishing_help_app_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -12363,7 +12531,7 @@ CREATE UNIQUE INDEX uidx_help_app_ver_id_locale ON public.publishing_help_app_en
 -- Name: uidx_help_app_ver_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_help_app_ver_media_pos ON public.publishing_help_app_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_help_app_ver_media_pos ON public.publishing_help_app_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -12447,7 +12615,7 @@ CREATE UNIQUE INDEX uidx_help_com_rev_id_locale ON public.publishing_help_com_en
 -- Name: uidx_help_com_rev_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_help_com_rev_media_pos ON public.publishing_help_com_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_help_com_rev_media_pos ON public.publishing_help_com_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -12538,7 +12706,7 @@ CREATE UNIQUE INDEX uidx_help_com_ver_id_locale ON public.publishing_help_com_en
 -- Name: uidx_help_com_ver_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_help_com_ver_media_pos ON public.publishing_help_com_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_help_com_ver_media_pos ON public.publishing_help_com_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -12622,7 +12790,7 @@ CREATE UNIQUE INDEX uidx_help_org_rev_id_locale ON public.publishing_help_org_en
 -- Name: uidx_help_org_rev_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_help_org_rev_media_pos ON public.publishing_help_org_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_help_org_rev_media_pos ON public.publishing_help_org_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -12713,7 +12881,7 @@ CREATE UNIQUE INDEX uidx_help_org_ver_id_locale ON public.publishing_help_org_en
 -- Name: uidx_help_org_ver_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_help_org_ver_media_pos ON public.publishing_help_org_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_help_org_ver_media_pos ON public.publishing_help_org_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -12797,7 +12965,7 @@ CREATE UNIQUE INDEX uidx_info_app_rev_id_locale ON public.publishing_info_app_en
 -- Name: uidx_info_app_rev_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_info_app_rev_media_pos ON public.publishing_info_app_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_info_app_rev_media_pos ON public.publishing_info_app_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -12888,7 +13056,7 @@ CREATE UNIQUE INDEX uidx_info_app_ver_id_locale ON public.publishing_info_app_en
 -- Name: uidx_info_app_ver_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_info_app_ver_media_pos ON public.publishing_info_app_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_info_app_ver_media_pos ON public.publishing_info_app_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -12972,7 +13140,7 @@ CREATE UNIQUE INDEX uidx_info_com_rev_id_locale ON public.publishing_info_com_en
 -- Name: uidx_info_com_rev_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_info_com_rev_media_pos ON public.publishing_info_com_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_info_com_rev_media_pos ON public.publishing_info_com_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -13063,7 +13231,7 @@ CREATE UNIQUE INDEX uidx_info_com_ver_id_locale ON public.publishing_info_com_en
 -- Name: uidx_info_com_ver_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_info_com_ver_media_pos ON public.publishing_info_com_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_info_com_ver_media_pos ON public.publishing_info_com_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -13147,7 +13315,7 @@ CREATE UNIQUE INDEX uidx_info_org_rev_id_locale ON public.publishing_info_org_en
 -- Name: uidx_info_org_rev_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_info_org_rev_media_pos ON public.publishing_info_org_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_info_org_rev_media_pos ON public.publishing_info_org_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -13238,7 +13406,7 @@ CREATE UNIQUE INDEX uidx_info_org_ver_id_locale ON public.publishing_info_org_en
 -- Name: uidx_info_org_ver_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_info_org_ver_media_pos ON public.publishing_info_org_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_info_org_ver_media_pos ON public.publishing_info_org_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -13322,7 +13490,7 @@ CREATE UNIQUE INDEX uidx_news_app_rev_id_locale ON public.publishing_news_app_en
 -- Name: uidx_news_app_rev_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_news_app_rev_media_pos ON public.publishing_news_app_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_news_app_rev_media_pos ON public.publishing_news_app_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -13413,7 +13581,7 @@ CREATE UNIQUE INDEX uidx_news_app_ver_id_locale ON public.publishing_news_app_en
 -- Name: uidx_news_app_ver_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_news_app_ver_media_pos ON public.publishing_news_app_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_news_app_ver_media_pos ON public.publishing_news_app_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -13497,7 +13665,7 @@ CREATE UNIQUE INDEX uidx_news_com_rev_id_locale ON public.publishing_news_com_en
 -- Name: uidx_news_com_rev_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_news_com_rev_media_pos ON public.publishing_news_com_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_news_com_rev_media_pos ON public.publishing_news_com_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -13588,7 +13756,7 @@ CREATE UNIQUE INDEX uidx_news_com_ver_id_locale ON public.publishing_news_com_en
 -- Name: uidx_news_com_ver_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_news_com_ver_media_pos ON public.publishing_news_com_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_news_com_ver_media_pos ON public.publishing_news_com_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -13672,7 +13840,7 @@ CREATE UNIQUE INDEX uidx_news_org_rev_id_locale ON public.publishing_news_org_en
 -- Name: uidx_news_org_rev_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_news_org_rev_media_pos ON public.publishing_news_org_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_news_org_rev_media_pos ON public.publishing_news_org_revision_media_usages USING btree (entry_revision_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -13763,7 +13931,7 @@ CREATE UNIQUE INDEX uidx_news_org_ver_id_locale ON public.publishing_news_org_en
 -- Name: uidx_news_org_ver_media_pos; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uidx_news_org_ver_media_pos ON public.publishing_news_org_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position");
+CREATE UNIQUE INDEX uidx_news_org_ver_media_pos ON public.publishing_news_org_version_media_usages USING btree (entry_version_id, role, field_path, block_path, "position") NULLS NOT DISTINCT;
 
 
 --
@@ -18394,6 +18562,10 @@ ALTER TABLE ONLY public.publishing_help_org_revision_media_usages
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261112151000'),
+('20261112150000'),
+('20261112112556'),
+('20261112010000'),
 ('20261020090000'),
 ('20261019110830'),
 ('20260906120000'),

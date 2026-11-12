@@ -12,10 +12,8 @@ require "flipper/adapters/active_record"
 # `primary` has no replica on purpose. A flag is read immediately after it is
 # toggled, so replication lag would surface as a flip that did not apply.
 #
-# The reading role points at the same database rather than being omitted: the
-# DatabaseSelector middleware (config/initializers/multi_db.rb) wraps GET requests in
-# `connected_to(role: :reading)`, and a model without a reading pool raises
-# ActiveRecord::ConnectionNotDefined there.
+# Both role names point to `primary`; this model has no replica and request handling
+# does not switch roles automatically.
 #
 # Wrapped in the same load hook the adapter uses to define its models: the adapter
 # defers `Flipper::Adapters::ActiveRecord::Model` until ActiveRecord::Base is loaded,
@@ -42,7 +40,7 @@ Rails.application.configure do
   config.flipper.preload = true
 end
 
-# The UI is mounted on the developer surface (config/routes/base.rb).
+# The UI is mounted on the Flipper operator-tool host (config/routes/flipper.rb).
 Flipper::UI.configure do |config|
   # The version check calls flippercloud.io from the browser on every page load. The control-plane
   # surface must not reach third-party origins to render.

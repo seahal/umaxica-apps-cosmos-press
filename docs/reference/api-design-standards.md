@@ -157,9 +157,9 @@ RFC 9110 §15 semantics and vocabulary.
 - `406` — no representation acceptable under the request's `Accept` (§15.5.7).
 - `409` — a state conflict the caller can resolve (§15.5.10).
 - `415` — unsupported request media type (§15.5.16).
-- `413` — the request content exceeds the server's willingness or ability to process it
-  (§15.5.14). JSON body limits are enforced before parameter parsing; the configured Rails limit is
-  documented in `docs/security/request-size-limits.md`.
+- `413` — the request content exceeds the server's willingness or ability to process it (§15.5.14).
+  JSON body limits are enforced before parameter parsing; the configured Rails limit is documented
+  in `docs/security/request-size-limits.md`.
 - `422` — well-formed but semantically invalid. **RFC 9110 §15.5.21 names this "Unprocessable
   Content"**, not "Unprocessable Entity". Use Rails' `:unprocessable_content` exclusively;
   `:unprocessable_entity` is the deprecated alias and must not appear in new code.
@@ -205,8 +205,7 @@ RFC 9110 §12.
 - A request with no `Accept` accepts anything (§12.5.1) and must not be refused. The ranges `*/*`
   and `application/*` both satisfy the rule.
 - A request carrying a body must declare `Content-Type: application/json`; anything else is `415`. A
-  request with no body has no media type to reject and must not be refused for declaring nothing —
-  the token refresh endpoint carries its credential in a cookie and sends no body at all.
+  request with no body has no media type to reject and must not be refused for declaring nothing.
 - Both checks run before authentication and before CSRF verification. Whether a request can be
   answered at all does not depend on who is asking, and a body that cannot be parsed is rejected
   before anything tries to read it.
@@ -217,9 +216,7 @@ RFC 9110 §12.
   beats an empty body.
 
 Enforced by `ApiContentNegotiation` (`app/controllers/concerns/api_content_negotiation.rb`),
-included by every `/api/v0` boundary. `/edge/v0` and `/web/v0` do not enforce it yet, because their
-controllers still emit pre-Problem-Details error shapes and a negotiated `406` there would give one
-endpoint two error formats.
+included by the current machine JSON API boundaries.
 
 ## Caching and conditional requests
 
@@ -234,8 +231,8 @@ RFC 9110 §13 (conditional requests) and §5.2 / RFC 9111 (cache directives).
   endpoint's own contract.
 - Public content may be cacheable. A read-only public content endpoint that opts in emits `ETag`
   and/or `Last-Modified` and answers `If-None-Match` / `If-Modified-Since` with `304` (§13.1,
-  §15.4.5). Published content carries a publication timestamp, so the Publishing entries API opts
-  in and unconditional re-transfer is avoidable.
+  §15.4.5). Published content carries a publication timestamp, so the Publishing entries API opts in
+  and unconditional re-transfer is avoidable.
 - A cacheable response whose body varies by authenticated subject requires `Vary` and `private`.
 
 ## Deprecation and sunset
@@ -249,26 +246,18 @@ Any endpoint being retired signals it on the wire before removal:
 - `Link` with `rel="deprecation"` (RFC 9745 §3) pointing at documentation, and
   `rel="successor-version"` (RFC 5829) pointing at the replacement.
 
-An endpoint is not removed until it has carried `Sunset` for the announced window. Removing an
-endpoint that never advertised a sunset leaves clients with no remediation path and is prohibited.
-
-This applies to each `/edge/v0` and `/web/v0` route as it converges on `/api/v0`
-(`adr/api-route-vocabulary-consolidation.md`). The one recorded exception is the 2026-10-02
-pre-deployment cutover of `/web/v0/{theme,cookie}` to `/api/v0/preferences/{theme,cookie}`, whose
-only clients were this repository's own browser code and moved in the same change; it is not a
-precedent for removing an endpoint that has a deployed client.
+For a planned retirement with known deployed clients, announce the deprecation and sunset before
+removal. An owner-approved hard reset may remove local-only or unused routes immediately when its
+scope explicitly authorizes a breaking change; record the removed route inventory and decision in
+the task evidence. Do not add a redirect, alias, or compatibility endpoint unless the owner
+separately requires one.
 
 ## Authentication
 
-- Browser clients authenticate with the first-party cookie transport
-  (`adr/core-browser-jwt-cookie-transport-and-nextjs-zero-cookie-boundary.md`) plus CSRF
-  verification on unsafe methods.
-- Native and machine clients authenticate with `Authorization: Bearer` (RFC 6750). Bearer endpoints
-  reject cookie-bearing requests and set `Cache-Control: no-store`.
-- A single endpoint accepts exactly one credential transport. Accepting either invites
-  confused-deputy and CSRF-on-bearer defects.
-- `401` from a bearer endpoint includes `WWW-Authenticate: Bearer error="invalid_token"` (RFC 6750
-  §3.1).
+- Public content APIs use their host-constrained read-only route contract. Edit Publishing API
+  requests use the Edit browser relying-party session and Rails CSRF protection for unsafe methods.
+- This repository exposes no native bearer-token API. A new bearer endpoint needs an explicit
+  owner-approved contract and a single credential transport.
 - Per RFC 9700 (BCP 240): Authorization Code with PKCE for all clients. The Implicit grant and the
   Resource Owner Password Credentials grant must not be used or reintroduced.
 - Rate limiting exceeded returns `429` (RFC 6585 §4) with a `rate-limited` problem document and
@@ -289,7 +278,6 @@ Details rule. Converting them would break protocol conformance.
 | OAuth 2.0 authorization, token, revocation, introspection  | `{"error", "error_description"}` — RFC 6749 §5.2, RFC 7009                                                                                                                         |
 | OIDC endpoints including UserInfo and back-channel logout  | RFC 6750 §3.1 bearer errors, OIDC Core                                                                                                                                             |
 | WebAuthn / passkey ceremony endpoints                      | Shapes fixed by the WebAuthn specification and the browser API                                                                                                                     |
-| DBSC endpoints                                             | Device Bound Session Credentials; see `docs/architecture/dbsc.md`                                                                                                                  |
 | MCP endpoints (`app/controllers/concerns/mcp_endpoint.rb`) | **JSON-RPC 2.0** — the response is produced by the MCP transport, not by application code                                                                                          |
 | `/health`, `/health/*`                                     | Text probe contract (`text/plain`) in `docs/reference/health-endpoints.md`; edge-blocked per `adr/internal-health-endpoint-edge-isolation.md`                                      |
 | `/api/v0/health.json`, `/api/v0/revision.json`             | Machine health/revision contract in `docs/reference/health-endpoints.md` (`application/json`, `pass/warn/fail`, `406` on non-JSON `Accept`) — not the Problem Details error format |

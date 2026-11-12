@@ -1,13 +1,7 @@
 # typed: false
 # frozen_string_literal: true
 
-# Environment-driven JWT configuration shared by every auth surface.
-#
-# Previously lived as a nested module inside `AuthenticationBase`.
-# Extracted so the 3,000-line AuthenticationBase concern shrinks toward a single
-# responsibility, while existing callers that reference
-# `AuthenticationJwtConfiguration` keep working via the
-# backward-compatibility alias defined in `AuthenticationBase`.
+# Environment-driven JWT configuration shared by the retained Edit OIDC relying party and token validators.
 module AuthenticationJwtConfiguration
   VALID_RESOURCE_TYPES = %w(client operator).freeze
 

@@ -16,6 +16,7 @@ class RpEditOrgCallbackState < RpEditOrgRecord
   validates :client_id, length: { maximum: 64 }
   validates :pkce_challenge, length: { maximum: 128 }
   validates :issuer, length: { maximum: 255 }
+  validates :state_digest, uniqueness: true
 
   public
 

@@ -9,41 +9,22 @@ module Security
     class ControllerLifecycleOrderInvariantTest < ActiveSupport::TestCase
       self.fixture_table_names = []
 
-      AUTHENTICATED_SURFACE_CONTROLLERS = [
-        Auth::App::ApplicationController,
-        Auth::Org::ApplicationController,
-        Base::App::ApplicationController,
-        Base::Org::ApplicationController,
-        Core::App::ApplicationController,
-        Core::Org::ApplicationController,
-        Warp::App::ApplicationController,
-        Warp::Org::ApplicationController,
-      ].freeze
+      AUTHENTICATED_SURFACE_CONTROLLERS = [Edit::Org::ApplicationController].freeze
 
       REQUIRED_ORDER = %i(
-        set_current_context
-        reset_flash
-        set_preferences_cookie
-        resolve_param_context
-        set_region
-        transparent_refresh_access_token
-        set_current_actor
-        apply_localization_preferences
-        set_color_theme
-        enforce_verification_if_required
+        apply_default_no_store
+        enforce_fqdn_availability!
+        authenticate_browser_rp_unsafe_request!
+        authenticate_browser_rp_safe_request!
+        verify_jump_return_rt!
         enforce_access_policy!
-        set_current_observability
       ).freeze
 
-      test "authenticated surface application controllers keep reviewed lifecycle order" do
+      test "the Edit browser RP keeps the reviewed lifecycle order" do
         violations =
           AUTHENTICATED_SURFACE_CONTROLLERS.filter_map do |controller|
             filters = before_filters_for(controller)
             required_order = REQUIRED_ORDER
-            if controller < BrowserRpAuthentication
-              required_order = %i(authenticate_browser_rp_unsafe_request! authenticate_browser_rp_safe_request!) +
-                (REQUIRED_ORDER - [:transparent_refresh_access_token])
-            end
             missing = required_order - filters
             out_of_order = out_of_order_filters(filters, required_order)
             next if missing.empty? && out_of_order.empty?
@@ -54,19 +35,17 @@ module Security
         assert_empty violations, "Authentication lifecycle callback order drifted:\n#{violations.join("\n")}"
       end
 
-      test "authenticated surface application controllers always clear Actor in around action" do
-        violations =
-          AUTHENTICATED_SURFACE_CONTROLLERS.filter_map do |controller|
-            around_filters =
-              controller._process_action_callbacks.filter_map do |callback|
-                callback.filter if callback.kind == :around
-              end
-            next if around_filters.include?(:with_actor_lifecycle)
+      test "Edit keeps request-local identity without retired global Actor lifecycle callbacks" do
+        controller = Edit::Org::ApplicationController
+        filters = controller._process_action_callbacks.map(&:filter)
 
-            "#{controller.name}: around filters=#{around_filters.inspect}"
-          end
-
-        assert_empty violations, "Actor lifecycle cleanup is required:\n#{violations.join("\n")}"
+        assert_not_includes filters, :with_actor_lifecycle
+        assert_not_includes filters, :set_current_actor
+        assert_not_includes filters, :set_preferences_cookie
+        assert_not_includes filters, :enforce_verification_if_required
+        assert_includes filters, :verify_authenticity_token
+        assert_includes filters, :verify_private_action_authorized!
+        assert_includes filters, :apply_authenticated_page_cache_policy!
       end
 
       private

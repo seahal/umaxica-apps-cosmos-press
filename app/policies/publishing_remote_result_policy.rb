@@ -8,6 +8,17 @@ class PublishingRemoteResultPolicy < ApplicationPolicy
   public
 
   def show?
-    record.is_a?(PublishingAuthorityClient::Result) && %i(forbidden unauthorized).exclude?(record.status)
+    return false unless record.is_a?(PublishingAuthorityClient::Result)
+
+    case record.status
+    when :ok, :not_found, :unprocessable
+      true
+    when :forbidden, :unauthorized
+      false
+    when :dependency
+      raise GovernanceUnavailableError, "Publishing authority is unavailable"
+    else
+      raise ArgumentError, "unsupported Publishing authority outcome"
+    end
   end
 end

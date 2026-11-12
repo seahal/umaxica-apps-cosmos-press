@@ -1,0 +1,8 @@
+<% content_for :page_title, t("sign.shared.sign_out.indeterminate_title") %>
+
+<div class="mx-auto flex w-full max-w-md flex-col gap-4">
+  <h1 class="text-2xl font-semibold text-fg sm:text-3xl"><%= t("sign.shared.sign_out.indeterminate_title") %></h1>
+  <p class="text-base text-fg-muted"><%= t("sign.shared.sign_out.indeterminate_description") %></p>
+  <p><%= link_to t("sign.shared.sign_out.home_link"), sign_out_home_path,
+        class: "text-base text-link underline underline-offset-4 hover:underline" %></p>
+</div>

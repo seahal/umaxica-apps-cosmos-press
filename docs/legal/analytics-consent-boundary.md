@@ -151,7 +151,6 @@ accountability. These events answer "who accessed the system and how."
 
 - `rate_limit.*`
 - `telephone.verification.rate_limited`
-- `turnstile.*`
 - `captcha.*`
 - `security.*`
 - `redirect.blocked` / `redirect.invalid_url`

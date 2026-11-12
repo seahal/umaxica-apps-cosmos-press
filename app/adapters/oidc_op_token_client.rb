@@ -5,12 +5,13 @@ require "timeout"
 
 # RP-side client for the OP token endpoint over public HTTPS (R5-WU05, one.md section 6.4).
 #
-# An RP never calls OidcTokenExchangeCoordinator in-process: it presents a fresh endpoint-bound
-# private_key_jwt assertion to the OP's registered token endpoint, exactly like an external client.
+# The RP presents a fresh endpoint-bound private_key_jwt assertion to the OP's registered token
+# endpoint, exactly like an external client.
 # Results are classified so callers can tell a definitive refusal (clear credentials) from a
 # dependency failure (keep cookies, retry later) and from an indeterminate commit (the OP may have
 # rotated the Refresh credential; D-25 has no replay of a lost response, so the RP recovers through a
 # new Authorization Code flow, never a blind retry).
+# TODO: AUDIT external access: calls the OP token endpoint.
 class OidcOpTokenClient
   # success        - 200 with a JSON token response.
   # refused        - definitive OAuth refusal (400/401 with an OAuth error, e.g. invalid_grant).

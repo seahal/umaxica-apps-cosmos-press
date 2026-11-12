@@ -71,6 +71,10 @@ class OidcIssuerTest < ActiveSupport::TestCase
     assert_equal "https://accounts.example", OidcIssuer.absolute_url("accounts.example")
     assert_equal "http://localhost:3000", OidcIssuer.absolute_url("localhost")
     assert_equal "http://127.0.0.1:4567", OidcIssuer.absolute_url("127.0.0.1:4567")
+    issuer = OidcIssuer.for_resource_type("client")
+
+    assert_equal "#{issuer}/oauth/userinfo", OidcIssuer.userinfo_endpoint("client")
+    assert_equal "#{issuer}/oauth/revoke", OidcIssuer.revocation_endpoint("client")
   end
 
   test "a host the URI parser rejects is treated as non-public rather than raising" do

@@ -84,7 +84,13 @@ These database names remain independent cross-cutting or infrastructure boundari
   low-frequency, application-wide configuration or metadata that does not have a strong domain,
   lifecycle, scaling, retention, isolation, or operational reason to own a dedicated database.
   Flipper currently uses it. It is not an indiscriminate catch-all: data with a meaningful
-  independent ownership boundary stays in its dedicated database.
+  independent ownership boundary stays in its dedicated database. Blazer queries, dashboards, checks
+  and dashboard links also live here. Queries require a statement, dashboards require a name, and
+  checks and dashboard links require their referenced parents. Native foreign keys protect these
+  local links; child-first deletion preserves Blazer's `dependent: :destroy` behavior. Creator
+  references remain optional and have no native foreign key. Required text contains a non-whitespace
+  character. CHECK constraints use the same Unicode whitespace set as Active Support presence
+  validation, independently of the database locale.
 - `queue`
 - `storage`
 - `search`

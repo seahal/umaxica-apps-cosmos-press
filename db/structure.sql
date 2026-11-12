@@ -33,7 +33,7 @@ CREATE TABLE public.ar_internal_metadata (
 CREATE TABLE public.blazer_checks (
     id bigint NOT NULL,
     creator_id bigint,
-    query_id bigint,
+    query_id bigint NOT NULL,
     state character varying,
     schedule character varying,
     emails text,
@@ -71,8 +71,8 @@ ALTER SEQUENCE public.blazer_checks_id_seq OWNED BY public.blazer_checks.id;
 
 CREATE TABLE public.blazer_dashboard_queries (
     id bigint NOT NULL,
-    dashboard_id bigint,
-    query_id bigint,
+    dashboard_id bigint NOT NULL,
+    query_id bigint NOT NULL,
     "position" integer,
     created_at timestamp(6) with time zone NOT NULL,
     updated_at timestamp(6) with time zone NOT NULL
@@ -105,9 +105,10 @@ ALTER SEQUENCE public.blazer_dashboard_queries_id_seq OWNED BY public.blazer_das
 CREATE TABLE public.blazer_dashboards (
     id bigint NOT NULL,
     creator_id bigint,
-    name character varying,
+    name character varying NOT NULL,
     created_at timestamp(6) with time zone NOT NULL,
-    updated_at timestamp(6) with time zone NOT NULL
+    updated_at timestamp(6) with time zone NOT NULL,
+    CONSTRAINT chk_blazer_dashboards_name_present CHECK (((name)::text ~ '[^	-    -     　]'::text))
 );
 
 
@@ -139,11 +140,12 @@ CREATE TABLE public.blazer_queries (
     creator_id bigint,
     name character varying,
     description text,
-    statement text,
+    statement text NOT NULL,
     data_source character varying,
     status character varying,
     created_at timestamp(6) with time zone NOT NULL,
-    updated_at timestamp(6) with time zone NOT NULL
+    updated_at timestamp(6) with time zone NOT NULL,
+    CONSTRAINT chk_blazer_queries_statement_present CHECK ((statement ~ '[^	-    -     　]'::text))
 );
 
 
@@ -402,12 +404,38 @@ CREATE UNIQUE INDEX index_flipper_gates_on_feature_key_and_key_and_value ON publ
 
 
 --
+-- Name: blazer_checks fk_blazer_checks_query; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blazer_checks
+    ADD CONSTRAINT fk_blazer_checks_query FOREIGN KEY (query_id) REFERENCES public.blazer_queries(id);
+
+
+--
+-- Name: blazer_dashboard_queries fk_blazer_dashboard_queries_dashboard; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blazer_dashboard_queries
+    ADD CONSTRAINT fk_blazer_dashboard_queries_dashboard FOREIGN KEY (dashboard_id) REFERENCES public.blazer_dashboards(id);
+
+
+--
+-- Name: blazer_dashboard_queries fk_blazer_dashboard_queries_query; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blazer_dashboard_queries
+    ADD CONSTRAINT fk_blazer_dashboard_queries_query FOREIGN KEY (query_id) REFERENCES public.blazer_queries(id);
+
+
+--
 -- PostgreSQL database dump complete
 --
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261112115320'),
+('20261112114503'),
 ('20260915000000'),
 ('20260807000000');
 

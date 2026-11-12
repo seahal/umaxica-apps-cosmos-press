@@ -16,17 +16,9 @@ info:
 
     Endpoints whose wire format is fixed by another specification -- OAuth 2.0, OIDC, WebAuthn,
     DBSC, MCP (JSON-RPC 2.0), and `.well-known` resources -- are intentionally absent. They are
-    governed by their own specifications, not by this contract. The DBSC registration endpoint
-    is under `/api/v0/preferences/dbsc` but remains undescribed here because DBSC has its own
-    specification. The remaining legacy `/edge/v0` and `/web/v0` endpoints stay absent until they
-    converge (adr/api-route-vocabulary-consolidation.md).
-
-    ## Preferences
-
-    `/api/v0/preferences/{cookie,theme,web_push}` is a browser API served by Base on this
-    surface, listed in the path's `servers`. Base uses a same-TLD preference token and a host-only browser binding for consent and Web Push;
-    a browser calls only the origin it is on; the endpoints are not for cross-origin
-    use. The com surface is anonymous: Auth, Core, and Warp serve no preference API on com hosts.
+    governed by their own specifications, not by this contract. The legacy `/edge/v0` and `/web/v0`
+    namespaces are also absent from the retained Press routes; their convergence remains governed
+    by adr/api-route-vocabulary-consolidation.md.
 
     The text operational endpoints -- `GET /health`, `GET /health/{startup,liveness,readiness}`,
     and `GET /revision` -- are absent because they are not JSON: they render `text/plain` and do
@@ -36,15 +28,13 @@ info:
     ## Hosts
 
     `servers` appears only where a host is real, public, and knowable from the repository. The
-    preference paths list every host that serves them. The health and revision endpoints carry none
-    because they are blocked at the edge. The content and Palm paths carry none because their hosts
-    are supplied by deployment environment variables, and the docs and news content editions have no
-    production host at all.
+    retained content hosts are supplied by deployment configuration, so those paths carry none.
+    The machine health and revision endpoints are also shared with Edit's org surface and carry no
+    server URL here.
 
     ## Errors
 
-    Most errors use RFC 9457 Problem Details (`application/problem+json`). Duplicate preference
-    cookie names are rejected with an empty 400 response. Problem `type` values are
+    Errors use RFC 9457 Problem Details (`application/problem+json`). Problem `type` values are
     the stable identifiers clients branch on; `title` and `detail` are human-readable and may
     change. Two extension members are defined: `request_id` and `errors`.
 
@@ -57,8 +47,6 @@ tags:
   - name: Health
     description: >-
       Machine-readable health aggregate and deployment revision. Blocked at the edge, JSON only.
-  - name: Preferences
-    description: Cookie-consent, color-theme and Web Push JSON endpoints under `/api/v0/preferences`.
   - name: Content
     description: Read-only published documentation, help, news, and info entries.
 
@@ -68,15 +56,6 @@ paths:
 
   /api/v0/revision.json:
     $ref: "shared/paths/api-v0-revision.yml"
-
-  /api/v0/preferences/cookie:
-    $ref: "com/paths/preferences-cookie.yml"
-
-  /api/v0/preferences/web_push:
-    $ref: "com/paths/preferences-web-push.yml"
-
-  /api/v0/preferences/theme:
-    $ref: "com/paths/preferences-theme.yml"
 
   /api/v0/entries:
     $ref: "shared/paths/entries.yml"

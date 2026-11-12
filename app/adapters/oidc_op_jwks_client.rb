@@ -5,6 +5,7 @@ require "json"
 require "uri"
 require "jit_security_jwt_jwk"
 
+# TODO: AUDIT external access: fetches the OP's JWKS.
 class OidcOpJwksClient
   class FetchError < StandardError; end
 

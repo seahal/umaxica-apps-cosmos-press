@@ -52,7 +52,7 @@ class OidcOpTokenClientTest < ActiveSupport::TestCase
 
   test "an unavailable client assertion stops before any request" do
     OidcClientAssertionJwt.stub(:issue, nil) do
-      result = OidcOpTokenClient.refresh(client_id: "core-app-jp", token_url: TOKEN_URL, refresh_token: "r")
+      result = OidcOpTokenClient.refresh(client_id: "edit-org-ww", token_url: TOKEN_URL, refresh_token: "r")
 
       assert_equal :invalid_remote, result.outcome
       assert_equal "client_assertion_unavailable", result.error
@@ -66,7 +66,7 @@ class OidcOpTokenClientTest < ActiveSupport::TestCase
       OidcClientAssertionJwt.stub(:issue, "assertion") do
         OutboundHttp::Connection.stub(:build, connection) do
           connection.stub(:post, reply) do
-            response = OidcOpTokenClient.refresh(client_id: "core-app-jp", token_url: TOKEN_URL, refresh_token: "r")
+            response = OidcOpTokenClient.refresh(client_id: "edit-org-ww", token_url: TOKEN_URL, refresh_token: "r")
 
             assert_equal :invalid_remote, response.outcome, access_token.inspect
           end
@@ -92,7 +92,7 @@ class OidcOpTokenClientTest < ActiveSupport::TestCase
           connection.stub(:post, reply) do
             Timeout.stub(:timeout, timer) do
               response = OidcOpTokenClient.refresh(
-                client_id: "core-app-jp", token_url: TOKEN_URL, refresh_token: "r",
+                client_id: "edit-org-ww", token_url: TOKEN_URL, refresh_token: "r",
               )
 
               assert_predicate response, :success?
@@ -126,7 +126,7 @@ class OidcOpTokenClientTest < ActiveSupport::TestCase
             connection.stub(:post, request) do
               Timeout.stub(:timeout, timer) do
                 response = OidcOpTokenClient.refresh(
-                  client_id: "core-app-jp", token_url: TOKEN_URL, refresh_token: "r", deadline: 100.0 + remaining,
+                  client_id: "edit-org-ww", token_url: TOKEN_URL, refresh_token: "r", deadline: 100.0 + remaining,
                 )
 
                 assert_equal remaining.positive? ? :success : :indeterminate, response.outcome
@@ -153,7 +153,7 @@ class OidcOpTokenClientTest < ActiveSupport::TestCase
         Process.stub(:clock_gettime, ->(*) { now }) do
           OutboundHttp::Connection.stub(:build, connection) do
             connection.stub(:post, request) do
-              response = OidcOpTokenClient.refresh(client_id: "core-app-jp", token_url: TOKEN_URL, refresh_token: "r")
+              response = OidcOpTokenClient.refresh(client_id: "edit-org-ww", token_url: TOKEN_URL, refresh_token: "r")
 
               assert_equal offset.negative? ? :success : :indeterminate, response.outcome
             end
@@ -168,7 +168,7 @@ class OidcOpTokenClientTest < ActiveSupport::TestCase
     OidcClientAssertionJwt.stub(:issue, "assertion") do
       OutboundHttp::Connection.stub(:build, connection) do
         connection.stub(:post, ->(*) { raise OidcOpTokenClient::RequestDeadlineExceeded }) do
-          response = OidcOpTokenClient.refresh(client_id: "core-app-jp", token_url: TOKEN_URL, refresh_token: "r")
+          response = OidcOpTokenClient.refresh(client_id: "edit-org-ww", token_url: TOKEN_URL, refresh_token: "r")
 
           assert_equal :indeterminate, response.outcome
           assert_equal "timeout", response.error
@@ -188,13 +188,13 @@ class OidcOpTokenClientTest < ActiveSupport::TestCase
       end
     OidcClientAssertionJwt.stub(:issue, ->(client_id:, token_url:) { "assertion:#{client_id}:#{token_url}" }) do
       stub_outbound_http(stubs) do
-        OidcOpTokenClient.refresh(client_id: "core-app-jp", token_url: TOKEN_URL, refresh_token: "r")
+        OidcOpTokenClient.refresh(client_id: "edit-org-ww", token_url: TOKEN_URL, refresh_token: "r")
       end
     end
 
     assert_equal "refresh_token", captured.fetch("grant_type")
-    assert_equal "core-app-jp", captured.fetch("client_id")
-    assert_equal "assertion:core-app-jp:#{TOKEN_URL}", captured.fetch("client_assertion")
+    assert_equal "edit-org-ww", captured.fetch("client_id")
+    assert_equal "assertion:edit-org-ww:#{TOKEN_URL}", captured.fetch("client_assertion")
     assert_equal OidcClientAssertionJwt::ASSERTION_TYPE, captured.fetch("client_assertion_type")
   end
 
@@ -218,7 +218,7 @@ class OidcOpTokenClientTest < ActiveSupport::TestCase
     ) do
       stub_outbound_http(stubs) do
         result = OidcOpTokenClient.authorization_code(
-          client_id: "core-app-jp",
+          client_id: "edit-org-ww",
           token_url: TOKEN_URL,
           code: "single-use-code",
           redirect_uri: "https://base.example.test/verification/oidc/callback",
@@ -233,7 +233,7 @@ class OidcOpTokenClientTest < ActiveSupport::TestCase
     assert_same expectation, captured_expectation
     assert_equal "authorization_code", captured_request.fetch("grant_type")
     assert_equal "single-use-code", captured_request.fetch("code")
-    assert_equal "assertion:core-app-jp:#{TOKEN_URL}", captured_request.fetch("client_assertion")
+    assert_equal "assertion:edit-org-ww:#{TOKEN_URL}", captured_request.fetch("client_assertion")
     assert_equal OidcClientAssertionJwt::ASSERTION_TYPE, captured_request.fetch("client_assertion_type")
   end
 
@@ -247,7 +247,7 @@ class OidcOpTokenClientTest < ActiveSupport::TestCase
     stubs = Faraday::Adapter::Test::Stubs.new { |stub| stub.post(TOKEN_URL, &) }
     OidcClientAssertionJwt.stub(:issue, "assertion") do
       stub_outbound_http(stubs) do
-        OidcOpTokenClient.refresh(client_id: "core-app-jp", token_url: TOKEN_URL, refresh_token: "r")
+        OidcOpTokenClient.refresh(client_id: "edit-org-ww", token_url: TOKEN_URL, refresh_token: "r")
       end
     end
   end

@@ -7,6 +7,7 @@
 # Operator's current Access JWT; the authority decides with its own policy and Operations. Results
 # are typed outcomes with allowlisted data, never model objects. Commands are not retried blindly:
 # an indeterminate write is reported as :dependency and the RP re-reads before acting again.
+# TODO: AUDIT external access: calls the Publishing authority API.
 class PublishingAuthorityClient
   Result =
     Data.define(:status, :data, :errors) do
@@ -27,8 +28,8 @@ class PublishingAuthorityClient
   }.freeze
 
   def initialize(surface:, audience:, access_token:)
-    base_origin = Rails.configuration.x.boot_config.fetch(:hosts).base_for_resource_type("operator")
-    @base = OutboundHttp::LocalBackChannel.url("#{base_origin}/api/v0/publishing/#{surface}/#{audience}")
+    edit_origin = Rails.configuration.x.boot_config.fetch(:hosts).edit_staff.to_s
+    @base = OutboundHttp::LocalBackChannel.url("#{edit_origin}/api/v0/publishing/#{surface}/#{audience}")
     @access_token = access_token.to_s
   end
 

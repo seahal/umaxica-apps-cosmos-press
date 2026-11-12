@@ -59,6 +59,8 @@ class ClientChronicle < ChronicleRecord
   # subject_id/subject_type for cross-DB compatibility (no FK)
   validates :subject_id, presence: true
   validates :subject_type, presence: true
+  validates :event_uuid, uniqueness: true, allow_nil: true, on: :create
+  validate :supplied_event_uuid_is_valid, on: :create
 
   validates :event_id, numericality: { only_integer: true }, allow_nil: true
   validates :level_id, numericality: { only_integer: true }, allow_nil: true
@@ -71,20 +73,27 @@ class ClientChronicle < ChronicleRecord
 
   # Helper methods for compatibility with existing code
   def user
-    Client.find(subject_id) if subject_type == "Client"
+    raise GovernanceUnavailableError, "Identity authority is unavailable"
   end
 
   def user_id
     subject_id if subject_type == "Client"
   end
 
+  public
+
+  def actor
+    super
+  rescue NameError => e
+    raise DependencyUnavailableError, "Historical actor authority is unavailable", cause: e
+  end
+
   def set_timestamp
     self.timestamp ||= Time.current
   end
 
-  def user=(user)
-    self.subject_id = user.id.to_s
-    self.subject_type = "Client"
+  def user=(_user)
+    raise GovernanceUnavailableError, "Identity authority is unavailable"
   end
 
   def event_id_must_exist
@@ -111,5 +120,12 @@ class ClientChronicle < ChronicleRecord
 
     self.actor_id = subject_id
     self.actor_type = subject_type
+  end
+  private
+
+  def supplied_event_uuid_is_valid
+    return if event_uuid_before_type_cast.nil? || !event_uuid.nil?
+
+    errors.add(:event_uuid, :invalid)
   end
 end

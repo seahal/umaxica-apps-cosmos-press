@@ -2,8 +2,8 @@
 # frozen_string_literal: true
 
 # Flipper owns the feature-flag control surface (Flipper::UI), on its own dedicated host.
-# Public canonical host: flipper.umaxica.dev. Development host: flipper.core.dev.localhost.
-constraints host: [ENV["PUBLIC_FLIPPER_URL"], ENV["PRIVATE_FLIPPER_URL"],
+# Public canonical host: flipper-press.umaxica.dev. Development host: flipper.core.dev.localhost.
+constraints host: ["flipper-press.umaxica.dev", ENV["PRIVATE_FLIPPER_URL"],
                    "flipper.core.dev.localhost",].compact do
   # Cloudflare Access fronts this host, but the mounted Rack app must not depend on the edge
   # alone: Flipper::UI subclasses nothing of this application, so enforce_access_policy! and

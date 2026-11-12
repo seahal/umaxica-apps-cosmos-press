@@ -1,72 +1,21 @@
-# typed: false
 # frozen_string_literal: true
 
 require "test_helper"
-# require "helpers/global_test_support"
 
 class StandardErrorRescueInventoryTest < ActiveSupport::TestCase
   self.fixture_table_names = []
 
-  REVIEWED_RESCUES = {
-    "app/controllers/concerns/actor_support.rb" => {
-      count: 4,
-      classification: "auth boundary; each rescue logs and re-raises ActorSupport::ResolutionError",
-    },
-    "app/controllers/concerns/authentication_logoutable.rb" => {
-      count: 4,
-      classification: "logout boundary; each rescue logs and re-raises after session cleanup",
-    },
-    "app/controllers/concerns/social_callback_guard.rb" => {
-      count: 1,
-      classification: "callback boundary; clears state and re-raises",
-    },
-    "app/controllers/concerns/social_omniauth_callback_flow.rb" => {
-      count: 1,
-      classification: "callback boundary; clears intent and re-raises",
-    },
-    "app/controllers/concerns/authentication_audit_writer.rb" => {
-      count: 4,
-      classification: "best-effort audit side effect with outbox/fallback recovery",
-    },
-    "app/controllers/concerns/authorization_audit.rb" => {
-      count: 1,
-      classification: "best-effort authorization failure audit side effect",
-    },
-    "app/controllers/concerns/sign_oidc_logout.rb" => {
-      count: 1,
-      classification: "committed authentication logout isolates the best-effort Preference writer",
-    },
-    "app/controllers/concerns/preference_base.rb" => {
-      count: 1,
-      classification: "Preference current-resource resolution; failures are re-raised as resolution errors",
-    },
-    "app/controllers/concerns/authentication_base.rb" => {
-      count: 3,
-      # The refresh-path and redirect-path broad fallbacks were removed: issuer, database, and
-      # redirect construction failures must propagate instead of becoming guessed destinations.
-      classification: "mixed legacy inventory; each remaining site needs follow-up before changing behavior",
-    },
-    "app/controllers/concerns/passkey_sign_in_flow.rb" => {
-      count: 2,
-      classification: "WebAuthn options error response and best-effort risk emission boundaries",
-    },
-  }.freeze
-
-  test "reviewed StandardError rescues stay classified" do
+  test "controllers preserve explicit dependency failures instead of broadly rescuing StandardError" do
     offenders =
-      REVIEWED_RESCUES.filter_map do |path, expected|
-        actual = rescue_count(path)
-        next if actual == expected.fetch(:count) && expected.fetch(:classification).present?
+      Rails.root.glob("app/controllers/**/*.rb").flat_map do |path|
+        path.readlines.each_with_index.filter_map do |line, index|
+          next if line.lstrip.start_with?("#")
+          next unless line.match?(/\brescue\s+StandardError\b/)
 
-        "#{path}: expected #{expected.fetch(:count)}, got #{actual} (#{expected.fetch(:classification)})"
+          "#{path.relative_path_from(Rails.root)}:#{index + 1}"
+        end
       end
 
-    assert_empty offenders, "Reviewed StandardError rescue inventory changed:\n#{offenders.join("\n")}"
-  end
-
-  private
-
-  def rescue_count(path)
-    Rails.root.join(path).read.scan(/\brescue\s+StandardError\b/).size
+    assert_empty offenders
   end
 end

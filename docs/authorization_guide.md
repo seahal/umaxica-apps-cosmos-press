@@ -11,13 +11,15 @@ Core rules:
   it with `authorize :actor, through: :current_actor`.
 - Every policy inherits from `ApplicationPolicy < ActionPolicy::Base` and defaults to deny-all. An
   action is forbidden unless its predicate explicitly returns true.
-- `ApplicationPolicy` provides ownership, role and JWT scope helpers for the app and org actor
-  types. The anonymous `com` surface binds no policy actor and authorizes no credential action.
+- `ApplicationPolicy` provides ownership, operator capability and JWT scope helpers. The retained
+  Edit ORG controller binds the operator actor; public Docs, Help, Info and News controllers do not
+  use operator policies.
 
 Related implementation:
 
 - Base policy: `app/policies/application_policy.rb`
-- Policies: `app/policies/`, including `ClientPolicy`, `OperatorPolicy`, and `VisitorPolicy`
+- Policies: `app/policies/`, including `OperatorPolicy`, `PublishingEntryPolicy`, and
+  `EnforcementCasePolicy`
 - Context: `app/models/actor.rb` and `app/controllers/concerns/actor_support.rb`
 - Failure handling: `app/controllers/concerns/authorization_audit.rb`
 
@@ -38,8 +40,8 @@ class ApplicationPolicy < ActionPolicy::Base
 end
 ```
 
-Each surface ApplicationController supplies the actor, for example in
-`app/controllers/core/app/application_controller.rb`:
+The retained Edit ORG ApplicationController supplies the actor in
+`app/controllers/edit/org/application_controller.rb`:
 
 ```ruby
 authorize :actor, through: :current_actor
@@ -71,39 +73,16 @@ The default `index?`, `show?`, `create?`, `update?`, and `destroy?` predicates a
 
 ## Implementing a Policy
 
-Example from `app/policies/client_policy.rb`:
+Example from `app/policies/operator_policy.rb`:
 
 ```ruby
-class ClientPolicy < ApplicationPolicy
-  def index?
-    user.is_a?(Operator) && operator_or_manager?
-  end
-
+class OperatorPolicy < ApplicationPolicy
   def show?
-    owner? || (user.is_a?(Operator) && operator_or_manager?)
-  end
-
-  def create?
-    user.is_a?(Operator) && operator?
+    owner?
   end
 
   def update?
-    owner? || (user.is_a?(Operator) && operator_or_manager?)
-  end
-
-  def destroy?
-    (owner? && user.is_a?(Client)) || (user.is_a?(Operator) && operator?)
-  end
-
-  # Define list filtering with relation_scope.
-  relation_scope do |relation|
-    if user.is_a?(Operator) && operator_or_manager?
-      relation.all
-    elsif user.is_a?(Client)
-      relation.where(id: user.id)
-    else
-      relation.none
-    end
+    owner?
   end
 end
 ```
@@ -122,13 +101,13 @@ Call `authorize!(record, to: :action?)`. Because a `before_action` cannot pass t
 directly, this application conventionally registers a named wrapper method:
 
 ```ruby
-class Base::App::Identity::EmailsController < ...
-  before_action :authorize_emails!, only: :index
+class Edit::Org::DashboardsController < ...
+  before_action :authorize_operator!, only: :show
 
   private
 
-  def authorize_emails!
-    authorize!(ClientEmail, to: :index?)
+  def authorize_operator!
+    authorize!(current_operator, to: :show?)
   end
 end
 ```
@@ -137,8 +116,7 @@ A concrete record may also be passed directly, such as `authorize!(current_clien
 
 ### Applying a Scope
 
-Use `authorized_scope` to apply `relation_scope` to a collection. For example,
-`app/controllers/base/app/groups_controller.rb` uses:
+Use `authorized_scope` to apply `relation_scope` to a collection when a current policy defines one:
 
 ```ruby
 groups = authorized_scope(AvatarGroup.all).order(:created_at, :id)
@@ -167,18 +145,18 @@ failures return a 302 redirect, 401, or 422. Those are distinct from an Action P
 ## Testing
 
 Unit-test policies under `test/policies/` with Action Policy's test support. Cover allowed and
-denied cases, anonymous actors, another user, another staff member, and each relevant actor type.
+denied cases, anonymous actors, another operator, and each relevant actor type.
 
 ```ruby
 require "test_helper"
 
-class ClientPolicyTest < ActiveSupport::TestCase
+class OperatorPolicyTest < ActiveSupport::TestCase
   test "operator manager can view the client list" do
-    assert_predicate ClientPolicy.new(record, actor: operator_manager_context), :index?
+    assert_predicate OperatorPolicy.new(operator, actor: operator_context), :show?
   end
 
   test "anonymous actor cannot view the client list" do
-    assert_not_predicate ClientPolicy.new(record, actor: anonymous_context), :index?
+    assert_not_predicate OperatorPolicy.new(operator, actor: anonymous_context), :show?
   end
 end
 ```
@@ -203,7 +181,7 @@ See `test/policies/application_policy_actor_context_test.rb` for concrete contex
 
 ### The Policy Cannot Be Found
 
-Check naming: model `Client` maps to `ClientPolicy` in `app/policies/client_policy.rb`. For
+Check naming: model `Operator` maps to `OperatorPolicy` in `app/policies/operator_policy.rb`. For
 authorization without a record, pass a class such as `authorize!(SomeClass, to: :action?)`.
 
 ### Context Is Missing

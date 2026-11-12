@@ -3,15 +3,11 @@
 
 require "test_helper"
 
-# D-153 / D-160 (4): every first-party RP serves one generic interruption page. two.md WU-3 removes
-# the corporate RPs, which no longer own an Auth interruption page.
+# The retained Edit RP serves the shared generic interruption page.
 class RpSignInterruptionTest < ActionDispatch::IntegrationTest
   self.fixture_table_names = []
 
-  HOSTS = %w(
-    www.umaxica.app www.umaxica.org jp.umaxica.app jp.umaxica.org
-    www-jp.umaxica.app www-jp.umaxica.org palm-jp.umaxica.app tech.umaxica.org edit.umaxica.org
-  ).freeze
+  HOSTS = [ENV.fetch("PUBLIC_EDIT_STAFF_URL")].freeze
 
   test "the interruption page answers 200 no-store with the fixed text on every RP" do
     HOSTS.each do |host|

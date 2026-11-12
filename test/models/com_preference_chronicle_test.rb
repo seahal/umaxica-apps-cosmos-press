@@ -43,16 +43,12 @@
 require "test_helper"
 
 class ComPreferenceChronicleTest < ActiveSupport::TestCase
-  fixtures :com_preferences,
-           :com_preference_chronicles,
+  fixtures :com_preference_chronicles,
            :com_preference_chronicle_events,
-           :com_preference_chronicle_levels,
-           :com_preference_statuses
+           :com_preference_chronicle_levels
 
   setup do
     @audit = com_preference_chronicles(:one)
-    @preference = com_preferences(:one)
-    @audit.update!(subject_id: @preference.id) # Ensure valid link
   end
 
   test "uses bigint primary key" do
@@ -71,23 +67,11 @@ class ComPreferenceChronicleTest < ActiveSupport::TestCase
     assert_equal "f", probe_advisory_lock("pg_try_advisory_xact_lock_shared")
   end
 
-  test "belongs to com_preference" do
-    assert_equal @preference, @audit.com_preference
-  end
-
-  test "com_preference helper method returns nil for other subject types" do
-    @audit.subject_type = "OtherType"
-
-    assert_nil @audit.com_preference
-  end
-
-  test "can set com_preference" do
-    new_pref = com_preferences(:two)
-    @audit.com_preference = new_pref
-
-    assert_equal new_pref.id, @audit.subject_id
+  test "historical preference authority is explicitly unavailable" do
     assert_equal "ComPreference", @audit.subject_type
-    assert_equal new_pref, @audit.com_preference
+    assert_kind_of Integer, @audit.subject_id
+    assert_raises(GovernanceUnavailableError) { @audit.com_preference }
+    assert_raises(GovernanceUnavailableError) { @audit.com_preference = Object.new }
   end
 
   test "belongs to com_preference_chronicle_level" do

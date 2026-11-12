@@ -16,6 +16,9 @@ module Publishing
 
         scope :ordered, -> { order(:position) }
 
+        validates :taxonomy_term_id, uniqueness: { scope: %i(entry_revision_id vocabulary_id) }
+        validates :position, uniqueness: { scope: %i(entry_revision_id vocabulary_id) }
+
         def self.expected_kind = Publishing::TaxonomyKind::MULTIPLE_ORDERED_FLAT
       end
     end

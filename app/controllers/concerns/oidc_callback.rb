@@ -221,13 +221,6 @@ module OidcCallback
     @current_oidc_target_link_uri || oidc_rp_default_landing_path
   end
 
-  def session_limit_gate_pt
-    @current_oidc_target_link_uri ||
-      (defined?(super) ? super : request&.fullpath.presence || request&.path.presence || "/")
-  rescue StandardError
-    "/"
-  end
-
   # D-153: expected abnormal endings land on GET /sign/interruption after cleanup; the reason is a
   # server-side reason code only. Dependency failures stay a 503 response.
   def render_callback_failure(reason, status: :unprocessable_content, detail: nil)
@@ -241,15 +234,11 @@ module OidcCallback
     redirect_to(oidc_rp_sign_interruption_path, status: :see_other)
   end
 
-  def oidc_rp_sign_entry_path = "/sign?#{{ ri: RequestContextContract.normalize_region(params[:ri]) }.compact.to_query}"
+  def oidc_rp_sign_entry_path = "/sign?#{{ ri: oidc_request_region }.compact.to_query}"
 
   def oidc_rp_sign_interruption_path = "/sign/interruption"
 
   def render_token_exchange_failure(result)
-    if result.error == "access_denied" && oidc_client_id == "tech-org-ww"
-      return render_oidc_access_denied!
-    end
-
     render_callback_failure(
       token_exchange_failure_reason(result),
       status: token_exchange_failure_status(result),
@@ -283,7 +272,7 @@ module OidcCallback
     oidc_callback_log_realm
   end
 
-  # Log label only: the realm segment of an active exact Client ID (`<family>-<realm>-<scope>`).
+  # Log label only: the realm segment of an active exact client ID (`<family>-<realm>-<scope>`).
   # Unknown or inactive IDs are labelled "unknown" rather than guessed.
   def oidc_callback_log_realm
     return "unknown" unless RpDeploymentBindingValue.active_client_ids.include?(oidc_client_id.to_s)

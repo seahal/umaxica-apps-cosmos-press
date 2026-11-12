@@ -3,8 +3,7 @@
 
 require "test_helper"
 
-# The OP's public name resolves to this container in local environments, where nothing listens on
-# 443, so its JWKS is fetched like the other first-party server-to-server calls.
+# Access remains an external HTTPS boundary in local environments as well as production.
 class OidcOpJwksClientTransportTest < ActiveSupport::TestCase
   Response =
     Data.define(:body) do
@@ -35,14 +34,21 @@ class OidcOpJwksClientTransportTest < ActiveSupport::TestCase
     end
   end
 
-  test "a first-party OP JWKS is fetched over the local back channel in a local environment" do
+  test "an external OP JWKS retains its HTTPS destination in a local environment" do
     host = Rails.configuration.x.boot_config.fetch(:hosts).visa_service.host
 
-    request = requested_transport("https://#{host}/.well-known/jwks.json")
+    public_url = "https://#{host}:8443/.well-known/jwks.json"
+    request = requested_transport(public_url)
 
-    assert_equal "http://#{host}:#{OutboundHttp::LocalBackChannel.local_port}/.well-known/jwks.json",
-                 request.fetch(:got)
-    assert_not request.fetch(:require_https)
+    assert_equal public_url, request.fetch(:got)
+    assert request.fetch(:require_https)
+  end
+
+  test "a query-bearing JWKS location is refused before any HTTP request" do
+    host = Rails.configuration.x.boot_config.fetch(:hosts).visa_service.host
+    assert_raises(ArgumentError) do
+      requested_transport("https://#{host}/.well-known/jwks.json?version=2")
+    end
   end
 
   test "a first-party OP JWKS keeps its public HTTPS URL in production" do
@@ -65,6 +71,15 @@ class OidcOpJwksClientTransportTest < ActiveSupport::TestCase
 
     assert_equal public_url, request.fetch(:got)
     assert request.fetch(:require_https)
+  end
+
+  test "lookup status predicates identify found, invalid and unavailable responses" do
+    assert_predicate OidcOpJwksClient::Lookup.new(status: :found, key: Object.new, reason: nil), :found?
+    assert_predicate OidcOpJwksClient::Lookup.new(status: :invalid, key: nil, reason: "unknown_kid"), :invalid?
+    assert_predicate(
+      OidcOpJwksClient::Lookup.new(status: :unavailable, key: nil, reason: "fetch_failed"),
+      :unavailable?,
+    )
   end
 
   private

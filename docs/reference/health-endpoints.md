@@ -9,7 +9,7 @@ As of the 2026-09-05 text+JSON contract there are two families:
   - `GET /health` — aggregate. Body is exactly seven lines in a fixed order:
     ```
     title: Health status
-    namespace: auth/app
+      namespace: docs/app
     status: ok
     startup: ok
     liveness: ok
@@ -105,6 +105,6 @@ endpoints) so it also covers the `406` returned for a non-JSON `Accept` on the m
 health response is a verdict about one instance at one instant: a stored `200` keeps an orchestrator
 sending traffic to an instance that has since failed readiness, and a stored `503` keeps traffic
 away from one that has recovered. Rails would otherwise default these to
-`max-age=0, private, must-revalidate`, which permits storage. On Global and Publishing surfaces the
-policy-root default (`docs/reference/http-cache-policy.md`) also applies `no-store`; the health
-contract does not depend on it, because Core, Palm, and Warp are outside that default.
+`max-age=0, private, must-revalidate`, which permits storage. The health contract applies its own
+`no-store` policy and does not depend on policy-root inheritance
+(`docs/reference/http-cache-policy.md`).

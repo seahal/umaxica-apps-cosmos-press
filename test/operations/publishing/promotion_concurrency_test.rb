@@ -50,39 +50,8 @@ module Publishing
       assert_equal "concurrency-leaf", assignment.term_slug_snapshot
     end
 
-    test "a subtree move racing a promotion yields one coherent breadcrumb, never a mixed one" do
-      revision = @entry.current_revision
-      other_root = publishing_term(vocabulary: @category, locale: "ja", slug: "concurrency-other", name: "Other")
-
-      results =
-        concurrently(2) do |index|
-          if index.zero?
-            PromoteRevisionOperation.call(revision: Docs::App::EntryRevision.find(revision.id))
-          else
-            MoveTaxonomySubtreeOperation.call(
-              term: Docs::App::TaxonomyTerm.find(@guide.id),
-              new_parent: Docs::App::TaxonomyTerm.find(other_root.id),
-            )
-          end
-        end
-
-      assert_empty results.grep(StandardError), "both operations must succeed"
-      version = Docs::App::EntryVersion.find_by!(entry_revision_id: revision.id)
-      path = Docs::App::VersionSingleTaxonomyAssignment.find_by!(entry_version_id: version.id).term_path_snapshot
-      slugs = path.map { |step| step.fetch("slug") }
-
-      # Either the pre-move path or the post-move path, never a half-applied mix.
-      assert_includes(
-        [%w(concurrency-guide concurrency-leaf), %w(concurrency-other concurrency-guide concurrency-leaf)],
-        slugs,
-      )
-    end
-
     private
 
-    # Each block runs on its own checked-out connection so PostgreSQL sees
-    # genuinely concurrent transactions. Real threads are the point here: a
-    # simulated race on one connection would prove nothing.
     def concurrently(count, &block)
       threads =
         Array.new(count) do |index|
@@ -97,10 +66,13 @@ module Publishing
 
     def destroy_publishing_fixtures
       connection = PublishingRecord.lease_connection
-      connection.execute("SET session_replication_role = replica")
-      connection.tables.grep(/\Apublishing_/).each { |table| connection.execute("DELETE FROM #{table}") }
-    ensure
-      connection.execute("SET session_replication_role = origin")
+      tables = connection.tables.grep(/\Apublishing_/).map { |table| connection.quote_table_name(table) }
+      return if tables.empty?
+
+      # Publishing versions are immutable even to DELETE. One TRUNCATE over the isolated publishing
+      # test tables keeps PostgreSQL's foreign-key relation checks enabled and refuses any reference
+      # from outside this table set.
+      connection.execute("TRUNCATE TABLE #{tables.join(", ")}")
     end
   end
 end
