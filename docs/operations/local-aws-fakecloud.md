@@ -43,15 +43,6 @@ container. Mounting a container runtime socket into `fakecloud` grants it the in
 complete container-management rights — the ability to start any image and bind-mount any host path
 the user can reach.
 
-> **Amended 2026-09-14.** `compose.yaml` still mounts no container socket, and the statement above
-> is why. A socket mount was added to `compose.override.yaml` as a deliberate, risk-accepted
-> exception so the MSK data plane can be exercised — see
-> `evidence/2026-09-14-fakecloud-podman-socket.md`. That file was untracked and gitignored the same
-> day, so the mount stays on one machine and reaches no other clone. It is also
-> `${XDG_RUNTIME_DIR}`-dependent and therefore not portable, and `devcontainer.json` passes explicit
-> `-f` flags that exclude `compose.override.yaml`, so the Dev Container path still gets a
-> socket-free fakecloud. The text below describes the unmodified `compose.yaml` behaviour.
-
 Without a socket fakecloud serves the MSK control plane with the _same response shapes_, which is
 what the Terraform resources in `terraform/` exercise. `GetBootstrapBrokers` therefore returns
 well-formed addresses with nothing listening on them. Producing and consuming against a local broker

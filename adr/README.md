@@ -488,6 +488,10 @@ Current infrastructure / environment decisions:
 - `adr/aurora-postgresql-minor-version-tracking.md` — development PostgreSQL follows each new Aurora
   PostgreSQL minor release on release day, using the AWS-confirmed community version; misses are
   recorded; production and major upgrades are decided separately.
+- `adr/fakecloud-to-official-aws-emulator-migration.md` — **Accepted (2026-11-16), direction only;
+  not implemented.** Access, Governance, Press and Sphere must each migrate from FakeCloud to the
+  official AWS emulator. The exact product and its service coverage are confirmed when the migration
+  starts; until then FakeCloud and `adr/fakecloud-podman-staging-environment.md` stay in force.
 - `adr/fakecloud-podman-staging-environment.md` — staging is a Podman-hosted FakeCloud environment
   provisioned with Terraform (not OpenTofu, not an AWS account); environment-agnostic
   `terraform/modules/` with all emulator specifics in `terraform/environments/<env>/`; staging owns

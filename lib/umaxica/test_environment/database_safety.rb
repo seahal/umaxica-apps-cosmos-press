@@ -17,7 +17,7 @@ module Umaxica
       # It is never read from the environment: an exported variable must not be able to redirect
       # a destructive test preparation (user decision 2026-10-19). `db` is compose.yaml's
       # POSTGRES_DB, the administration database that is never itself a test target.
-      TEST_HOST = "primary"
+      TEST_HOST = File.expand_path("../../../tmp/sock/pg", __dir__).freeze
       TEST_PORT = 5432
       TEST_USER = "root"
       ADMIN_DATABASE = "db"

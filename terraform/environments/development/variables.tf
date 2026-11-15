@@ -10,7 +10,7 @@ variable "fakecloud_endpoint" {
     TF_VAR_fakecloud_endpoint=http://fakecloud:4566
   DESC
   type        = string
-  default     = "http://localhost:4566"
+  default     = "http://127.0.0.1:24566"
 }
 
 variable "region" {

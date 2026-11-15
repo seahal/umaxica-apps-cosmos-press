@@ -160,10 +160,4 @@ class BranchCoverageBatch34MassReturnsTest < ActiveSupport::TestCase
 
     assert_match(/reason must be one of/, error.message)
   end
-
-  test "LocalEnvironment load fallbacks with missing UMAXICA_ENV_FILE" do
-    assert_nil LocalEnvironment.parse("# comment")[0]
-    assert_nil LocalEnvironment.parse("")[0]
-    assert_equal %w(FOO bar), LocalEnvironment.parse("FOO=bar")
-  end
 end

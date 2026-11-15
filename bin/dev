@@ -6,10 +6,11 @@ rm -f tmp/pids/server.pid
 
 if [ "${SKIP_DB_PREPARE:-}" = "" ]; then
 echo "Preparing database..."
-bundle exec foreman run bin/rails db:prepare || {
+bin/rails db:prepare || {
     echo "Database preparation failed. Try running: bin/setup" >&2
 exit 1
 }
 fi
 
-exec bundle exec foreman start -f Procfile.dev "$@"
+dev_port=$(ruby -e 'puts Integer(ENV.fetch("PORT"), 10)')
+exec bundle exec foreman start -e /dev/null -p "$dev_port" -f Procfile.dev "$@"

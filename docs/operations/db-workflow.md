@@ -78,8 +78,6 @@ reset.
 ## Commands
 
 ```bash
-# The configured test databases must exist. POSTGRESQL_TEST_PREPARE_DATABASES
-# lists the writable test databases; the Dev Container environment supplies it.
 RAILS_ENV=test bin/rails db:test:prepare
 
 bin/rails db:verify_no_schema_drift
@@ -214,8 +212,6 @@ The following destructive sequence was used on 2026-10-20. It is a recovery refe
 authorized setup: obtain explicit risk/recovery approval before executing it.
 
 ```bash
-# POSTGRESQL_TEST_PREPARE_DATABASES must list every current writable test database (32 on
-# 2026-10-20). If .env.container.devcontainer is stale, export the current list explicitly.
 RAILS_ENV=test bin/rails db:drop db:create
 RAILS_ENV=test bin/rails runner '
   ActiveRecord::Tasks::DatabaseTasks.with_temporary_pool_for_each(env: "test") do |pool|

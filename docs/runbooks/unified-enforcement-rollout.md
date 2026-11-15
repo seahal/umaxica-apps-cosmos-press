@@ -11,9 +11,9 @@ As of 2026-11-07, the live enforcement entrypoints cover `app` and `org`. The `o
 for `com` Cases have been removed, and the runtime identifier digest accepts only `app` and `org`.
 Public anonymous `com` Preference, Chronicle, content and Publishing surfaces remain. No `com`
 enforcement data or database was deleted by this change. The accepted `adr/unified-enforcement.md`
-still specifies `app`/`com`/`org`; its intended supersession or amendment requires an owner decision.
-Until then, follow this runbook only for the live `app` and `org` enforcement paths, and do not
-provision the retired `com` enforcement key.
+still specifies `app`/`com`/`org`; its intended supersession or amendment requires an owner
+decision. Until then, follow this runbook only for the live `app` and `org` enforcement paths, and
+do not provision the retired `com` enforcement key.
 
 The enforcement implementation and rollout work is otherwise partially complete:
 
@@ -43,20 +43,6 @@ that needed it.
 
 **Provisioning must happen before code that reads these keys reaches an environment**, for every
 environment in turn (never all at once, and never after deploying the code):
-
-1. Generate two independent, high-entropy secrets (do not reuse `EMAIL_ADDRESS_HMAC_SALT` /
-   `TELEPHONE_NUMBER_HMAC_SALT`, or any secret across realms — D6 requires per-realm, dedicated keys
-   so a compromised login-lookup key cannot double as an offline oracle over the enforcement list,
-   and vice versa).
-2. Add them to the target environment's actual secret store (Rails encrypted credentials or the real
-   ENV injection mechanism for that environment — for this repository's dev containers, that is
-   `compose.yaml`'s `environment:` block, already updated with development-only defaults; production
-   has its own separate mechanism outside this repository's checked-in files).
-3. Restart/redeploy so every app process picks up the new value. Confirm with a Rails console in
-   that environment: `EnforcementIdentifierDigest.key_for("app")` and
-   `EnforcementIdentifierDigest.key_for("org")` must return non-nil strings, not raise.
-4. Only after both keys are confirmed present in an environment, deploy application code that
-   calls `EnforcementIdentifierDigest`/`EnforcementIdentifierGate` to that environment.
 
 Deploying the gating code before the keys exist in that environment causes each signup, attachment,
 and future recovery request that reaches the gate to raise `KeyError` and return a server error.

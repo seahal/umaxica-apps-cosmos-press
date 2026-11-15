@@ -80,57 +80,41 @@ bin/rails assets:clobber        # Remove compiled assets
 
 ### Credentials and secrets
 
-`config/credentials/development.key`, `config/credentials/test.key`, and the repository-root `.env`
-are not tracked in git. Obtain the two key files from the development lead; without them the
-application cannot boot and `bin/rails test` cannot run. Credentials for AWS, Cloudflare, Fastly,
-and other providers — staging, production, or an individual environment — are also requested from
-the development lead and are never committed.
+`config/credentials/development.key`, `config/credentials/test.key`, and the repository-root
+`.envrc.credential` are not tracked in git. Obtain the two key files from the development lead;
+without them the application cannot boot and `bin/rails test` cannot run. Credentials for AWS,
+Cloudflare, Fastly, and other providers — staging, production, or an individual environment — are
+also requested from the development lead and are never committed.
 
 See `docs/operations/development-credential-provisioning.md` for the full procedure. For the
-complete portable configuration contract, see `docs/operations/global-portability.md`.
-`.env.container.devcontainer` contains the non-secret local defaults that
-`.devcontainer/compose.yaml` loads into `core`. Every process, whatever its runtime role, reads the
-Rails-standard `config/credentials/<env>.yml.enc`; there are no per-role credential bundles.
+complete portable configuration contract, see `docs/operations/global-portability.md`. `.envrc`
+provides shared host settings. The ignored `.envrc.credential` supplies local credentials and
+machine-specific overrides. Install direnv, enable its shell hook, and run `direnv allow` yourself
+after reviewing `.envrc`.
 
-### The Bun toolchain
-
-The development image provides the pinned Bun runtime declared by `package.json#packageManager`. Do
-not install a second JavaScript package manager inside the container — a second copy on `PATH` makes
-which tool ran depend on shell state.
-
-`package.json#packageManager` declares the Bun version expected by the project and CI. Keep that pin
-aligned with the Bun toolchain copied into the development and asset images. Corepack is not used,
-and no `corepack enable` step is required.
-
-A fresh clone needs no local file. Start the standard stack, install dependencies, and boot the app:
+Install the pinned Ruby, Bun, and Node versions with mise, then start Podman infrastructure and
+Rails on the host.
 
 ```bash
-git clone https://github.com/seahal/umaxica-apps-cosmos-press.git
-cd umaxica-apps-cosmos-press
-
-# creating a local override is NOT required
-docker compose config     # resolves as-is
-
-docker compose up
+mise install
+[ -d tmp/sock/pg ] || install -d -m 0777 tmp/sock/pg
+podman compose up -d
 bundle install
 bun install --frozen-lockfile
-bin/setup
+# On a new volume, create and migrate before starting Rails.
+bin/rails db:create
+bin/rails runner '
+  ActiveRecord::Tasks::DatabaseTasks.with_temporary_pool_for_each(env: "development") do |pool|
+    next if pool.db_config.replica?
+    ActiveRecord::Tasks::DatabaseTasks.migrate(skip_initialize: true)
+  end'
+bin/rails db:seed
+bin/dev
 ```
 
-`compose.yaml` owns shared infrastructure. Rails runs only in the Dev Container:
-`.devcontainer/compose.yaml` adds `core`, and the same three commands above are run by hand inside
-`core` — `devcontainer.json` declares no `postCreateCommand`, so creating the container neither
-fetches dependencies nor touches a database. Running Rails directly on the host is not supported.
-`compose.override.yaml` is the only other root Compose file. It is **untracked and gitignored**
-(since 2026-09-14), auto-discovered by a bare `podman compose`, and everything in it is
-profile-gated: it carries the opt-in `remote-access` Tailscale/sshd overlay of `core` and is where
-per-machine settings go. Being untracked is what keeps those settings per-machine; a fresh clone
-does not have the file, and does not need it. See the Dev Container startup documentation.
-
-`config/database.yml` fixes the development and test connections to the Compose services: writers
-and test databases on `primary`, development replicas on `replica`, port `5432`, user `root`,
-password `development`. These are non-secret local values and are not read from the environment.
-Production connections still come from the `NEON_*` variables.
+Development PostgreSQL uses loopback ports `25432` and `25433`. Rails tests use the checkout’s
+primary PostgreSQL Unix socket in `tmp/sock/pg`. See
+[database setup](docs/operations/db-workflow.md).
 
 WebAuthn uses one RP ID and one exact origin per surface (`app` and `org`). Production requires them
 as environment variables; other environments read the same variables first and fall back to the
@@ -154,7 +138,7 @@ bin/dev
 `bin/dev` is the unified local entrypoint. It runs `bin/rails db:prepare` unless
 `SKIP_DB_PREPARE=1`, then starts:
 
-- `web`: Rails server on port `3000`
+- `web`: Rails server on port `23001`
 - `vite`: `bin/vite dev`
 - `jobs`: `bin/jobs start`
 
@@ -163,31 +147,21 @@ bin/dev
 Modern browsers resolve `*.localhost` to `127.0.0.1`, so extra `/etc/hosts` entries are usually not
 needed.
 
-The URLs below use port `3000`, where host-native Rails listens. The Dev Container publishes its
-Rails port `3000` on host port `3001` and Vite on `3036`, both on `127.0.0.1` only, so from the host
-a Dev Container is reached on `:3001`. Substituting the host's LAN or Tailscale address will not
-connect, by design. `compose.yaml` publishes the PostgreSQL writer and reader and the Valkey
-services to loopback as well (`5432`, `5433`, and `6379` to `6381` by default) so host-native Rails
-can use them; containers continue to use Compose DNS names. See
-`docs/operations/development-host-port-exposure.md`.
+Rails and Vite bind to loopback on ports `23001` and `23036`.
 
-| Surface                    | URL                                                                                                              |
-| :------------------------- | :--------------------------------------------------------------------------------------------------------------- |
-| Base                       | `http://base.{app,com,org}.localhost:3000`                                                                       |
-| Visa (OIDC authority)      | `http://visa.{app,org}.localhost:3000`                                                                           |
-| Base (developer / network) | `http://base.{dev,net}.localhost:3000`                                                                           |
-| Auth                       | `http://auth.{app,org}.localhost:3000`                                                                           |
-| Core                       | `http://core.{app,org,net,dev}.localhost:3000`                                                                   |
-| Warp / Palm / Tech         | `http://warp.{app,com,org}.localhost:3000` / `http://palm.app.localhost:3000` / `http://tech.org.localhost:3000` |
-| Info / Help / Docs / News  | `http://{info,help,docs,news}.{app,com,org}.localhost:3000`                                                      |
+| Surface                    | URL                                                                                                                 |
+| :------------------------- | :------------------------------------------------------------------------------------------------------------------ |
+| Base                       | `http://base.{app,com,org}.localhost:23001`                                                                         |
+| Visa (OIDC authority)      | `http://visa.{app,org}.localhost:23001`                                                                             |
+| Base (developer / network) | `http://base.{dev,net}.localhost:23001`                                                                             |
+| Auth                       | `http://auth.{app,org}.localhost:23001`                                                                             |
+| Core                       | `http://core.{app,org,net,dev}.localhost:23001`                                                                     |
+| Warp / Palm / Tech         | `http://warp.{app,com,org}.localhost:23001` / `http://palm.app.localhost:23001` / `http://tech.org.localhost:23001` |
+| Info / Help / Docs / News  | `http://{info,help,docs,news}.{app,com,org}.localhost:23001`                                                        |
 
 The application contract supplies PUBLIC and PRIVATE URL values in both supported modes; Compose
 supplies only service topology. Each route host constraint lists the configured host alongside its
-localhost literal. Development is published through Cloudflare Tunnel behind Cloudflare Access;
-Access, not Host Authorization, keeps the development listener non-public. See
-`docs/architecture/cloudflare-request-paths.md` for the trust boundaries and
-`research/implementation/2026-08-10-development-tunnel-access-verification.md` for the measured
-end-to-end evidence.
+localhost literal.
 
 `sign.{app,org}.localhost` resolves only when `AUTH_*_URL` and `PUBLIC_AUTH_*_URL` are unset. Under
 Compose the canonical local names for the credential gateway are `auth.*`.

@@ -57,8 +57,6 @@ Credential key names the application reads, values never displayed: `OMNI_AUTH_A
 `OMNI_AUTH_APPLE_TEAM_ID`, `OMNI_AUTH_APPLE_KEY_ID`, `OMNI_AUTH_APPLE_PRIVATE_KEY`,
 `OMNI_AUTH_GOOGLE_APP_CLIENT_ID`, `OMNI_AUTH_GOOGLE_APP_CLIENT_SECRET`.
 
-## Procedure
-
 ### 1. Record the current configuration
 
 Record in the approved operational secret inventory, and mark each item `complete`, `unverified`, or

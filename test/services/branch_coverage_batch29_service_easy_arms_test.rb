@@ -77,11 +77,8 @@ class BranchCoverageBatch29ServiceEasyArmsTest < ActiveSupport::TestCase
     assert_equal({}, JitSecurityJwtKeyMaterial.parse_private_keyset(""))
   end
 
-  test "lib ObjectStorage and LocalEnvironment arms" do
+  test "lib ObjectStorage missing environment key arms" do
     assert_raises(KeyError) { ObjectStorage::Environment.fetch("UMX_MISSING_OBJECT_STORAGE_KEY") }
-    assert_nil LocalEnvironment.parse("# comment")[0]
-    assert_nil LocalEnvironment.parse("")[0]
-    assert_equal %w(FOO bar), LocalEnvironment.parse("FOO=bar")
   end
 
   test "RefreshTokenable concern currently_usable false arms" do

@@ -127,7 +127,7 @@ module OidcClientStoresStaticClientStore
   def build_redirect_uris(env_key, default_host = nil, path: "/oidc/callback")
     configured_hosts_for(env_key, default_host).map do |host|
       protocol = (Rails.env.production? || public_host?(host)) ? "https" : "http"
-      port_suffix = (Rails.env.production? || public_host?(host)) ? "" : ":3000"
+      port_suffix = (Rails.env.production? || public_host?(host)) ? "" : ":#{DevelopmentPort.value}"
       validate_registered_redirect_uri!("#{protocol}://#{host}#{port_suffix}#{path}")
     end
   end
@@ -152,7 +152,7 @@ module OidcClientStoresStaticClientStore
                                       path: AuthBoundaryAuthorityMap::CANONICAL_RP_SIGN_OUT_PATH)
     configured_hosts_for(env_key, default_host).flat_map do |host|
       protocol = (Rails.env.production? || public_host?(host)) ? "https" : "http"
-      port_suffix = (Rails.env.production? || public_host?(host)) ? "" : ":3000"
+      port_suffix = (Rails.env.production? || public_host?(host)) ? "" : ":#{DevelopmentPort.value}"
       RequestContextContract.allowed_regions.map do |region|
         "#{protocol}://#{host}#{port_suffix}#{path}?ri=#{region}"
       end
