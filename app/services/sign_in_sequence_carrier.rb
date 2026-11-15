@@ -13,6 +13,7 @@ class SignInSequenceCarrier
     @session = session
     @surface = surface&.to_sym
   end
+  public
 
   def current
     SignInSequence.new(current_payload || {})

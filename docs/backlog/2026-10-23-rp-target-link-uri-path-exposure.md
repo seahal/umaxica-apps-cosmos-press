@@ -1,5 +1,10 @@
 # RP return target path is readable outside the RP
 
+Historical implementation note (2026-10-23): the signed RP state algorithm described below was
+superseded by the 2026-11-13 PS256 amendment to
+[`adr/rp-oidc-state-and-return-target.md`](../adr/rp-oidc-state-and-return-target.md). Path-only
+target handling and the disclosure analysis remain applicable.
+
 Status: Deferred concern; the accepted RP Rails contract was implemented on 2026-10-24 (WU-39). This
 entry remains a backlog item for the accepted path-exposure trade-off; it does not authorize a
 different target transport.

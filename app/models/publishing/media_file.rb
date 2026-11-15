@@ -5,6 +5,8 @@ module Publishing
     self.table_name = "publishing_media_files"
 
     include PublicId
+
+    PublicId.configure(self)
     include PublishingMediaUploader::Attachment[:file]
 
     has_many :docs_app_revision_media_usages, class_name: "Publishing::Docs::App::RevisionMediaUsage",

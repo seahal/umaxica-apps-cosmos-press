@@ -5,6 +5,8 @@ module Publishing
     # At most one term per vocabulary per revision or version, drawn from a tree.
     # Category is the initial vocabulary using this kind.
     class SingleHierarchical
+      public
+
       def key = TaxonomyKind::SINGLE_HIERARCHICAL
 
       def hierarchical? = true

@@ -108,8 +108,10 @@ module Jit
           public_keysets.each do |keyset|
             keyset.fetch("keys").each do |jwk|
               assert_empty JitSecurityJwtJwk::PRIVATE_FIELDS & jwk.keys
-              assert_equal "ES384", jwk.fetch("alg")
+              assert_equal "PS256", jwk.fetch("alg")
               assert_equal "sig", jwk.fetch("use")
+              assert_equal "RSA", jwk.fetch("kty")
+              assert_operator JitSecurityJwtJwk.import_public_key(jwk).n.num_bits, :>=, 3072
             end
           end
         end
@@ -158,6 +160,35 @@ module Jit
                        "reusing persisted keys must not look like a key rotation"
         end
 
+        test "legacy EC keys in the local store are replaced by fresh RSA 3072 keys" do
+          legacy_key = OpenSSL::PKey::EC.generate("secp384r1")
+          legacy_jwk = JWT::JWK.new(legacy_key, kid: "test-auth-es384-a").export.stringify_keys.except("d").merge(
+            "alg" => "ES384", "use" => "sig", "state" => "active",
+          )
+          File.write(
+            @store_path,
+            JSON.generate(
+              "AUTH" => {
+                "active_kid" => "test-auth-es384-a",
+                "private_keyset" => JSON.generate("test-auth-es384-a" => Base64.strict_encode64(legacy_key.to_der)),
+                "public_keyset" => JSON.generate("keys" => [legacy_jwk]),
+              },
+            ),
+          )
+
+          JitSecurityJwtLocalKeysetInstaller.install!(store_path: @store_path)
+          active_kid = ENV.fetch("AUTH_JWT_ACTIVE_KID")
+          active_key = JitSecurityJwtKeyMaterial.parse_private_keyset(
+            ENV.fetch("AUTH_JWT_PRIVATE_KEYSET"),
+          ).fetch(active_kid)
+          public_jwk = JSON.parse(ENV.fetch("AUTH_JWT_PUBLIC_KEYSET")).fetch("keys").first
+
+          assert_equal "PS256", public_jwk.fetch("alg")
+          assert_equal "RSA", public_jwk.fetch("kty")
+          assert_operator active_key.n.num_bits, :>=, 3072
+          assert_match(/ps256/, active_kid)
+        end
+
         test "a surface signing key preset in ENV is refused instead of being used as a local Jump key" do
           foreign = OpenSSL::PKey::EC.generate("secp384r1")
           ENV["JWT_BASE_APP_PRIVATE_KEY"] = Base64.strict_encode64(foreign.to_der)
@@ -190,7 +221,7 @@ module Jit
 
           assert_equal kid, ENV.fetch("JWT_BASE_APP_ACTIVE_KID")
           assert_equal private_key, ENV.fetch("JWT_BASE_APP_PRIVATE_KEY")
-          assert_equal "#{Rails.env}-base-app-es384-a", kid
+          assert_equal "#{Rails.env}-base-app-ps256-a", kid
         end
 
         test "installing twice in one process accepts the values the installer exported" do

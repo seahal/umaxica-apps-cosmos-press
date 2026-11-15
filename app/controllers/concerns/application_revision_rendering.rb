@@ -19,6 +19,8 @@
 module ApplicationRevisionRendering
   extend ActiveSupport::Concern
 
+  public
+
   # `GET /revision`: text/plain, no redirect, no auth, no negotiation. `render plain:` ignores
   # `Accept`, so the response is text/plain whatever the caller asked for.
   def render_revision

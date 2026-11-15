@@ -122,7 +122,9 @@ concern also applies when no listed path is touched.
 - Concern: sign-in, session issuance/limits, login cooldown or sign-out. Load:
   `project/session-issuance.mdc`, `generic/lifecycle-transition-writers.mdc`,
   `adr/root-login-establishment-boundary.md`.
-- Paths: `src/**/*.tsx`, `src/**/*.ts`. Load: `docs/reference/react.md`, `docs/design.md`.
+- Paths: `src/**/*.tsx`, `src/**/*.ts`. Load: `docs/design.md`. This repository currently ships
+  Rails HTML and CSS, not a React client; if a React runtime is introduced, add current framework
+  guidance before implementing that runtime.
 - Paths: `app/views/**`, `app/assets/**`, `app/javascript/**`, `src/**`. Concern: appearance,
   layout, styling or interaction design. Load: `DESIGN.md`, the canonical owner of appearance and
   experience where guidance overlaps.
@@ -172,8 +174,9 @@ concern also applies when no listed path is touched.
   `generic/no-flash-messages.mdc`.
 - Paths: `config/locales/**`, and any file whose diff adds or changes a `t`/`I18n.t` call. Load:
   `docs/architecture/i18n.md`, `adr/i18n-explicit-translation-keys.md`.
-- Concern: Google, Apple or Microsoft Entra ID sign-in buttons and branding. Load:
-  `docs/reference/third-party-sign-in-button-requirements.md`.
+- Concern: Google, Apple or Microsoft Entra ID sign-in buttons and branding. Press currently has no
+  such provider buttons; Edit delegates its OIDC flow to Access. If provider buttons are introduced,
+  add a current provider-specific requirements reference before implementing them.
 - Concern: consulting external technical sources. Load: `generic/source-policy.mdc`.
 - Paths: `adr/**`, `docs/**`, `plans/**`, `research/**`, `specs/**`, `evidence/**`, `.agents/**`,
   `*.md`. Concern: code comments or test names. Load: `generic/repository-language.mdc`.

@@ -7,6 +7,8 @@ module Publishing
         self.table_name = "publishing_news_org_entries"
         include PublishingEntryRecord
 
+        PublishingEntryRecord.configure(self)
+
         SLUG_CLASS = Publishing::News::Org::EntrySlug
 
         SURFACE = "news"

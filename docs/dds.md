@@ -104,7 +104,7 @@ Browser ⇄ Fastly/Cloudflare ⇄ Rails (Top/Sign/Help/Docs/News/API/BFF)
 
 | Concern               | Key responsibilities                                                                                                  |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `Auth::Base`          | JWT (ES384) issuance/verification (`kid` header + keyring), login/logout helpers, refresh/device cookie handling      |
+| `Auth::Base`          | JWT (PS256) issuance/verification (`kid` header + keyring), login/logout helpers, refresh/device cookie handling      |
 | `RateLimit`           | Exposes `config.x.rate_limit.store` (a Valkey-backed `ActiveSupport::Cache::RedisCacheStore`) to the `rate_limit` DSL |
 | `DefaultUrlOptions`   | Reads signed preference cookie to append `lx`, `ri`, `tz` query params                                                |
 | `PreferenceRegions`   | Normalizes locale/timezone inputs, persists to session/cookies, handles errors                                        |

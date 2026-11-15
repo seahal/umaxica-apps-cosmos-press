@@ -24,6 +24,7 @@ module Publishing
     attr_reader :effective_from
 
     validate :effective_from_must_be_parseable
+    public
 
     def message_hash
       errors.details.to_h { |attribute, list|

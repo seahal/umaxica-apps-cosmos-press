@@ -13,6 +13,8 @@ module PublishingManagementEntriesActions
 
   include ::PublishingManagementCell
 
+  public
+
   def index
     result = authority_result!(publishing_authority.entries(page: page_number))
     return unless result

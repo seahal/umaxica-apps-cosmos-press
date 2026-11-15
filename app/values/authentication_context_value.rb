@@ -47,6 +47,7 @@ class AuthenticationContextValue
     @capabilities = capabilities.map(&:to_s).freeze
     freeze
   end
+  public
 
   def normal? = key == NORMAL_KEY
 
@@ -94,8 +95,10 @@ class AuthenticationContextValue
   UNKNOWN = new("unknown", capabilities: []).freeze
 
   def self.normal = REGISTRY.fetch(NORMAL_KEY)
+  public_class_method :normal
 
   def self.standby = REGISTRY.fetch(STANDBY_KEY)
+  public_class_method :standby
 
   # Strict lookup for issue-time call sites, which must never mint a session
   # under a context this build cannot enumerate.
@@ -107,6 +110,7 @@ class AuthenticationContextValue
             "Unknown authentication context: #{key.inspect} (expected one of #{KEYS.inspect})"
     end
   end
+  public_class_method :for
 
   # Lenient lookup for verification-time call sites reading an already-signed
   # token. A blank claim is a Normal session (the claim postdates existing
@@ -116,12 +120,14 @@ class AuthenticationContextValue
 
     REGISTRY.fetch(value.to_s, UNKNOWN)
   end
+  public_class_method :from_claim
 
   def self.from_claims(claims)
     return normal unless claims.is_a?(Hash)
 
     from_claim(claims[CLAIM] || claims[CLAIM.to_sym])
   end
+  public_class_method :from_claims
 
   # Session capabilities narrow the authorization scopes a token carries; they
   # never add one that the actor's ordinary scopes did not already grant.

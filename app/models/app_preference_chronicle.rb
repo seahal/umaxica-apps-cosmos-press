@@ -44,6 +44,8 @@ class AppPreferenceChronicle < ChronicleRecord
 
   include Retainable
 
+  Retainable.configure(self)
+
   belongs_to :app_preference_chronicle_level, foreign_key: :level_id, inverse_of: :app_preference_chronicles
   belongs_to :app_preference_chronicle_event,
              class_name: "AppPreferenceChronicleEvent",
@@ -81,6 +83,7 @@ class AppPreferenceChronicle < ChronicleRecord
       end
     end
   end
+  public
 
   def app_preference
     raise GovernanceUnavailableError, "Preference authority is unavailable"

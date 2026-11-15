@@ -9,21 +9,26 @@ class SecurityJwtAccessTokenNegativeCasesTest < ActiveSupport::TestCase
     @client = OidcClientRegistry.find!("edit-org-ww")
     @issuer_id = OidcIssuer.jwt_issuer_id_for_client(@client)
     @issuer = OidcIssuer.for_client(@client)
-    @key = JitSecurityJwtRegistry.private_key_for(@issuer_id)
+    @key = OpenSSL::PKey::RSA.generate(3072)
     @jwks = OidcOpJwksClient.new(
       jwks_uri: OidcIssuer.jwks_uri("operator").to_s,
-      fetcher: -> { JitSecurityJwtRegistry.jwks_for(@issuer_id).deep_stringify_keys },
+      fetcher: -> {
+        { "keys" => [JitSecurityJwtJwk.export_public(@key, kid: @header.fetch("kid"))] }
+      },
     )
     token = rp_cell_test_token_response(@client.client_id, subject: "external-subject", sid: "external-session")
     @payload, @header = JWT.decode(token.fetch(:access_token), nil, false)
+    @header["alg"] = "PS256"
+    @header["typ"] = OidcOpAccessTokenVerifier::TOKEN_TYPE
   end
 
-  test "external RP access verification refuses every algorithm other than ES384" do
+  test "external RP access verification refuses ES384 RS256 PS384 HMAC and none" do
     {
+      "ES384" => OpenSSL::PKey::EC.generate("secp384r1"),
       "ES256" => OpenSSL::PKey::EC.generate("prime256v1"),
       "ES512" => OpenSSL::PKey::EC.generate("secp521r1"),
       "RS256" => OpenSSL::PKey::RSA.generate(2048),
-      "PS256" => OpenSSL::PKey::RSA.generate(2048),
+      "PS384" => OpenSSL::PKey::RSA.generate(3072),
       "HS256" => "shared-secret",
       "none" => nil,
     }.each do |algorithm, key|
@@ -34,7 +39,7 @@ class SecurityJwtAccessTokenNegativeCasesTest < ActiveSupport::TestCase
   end
 
   test "external RP access verification refuses a foreign signing key" do
-    token = JWT.encode(@payload, OpenSSL::PKey::EC.generate("secp384r1"), "ES384", @header)
+    token = JWT.encode(@payload, OpenSSL::PKey::RSA.generate(3072), "PS256", @header)
 
     assert_not verify(token).success?
   end
@@ -56,7 +61,7 @@ class SecurityJwtAccessTokenNegativeCasesTest < ActiveSupport::TestCase
     }
 
     variants.each do |name, payload|
-      assert_not verify(JWT.encode(payload, @key, "ES384", @header)).success?, name
+      assert_not verify(JWT.encode(payload, @key, "PS256", @header)).success?, name
     end
   end
 
@@ -64,7 +69,7 @@ class SecurityJwtAccessTokenNegativeCasesTest < ActiveSupport::TestCase
     %w(scp act typ).each do |claim|
       payload = @payload.merge(claim => "retired")
 
-      assert_not verify(JWT.encode(payload, @key, "ES384", @header)).success?, claim
+      assert_not verify(JWT.encode(payload, @key, "PS256", @header)).success?, claim
     end
   end
 
@@ -75,14 +80,14 @@ class SecurityJwtAccessTokenNegativeCasesTest < ActiveSupport::TestCase
       @payload.merge("aud" => ["other-client"]),
       @payload.merge("client_id" => "other-client"),
     ].each do |payload|
-      assert_not verify(JWT.encode(payload, @key, "ES384", @header)).success?
+      assert_not verify(JWT.encode(payload, @key, "PS256", @header)).success?
     end
   end
 
   test "external RP access verification refuses wrong absent and legacy JOSE types" do
     [@header.except("typ"), @header.merge("typ" => "JWT"),
      @header.merge("typ" => "auth-access-token;client"),].each do |header|
-      assert_not verify(JWT.encode(@payload, @key, "ES384", header)).success?
+      assert_not verify(JWT.encode(@payload, @key, "PS256", header)).success?
     end
   end
 
@@ -92,14 +97,35 @@ class SecurityJwtAccessTokenNegativeCasesTest < ActiveSupport::TestCase
     token = JitSecurityJwtKeyring.encode({ "typ" => "payload-typ" }, typ: "at+jwt", issuer_id: @issuer_id)
 
     assert_equal "at+jwt", JWT.decode(token, nil, false)[1].fetch("typ")
+    assert_equal "PS256", JWT.decode(token, nil, false)[1].fetch("alg")
+  end
+
+  test "external RP access verification rejects 2048-bit RSA as below the 3072-bit minimum" do
+    undersized_key = OpenSSL::PKey::RSA.generate(2048)
+    kid = @header.fetch("kid")
+    undersized_jwk = JWT::JWK.new(undersized_key, kid: kid).export.stringify_keys.merge(
+      "alg" => "PS256", "use" => "sig",
+    )
+    client = OidcOpJwksClient.new(
+      jwks_uri: OidcIssuer.jwks_uri("operator").to_s,
+      fetcher: -> { { "keys" => [undersized_jwk] } },
+    )
+
+    result = verify_with_jwks(JWT.encode(@payload, undersized_key, "PS256", @header), client)
+
+    assert_not_predicate result, :success?
   end
 
   private
 
   def verify(token)
+    verify_with_jwks(token, @jwks)
+  end
+
+  def verify_with_jwks(token, jwks_client)
     OidcOpAccessTokenVerifier.new(
       access_token: token, client_id: @client.client_id, realm: "org", issuer: @issuer,
-      audience: @client.aud, jwks_client: @jwks,
+      audience: @client.aud, jwks_client: jwks_client,
     ).call
   end
 end

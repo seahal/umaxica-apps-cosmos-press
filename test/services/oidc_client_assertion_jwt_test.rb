@@ -36,7 +36,7 @@ class OidcClientAssertionJwtTest < ActiveSupport::TestCase
 
   test "issue refreshes local key material once when the registry is missing a client assertion key" do
     token_url = "https://log.umaxica.app/oauth/token"
-    key = OpenSSL::PKey::EC.generate("secp384r1")
+    key = OpenSSL::PKey::RSA.generate(3072)
     previous = JitSecurityJwtRegistry.instance_variable_get(:@issuers)
     installed = false
 
@@ -53,7 +53,7 @@ class OidcClientAssertionJwtTest < ActiveSupport::TestCase
         lambda do |**|
           installed = true
           ENV["OIDC_CLIENT_EDIT_ORG_WW_ACTIVE_KID"] = "core-app-oidc-recovered"
-          ENV["OIDC_CLIENT_EDIT_ORG_WW_PRIVATE_KEY"] = Base64.strict_encode64(key.to_der)
+          ENV["OIDC_CLIENT_EDIT_ORG_WW_PRIVATE_KEY"] = Base64.strict_encode64(key.private_to_der)
           true
         end
 
@@ -103,6 +103,7 @@ class OidcClientAssertionJwtTest < ActiveSupport::TestCase
     assert_equal (now + 5.minutes).to_i, payload.fetch("exp")
     assert_equal "external-request", payload.fetch("jti")
     assert_equal OidcClientAssertionJwt::TOKEN_TYPE, header.fetch("typ")
+    assert_equal "PS256", header.fetch("alg")
     assert_not payload.key?("step_up_grant")
     assert_not payload.key?("step_up_sub")
   end
@@ -110,11 +111,11 @@ class OidcClientAssertionJwtTest < ActiveSupport::TestCase
   private
 
   def with_oidc_client_key(namespace)
-    key = OpenSSL::PKey::EC.generate("secp384r1")
+    key = OpenSSL::PKey::RSA.generate(3072)
     kid = "#{namespace.downcase.tr("_", "-")}-oidc-test"
     env = {
       "OIDC_CLIENT_#{namespace}_ACTIVE_KID" => kid,
-      "OIDC_CLIENT_#{namespace}_PRIVATE_KEY" => Base64.strict_encode64(key.to_der),
+      "OIDC_CLIENT_#{namespace}_PRIVATE_KEY" => Base64.strict_encode64(key.private_to_der),
     }
     previous = JitSecurityJwtRegistry.instance_variable_get(:@issuers)
 

@@ -5,6 +5,8 @@ module Edit
   module Org
     class ApplicationController < ActionController::Base
       include ::FqdnAvailabilityGate
+
+      FqdnAvailabilityGate.configure(self)
       include ::RateLimit
       include ::DefaultNoStore
       include ::JumpRtReturnVerification

@@ -1,22 +1,8 @@
 ---
 ja:
   actions:
-    actions: 操作
-    add: 追加
-    back: もどる
     cancel: キャンセル
-    cancel_and_start: 取り消して新しい確認を始める
-    connect: 連携する
     continue: 続行
-    delete: 削除
-    destroy: 削除
-    disconnect: 連携解除
-    edit: 編集
-    restart: 確認を再開する
-    save: 保存
-    submit: 送信
-    up: もどる
-    update: 更新
   activemodel:
     errors:
       models:
@@ -37,77 +23,20 @@ ja:
         state_digest: コールバック状態ダイジェスト
     errors:
       messages:
-        birthdate_before_today: は本日より前の日付を入力してください
-        birthdate_format: はYYYY-MM-DD形式で入力してください
-        code_format: 大文字・数字・アンダースコアのみを使用してください
-        country_code_cannot_start_with_zero: の国番号は0から始めることができません
-        exceeds_e164_length: はE.164形式の最大桁数（%{max}桁）を超えています
-        identity_audit_event_format_invalid: は大文字とアンダースコアのみで構成される必要があります
-        invalid_e164_format: はE.164形式（例：+819012345678）である必要があります
         record_invalid: "バリデーションに失敗しました: %{errors}"
         restrict_dependent_destroy:
           has_many: "%{record}が存在しているので削除できません"
           has_one: "%{record}が存在しているので削除できません"
-        uuid_format: 有効なUUIDである必要があります
       models:
         operator:
           attributes:
             public_id:
-              invalid_format:
-                英大文字と数字のうち SecureRandom::BASE32_ALPHABET の文字のみで16文字にしてください
         org_document_tagger:
           attributes:
             org_document_tag_id:
-              already_tagged: このドキュメントにはすでにタグ付けされています
         staff:
           attributes:
             public_id:
-              invalid_format:
-                英大文字と数字のうち SecureRandom::BASE32_ALPHABET の文字のみで16文字にしてください
-  app_document_categories:
-    "%{id}": app_document_category_%{id}
-    announcement: お知らせ
-    article: 記事
-    faq: よくある質問
-    guide: ガイド
-    news: ニュース
-    reference: リファレンス
-    release_note: リリースノート
-    tutorial: チュートリアル
-  app_document_tags:
-    "%{id}": app_document_tag_%{id}
-    backend: バックエンド
-    business: ビジネス
-    database: データベース
-    design: デザイン
-    development: 開発
-    frontend: フロントエンド
-    marketing: マーケティング
-    none: なし
-    security: セキュリティ
-    technology: 技術
-  app_timeline_categories:
-    "%{id}": app_timeline_category_%{id}
-    announcement: お知らせ
-    article: 記事
-    faq: よくある質問
-    guide: ガイド
-    news: ニュース
-    reference: リファレンス
-    release_note: リリースノート
-    tutorial: チュートリアル
-  app_timeline_tags:
-    "%{id}": app_timeline_tag_%{id}
-    backend: バックエンド
-    business: ビジネス
-    database: データベース
-    design: デザイン
-    development: 開発
-    frontend: フロントエンド
-    marketing: マーケティング
-    none: なし
-    security: セキュリティ
-    technology: 技術
   attributes:
     ack_deactivate_today: 退会確認
     ack_schedule_purge: 削除予定確認
@@ -256,73 +185,10 @@ ja:
     vocabulary_public_id_snapshot: 語彙公開IDのスナップショット
     webauthn_id: WebAuthn ID
   auth:
-    session_expired: セッションの有効期限が切れました。もう一度ログインしてください。
     step_up:
-      canceled: 認証をキャンセル
       challenge:
         description: リクエストは完了していません。再試行する前に本人確認をしてください。
         title: 本人確認
-      completed: 続行
-      emergency_unavailable:
-        このセッションは緊急アクセスで確立されたため、段階的認証を行えません。ログアウトして通常モードで
-        ログインし直してください。
-      fresh_sign_in_required: 最初の認証方法を登録するには、いったんログアウトしてからログインし直してください。
-      invalid_request: 無効な認証リクエストです。
-      method_unavailable: 選択した認証方法は利用できません。
-      register_methods_required: 利用可能なステップアップ認証がありません。パスキー・メール・TOTPを登録してください。
-      required: 続行するには本人確認が必要です。再認証してください。
-      session_expired: 認証が必要です。
-      verification_required: 認証が必要です。
-    unauthorized: 権限がありません
-  com_document_categories:
-    "%{id}": com_document_category_%{id}
-    announcement: お知らせ
-    article: 記事
-    faq: よくある質問
-    guide: ガイド
-    news: ニュース
-    reference: リファレンス
-    release_note: リリースノート
-    tutorial: チュートリアル
-  com_document_tags:
-    "%{id}": com_document_tag_%{id}
-    backend: バックエンド
-    business: ビジネス
-    database: データベース
-    design: デザイン
-    development: 開発
-    frontend: フロントエンド
-    marketing: マーケティング
-    none: なし
-    security: セキュリティ
-    technology: 技術
-  com_timeline_categories:
-    "%{id}": com_timeline_category_%{id}
-    announcement: お知らせ
-    article: 記事
-    faq: よくある質問
-    guide: ガイド
-    news: ニュース
-    reference: リファレンス
-    release_note: リリースノート
-    tutorial: チュートリアル
-  com_timeline_tags:
-    "%{id}": com_timeline_tag_%{id}
-    backend: バックエンド
-    business: ビジネス
-    database: データベース
-    design: デザイン
-    development: 開発
-    frontend: フロントエンド
-    marketing: マーケティング
-    none: なし
-    security: セキュリティ
-    technology: 技術
-  common:
-    ok: OK
-  custom:
-    error:
-      key: カスタムエラー
   date:
     abbr_day_names:
       - 日
@@ -425,50 +291,12 @@ ja:
   db_verify_no_schema_drift:
     run_reset_workflow: 適切なデータベースリセット/マイグレーションワークフローを実行し、スキーマダンプの変更を確認して、意図したダンプをコミットしてください。
     unable_to_inspect: スキーマダンプのドリフトを検査できません。
-  defaults:
-    never: なし
-  description: 退会
-  docs:
-    app:
-      preferences:
-        footer:
-          home: ホーム
-          preference: 設定
-    com:
-      preferences:
-        footer:
-          home: ホーム
-          preference: 設定
-    org:
-      preferences:
-        footer:
-          home: ホーム
-          preference: 設定
-    posts:
-      index:
-        count: "%{count} 件"
-        empty: ドキュメントがありません
-        search_all: すべて
-        search_button: 検索
-        search_found: "%{count} 件見つかりました"
-        search_placeholder: 検索...
-        select_description: 一覧からドキュメントを選択すると詳細が表示されます
-        select_title: ドキュメントを選択
-        title: ドキュメント
-    versions:
-      index:
-        description: ドキュメントのバージョン一覧
-        title: バージョン
-      show:
-        description: ドキュメントのバージョン詳細
-        title: バージョン
   errors:
     forbidden: アクセスが禁止されています。
     format: "%{attribute}%{message}"
     fqdn_availability:
       unavailable: このサービスは一時的にご利用いただけません。しばらくしてからもう一度お試しください。
     invalid_authenticity_token: セッションが期限切れです。ページを再読み込みしてください。
-    login_failed: ログインに失敗しました。
     messages:
       accepted: を受諾してください
       already_authenticated: すでにログインしています
@@ -534,184 +362,13 @@ ja:
       wrong_length:
         one: "は%{count}文字で入力してください"
         other: "は%{count}文字で入力してください"
-    not_implemented: 機能はまだ実装されていません
-    otp_locked: 試行回数の上限を超えました。最初からやり直してください。
     rate_limit:
-      backend_unavailable: 認証を一時的に利用できません。しばらくしてからもう一度お試しください。
       exceeded: リクエストが多すぎます。しばらくしてからもう一度お試しください。
-      retry_later: 時間をおいて再度お試しください。
-      too_many_requests: アクセスが集中しています。時間をおいて再度お試しください。
     template:
       body: 次の項目を確認してください
       header:
         one: "%{model}に%{count}個のエラーが発生しました"
         other: "%{model}に%{count}個のエラーが発生しました"
-  hello: やぁ、せかい
-  help:
-    app:
-      contacts:
-        create:
-          success: お問い合わせを受け付けました
-        new:
-          badge: お問い合わせ
-          body: お問い合わせ内容
-          cancel: キャンセル
-          category_id: お問い合わせ種別
-          confirm_policy: プライバシーポリシーに同意します
-          confirm_policy_note: ポリシーに同意いただけない場合は送信できません。
-          description: 必要事項をご入力のうえ送信してください。担当者からご連絡します。
-          email_address: メールアドレス
-          error_heading:
-            one: "%{count}件のエラーがあるため送信できません。"
-            other: "%{count}件のエラーがあるため送信できません。"
-          page_title: お問い合わせ
-          submit: 送信
-          telephone_number: 電話番号
-          title: タイトル
-      preference:
-        cookie:
-          edit:
-            accept_consent_cookies: クッキー同意の許可について
-            accept_functional_cookies: 機能性クッキーの許可について
-            accept_necessary_cookies: 必要なクッキーの許可について（必須）
-            accept_performance_cookies: パフォーマンスクッキーの許可について
-            accept_targeting_cookies: ターゲティングクッキーの許可について
-            h1: クッキーの設定
-        theme:
-          edit:
-            description: 表示モードを選択して作業環境に合わせましょう。
-            hints:
-              dark: 夜間の作業や目の疲れを軽減したいときに最適です。
-              light: 共有スペースや明るいオフィスでの利用におすすめです。
-              system: OS のテーマ変更に連動して切り替わります。
-            legend: テーマの選択
-            options:
-              dark: ダーク — 暗い環境で目に優しい配色
-              light: ライト — 明るい背景で日中の作業に最適
-              system: システム設定 — 端末の設定に合わせて自動切り替え
-            title: テーマ設定（ライト／ダークの切り替え）
-      preferences:
-        footer:
-          document: ドキュメント
-          help_center: ヘルプセンター
-          home: ホーム
-          newsroom: ニュースルーム
-          preference: 設定
-    com:
-      contact:
-        emails:
-          create:
-            failure: 確認コードを送信できませんでした。もう一度お試しください。
-            hotp_code_invalid: 確認コードが正しくありません。もう一度お試しください。
-            hotp_code_required: 確認コードを入力してください。
-            success: メールアドレスの確認が完了しました。
-          edit:
-            code_label: 確認コード
-            description: メールアドレスに送信された6桁のコードを入力してください。
-            heading: メールアドレスを確認
-            page_title: 確認コードの入力
-            resend_code: コードを再送信
-            retry: やりなおす
-            session_expired: セッションの有効期限が切れました。最初からやり直してください。
-            submit: メールアドレスを確認
-            telephone_link: 電話番号を確認
-          new:
-            description: 入力されたメールアドレスに確認コードを送信します。
-            email_label: メールアドレス
-            heading: メールアドレスを入力
-            page_title: メールアドレスの確認
-            submit: 確認コードを送信
-          update:
-            expired: 確認コードの有効期限が切れました。新しいコードをリクエストしてください。
-            invalid_code: 確認コードが正しくありません。残り%{attempts_left}回の試行が可能です。
-            max_attempts: 確認の試行回数が上限に達しました。新しいコードをリクエストしてください。
-            session_expired: セッションの有効期限が切れました。最初からやり直してください。
-            success: メールアドレスが確認されました。電話番号を確認してください。
-      contacts:
-        create:
-          confirm_policy_error: 続行するには、プライバシーポリシーに同意する必要があります。
-          failure: お問い合わせを送信できませんでした。入力内容をご確認ください。
-          success: お問い合わせを受け付けました。メールアドレスを確認してください。
-        new:
-          badge: お問い合わせ
-          body: お問い合わせ内容
-          cancel: キャンセル
-          category_id: お問い合わせ種別
-          confirm_policy: プライバシーポリシーに同意します
-          confirm_policy_note: ポリシーに同意いただけない場合は送信できません。
-          contact_category_title: お問い合わせ種別
-          description: 以下のフォームにご記入ください。
-          email_address: メールアドレス
-          error_heading:
-            one: "%{count}件のエラーがあるため送信できません。"
-            other: "%{count}件のエラーがあるため送信できません。"
-          heading: お問い合わせフォーム
-          page_title: お問い合わせ
-          submit: 次へ
-          telephone_number: 電話番号
-          title: タイトル
-        update:
-          success: お問い合わせを受け付けました
-      preference:
-        theme:
-          edit:
-            options:
-              dark: ダーク — 暗い環境で目に優しい配色
-              light: ライト — 明るい背景で日中の作業に最適
-              system: システム設定 — 端末の設定に合わせて自動切り替え
-      preferences:
-        footer:
-          document: ドキュメント
-          help_center: ヘルプセンター
-          home: ホーム
-          newsroom: ニュースルーム
-          preference: 設定
-    contact:
-      errors:
-        id_required: お問い合わせIDは必須です
-        invalid_status:
-          "無効なお問い合わせステータス: SET_UPが予想されていますが、%{current_status}です"
-        not_found: お問い合わせが見つかりません
-    org:
-      contacts:
-        create:
-          confirm_policy_error: 続行するには、プライバシーポリシーに同意する必要があります。
-          failure: お問い合わせを送信できませんでした。入力内容をご確認ください。
-          success: お問い合わせを受け付けました
-        new:
-          badge: お問い合わせ
-          body: お問い合わせ内容
-          cancel: キャンセル
-          category_id: お問い合わせ種別
-          confirm_policy: プライバシーポリシーに同意します
-          confirm_policy_note: ポリシーに同意いただけない場合は送信できません。
-          contact_category_title: お問い合わせ種別
-          description: 以下のフォームにご記入ください。
-          email_address: メールアドレス
-          error_heading:
-            one: "%{count}件のエラーがあるため送信できません。"
-            other: "%{count}件のエラーがあるため送信できません。"
-          heading: お問い合わせフォーム
-          page_title: お問い合わせ
-          submit: 次へ
-          telephone_number: 電話番号
-          title: タイトル
-        update:
-          success: お問い合わせを受け付けました
-      preference:
-        theme:
-          edit:
-            options:
-              dark: ダーク — 暗い環境で目に優しい配色
-              light: ライト — 明るい背景で日中の作業に最適
-              system: システム設定 — 端末の設定に合わせて自動切り替え
-      preferences:
-        footer:
-          document: ドキュメント
-          help_center: ヘルプセンター
-          home: ホーム
-          newsroom: ニュースルーム
-          preference: 設定
   helpers:
     select:
       prompt: 選択してください
@@ -719,45 +376,6 @@ ja:
       create: 登録する
       submit: 保存する
       update: 更新する
-  jump:
-    redirector:
-      unavailable: このジャンプリンクは利用できません。
-  landing:
-    sign_in: ログイン
-    thin_endpoint: 下の操作を選んで、次の手順へ進みます。
-  languages:
-    english: English
-    japanese: 日本語
-  news:
-    app:
-      preferences:
-        footer:
-          home: ホーム
-          preference: 設定
-    com:
-      preferences:
-        footer:
-          home: ホーム
-          preference: 設定
-    org:
-      preferences:
-        footer:
-          home: ホーム
-          preference: 設定
-    posts:
-      index:
-        count: "%{count} 件"
-        empty: 投稿がありません
-        select_description: 一覧から投稿を選択すると詳細が表示されます
-        select_title: 投稿を選択
-        title: ニュース
-    versions:
-      index:
-        description: ニュースのバージョン一覧
-        title: バージョン
-      show:
-        description: ニュースのバージョン詳細
-        title: バージョン
   number:
     currency:
       format:
@@ -809,69 +427,12 @@ ja:
     precision:
       format:
         delimiter: ""
-  oidc:
-    rp_logout:
-      local_only:
-        このドメインからログアウトしました。sign
-        にはまだログイン中です。すべてのサービスからログアウトする場合は、sign
-        のセッション管理で実行してください。%{idp_sessions_url}
   oidc_rp:
     interruption:
       body: ログインできませんでした。再度ログインしてください。
       sign_in: ログイン
       title: ログインできませんでした
       top: トップページ
-  org_document_categories:
-    "%{id}": org_document_category_%{id}
-    announcement: お知らせ
-    article: 記事
-    faq: よくある質問
-    guide: ガイド
-    news: ニュース
-    reference: リファレンス
-    release_note: リリースノート
-    tutorial: チュートリアル
-  org_document_tags:
-    "%{id}": org_document_tag_%{id}
-    backend: バックエンド
-    business: ビジネス
-    database: データベース
-    design: デザイン
-    development: 開発
-    frontend: フロントエンド
-    marketing: マーケティング
-    none: なし
-    security: セキュリティ
-    technology: 技術
-  org_timeline_categories:
-    "%{id}": org_timeline_category_%{id}
-    announcement: お知らせ
-    article: 記事
-    faq: よくある質問
-    guide: ガイド
-    news: ニュース
-    reference: リファレンス
-    release_note: リリースノート
-    tutorial: チュートリアル
-  org_timeline_tags:
-    "%{id}": org_timeline_tag_%{id}
-    backend: バックエンド
-    business: ビジネス
-    database: データベース
-    design: デザイン
-    development: 開発
-    frontend: フロントエンド
-    marketing: マーケティング
-    none: なし
-    security: セキュリティ
-    technology: 技術
-  sequential_flow:
-    invalid_step: 不正なアクセスです。最初からやり直してください。
-  shared:
-    links:
-      acme_preference: Acmeの設定
-    page_header:
-      up_label_fallback: もどる
   sign:
     org:
       verification:
@@ -884,15 +445,10 @@ ja:
         completed_description: ログアウトしました。ほかのサービスのセッションは無効になっています。開いたままの画面は、次に通信したときにログインを求めます。
         completed_title: ログアウトしました
         confirm_description: 一度ログアウトすると、再度ログインが必要になります。
-        forbidden_description: 禁止された振る舞いです
         home_link: ホームへ戻る
-        idp_session_error:
-          IdP セッションを確認できませんでした。セッションはログアウトされていません。
-        invalid_request: このログアウトのリクエストは無効です。
         indeterminate_description: ログアウトが完了したかを確認できませんでした。このサービスを開き直して、現在の状態を確認してください。
         indeterminate_title: ログアウトの結果を確認できません
         retry_button: もう一度ログアウトする
-        stale_description: このログアウトのリクエストは期限切れです。ログアウトする場合は、もう一度やり直してください。
         title: ログアウトしますか？
         unavailable_description: 現在のセッションがまだ有効な可能性があります。もう一度ログアウトしてください。
         unavailable_title: ログアウトは完了していません
@@ -901,26 +457,6 @@ ja:
       last_word_connector: "、"
       two_words_connector: "、"
       words_connector: "、"
-  test:
-    email:
-      com:
-        application_mailer:
-          subject: コーポレートサンプル
-      org:
-        application_mailer:
-          subject: 組織サンプル
-    error:
-      key: テストエラー
-    support:
-      fix_fk_dependency:
-        apply: FK依存関係パッチを適用しています...
-  test_data:
-    contact_topic_description: トピックの詳細です。
-    inquiry_detail: 問い合わせの詳細です。
-  themes:
-    dark: ダークテーマ
-    light: ライトテーマ
-    system: システムテーマ
   time:
     am: 午前
     formats:
@@ -928,19 +464,10 @@ ja:
       long: "%Y/%m/%d %H:%M"
       short: "%m/%d %H:%M"
     pm: 午後
-  trusted_origin:
-    null_origin_error: ブラウザがOrigin保護リクエストに対してnull Originヘッダーを返しました。
   ui:
     skip_to_content: 本文へ移動
   ui_presentation:
     body_json: 文書をJSON形式で入力してください。
-    confirmation_required: 上の確認項目にチェックを入れると、この操作を実行できます。
-    display_preferences_description: 表示設定を変更できます。
-    information: お知らせ
     navigation:
       authentication: 認証メニュー
-      footer: フッターナビゲーション
       pagination: ページ送り
-      preferences: 表示設定
-      primary: 主要ナビゲーション
-    processing: 処理中です。しばらくお待ちください。

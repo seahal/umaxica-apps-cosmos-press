@@ -3,6 +3,7 @@
 
 module MigrationHelpersSafeTableRename
   class InconsistentState < StandardError; end
+  public
 
   def rename_table_strict(old_table, new_table)
     old_exists = table_exists?(old_table)

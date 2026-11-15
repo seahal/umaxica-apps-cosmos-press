@@ -6,7 +6,11 @@ module Publishing
       class VersionMultipleTaxonomyAssignment < PublishingRecord
         self.table_name = "publishing_info_app_version_multiple_taxonomy_assignments"
         include PublishingFamilyTaxonomyAssignment
+
+        PublishingFamilyTaxonomyAssignment.configure(self)
         include PublishingTaxonomySnapshot
+
+        PublishingTaxonomySnapshot.configure(self)
 
         validate :reject_user_supplied_position_snapshot, on: :create
 
@@ -25,6 +29,7 @@ module Publishing
         validates :position, uniqueness: { scope: %i(entry_version_id vocabulary_id) }, on: :create
 
         def self.expected_kind = Publishing::TaxonomyKind::MULTIPLE_ORDERED_FLAT
+        public_class_method :expected_kind
       end
     end
   end

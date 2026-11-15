@@ -4,6 +4,8 @@
 # A local RP credential establishes authentication, not Governance publishing permission.
 # Keep mutations closed until the authoritative permission and author identity are available.
 class PublishingEntryPolicy < ApplicationPolicy
+  public
+
   def index? = staff_operator_in_force?
 
   def show? = staff_operator_in_force?

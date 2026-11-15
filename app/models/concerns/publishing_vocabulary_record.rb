@@ -3,22 +3,29 @@
 module PublishingVocabularyRecord
   extend ActiveSupport::Concern
 
-  # FIXME: Violates Umaxica/NoConcernInclusionHooks; move the declarations in this block into each class that includes this concern.
-  included do
-    include PublicId
+  class << self
+    public
 
-    family = name.deconstantize
-    has_many :terms, class_name: "#{family}::TaxonomyTerm", inverse_of: :vocabulary,
-                     dependent: :restrict_with_exception
+    def configure(model_class)
+      model_class.include(PublicId)
+      PublicId.configure(model_class)
 
-    validates :kind, inclusion: { in: Publishing::TaxonomyKind::KEYS }
-    # Keys remain reserved after archival; existing keys are immutable in PostgreSQL.
-    validates :key, uniqueness: true, on: :create
-    validates :key, format: { with: /\A[a-z][a-z0-9_]*\z/ }
-    validates :internal_name, presence: true
+      model_class.class_eval do
+        family = name.deconstantize
+        has_many :terms, class_name: "#{family}::TaxonomyTerm", inverse_of: :vocabulary,
+                         dependent: :restrict_with_exception
 
-    scope :available, -> { where(archived_at: nil) }
+        validates :kind, inclusion: { in: Publishing::TaxonomyKind::KEYS }
+        # Keys remain reserved after archival; existing keys are immutable in PostgreSQL.
+        validates :key, uniqueness: true, on: :create
+        validates :key, format: { with: /\A[a-z][a-z0-9_]*\z/ }
+        validates :internal_name, presence: true
+
+        scope :available, -> { where(archived_at: nil) }
+      end
+    end
   end
+  public
 
   def archived? = archived_at.present?
 

@@ -39,13 +39,12 @@ present in JWKS. Optional surface records with no active kid and no keys may rem
 {
   "keys": [
     {
-      "kty": "EC",
-      "crv": "P-384",
+      "kty": "RSA",
       "kid": "...",
-      "alg": "ES384",
+      "alg": "PS256",
       "use": "sig",
-      "x": "...",
-      "y": "..."
+      "n": "...",
+      "e": "AQAB"
     }
   ]
 }
@@ -125,9 +124,24 @@ JWT_<NAMESPACE>_REVOKED_KIDS
 Production should source private material from the production secret backend. Rails credentials are
 acceptable for development and test.
 
+For the Press Edit RP (`UMAXICA_RUNTIME_ROLE=rp-edit-org-ww`), the required OIDC client signing
+configuration is:
+
+```text
+OIDC_CLIENT_EDIT_ORG_WW_ACTIVE_KID
+OIDC_CLIENT_EDIT_ORG_WW_PRIVATE_KEY
+OIDC_CLIENT_EDIT_ORG_WW_PUBLIC_KEYSET
+```
+
+`OIDC_CLIENT_EDIT_ORG_WW_PRIVATE_KEY` must contain an unencrypted RSA 3072-bit-or-larger PKCS#8
+private key (PEM `BEGIN PRIVATE KEY`, or base64-encoded PKCS#8 DER). The active public JWK is
+derived from that key; the optional public keyset contains only public RSA PS256 JWKs. The owner
+must provision a matching public key in Access's Edit client registration. Press does not issue Jump
+RTs. KMS signing is deferred; this cutover keeps the existing secret/credential loading path.
+
 ## Rotation Procedure
 
-1. Generate a P-384 ES384 key.
+1. Generate an RSA key of at least 3072 bits and encode the private key as PKCS#8.
 2. Choose a globally unique `kid`.
 3. Store the new private key in the secret backend.
 4. Publish the new public JWK as a grace key.
@@ -165,6 +179,10 @@ evidence; never delete a key solely because the active signer changed.
 
 Old verification keys should be public JWKs only. Do not keep old private keys in production runtime
 unless rollback still requires the previous signer.
+
+The 2026-11-13 algorithm cutover is one step: do not publish a mixed ES384/PS256 keyset or accept
+both algorithms during rollout. There are no launched first-party token populations to preserve; old
+local development/test tokens and generated EC keysets are invalidated by the cutover.
 
 ## Emergency Revocation
 

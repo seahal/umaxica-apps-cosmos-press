@@ -7,6 +7,7 @@ class PublishingPublishedEntriesQuery
   def self.call(...)
     new(...).call
   end
+  public_class_method :call
 
   def initialize(entry_class:, locale:, category: nil, tag: nil)
     @entry_class = entry_class
@@ -14,6 +15,7 @@ class PublishingPublishedEntriesQuery
     @category = category.presence
     @tag = tag.presence
   end
+  public
 
   def call
     return entry_class.none if entry_class.nil? || locale.blank?

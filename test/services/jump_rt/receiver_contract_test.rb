@@ -2,9 +2,8 @@
 
 require "test_helper"
 
-# Runs the preserved 0.3.0 receiver fixture and pinned 0.4.0 candidate fixture against the real
-# JumpRtReturnVerifier. Each url_case's literal rt value "returned" is replaced with a Jump-signed
-# token whose url claim is the case's signed_url, so the signature, claim, and URL checks all run.
+# Runs preserved gateway URL fixtures against the real JumpRtReturnVerifier. Each url_case's
+# literal rt value "returned" is replaced with a PS256 token whose url claim is the signed_url.
 class JumpRtReceiverContractTest < ActiveSupport::TestCase
   CONTRACTS = {
     "0.3.0 existing fixture" => JSON.parse(
@@ -26,11 +25,8 @@ class JumpRtReceiverContractTest < ActiveSupport::TestCase
   self.fixture_table_names = []
 
   setup do
-    @private_key = OpenSSL::PKey::EC.generate("secp384r1")
-    @public_jwk = JWT::JWK.new(@private_key, kid: "jump-test").export.stringify_keys.except("d").merge(
-      "alg" => "ES384",
-      "use" => "sig",
-    )
+    @private_key = OpenSSL::PKey::RSA.generate(3072)
+    @public_jwk = JitSecurityJwtJwk.export_public(@private_key, kid: "jump-test")
     @now = Time.current.change(usec: 0)
     @previous_cache = Rails.cache
     Rails.cache = ActiveSupport::Cache::MemoryStore.new
@@ -59,7 +55,7 @@ class JumpRtReceiverContractTest < ActiveSupport::TestCase
           rpl: "reuse",
           url: url_case.fetch("signed_url"),
         }
-        token = JWT.encode(payload, @private_key, "ES384", { typ: "JWT", kid: "jump-test" })
+        token = JWT.encode(payload, @private_key, "PS256", { typ: "JWT", kid: "jump-test" })
 
         result =
           JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
@@ -86,13 +82,14 @@ class JumpRtReceiverContractTest < ActiveSupport::TestCase
     assert_equal candidate.fetch("max_token_characters"), JumpRtReturnVerifier::MAX_TOKEN_LENGTH
   end
 
-  test "contract claim and header values match the receiver codec" do
+  test "the receiver enforces PS256 over preserved upstream algorithm snapshots" do
     candidate = CONTRACTS.fetch("0.4.0 pinned candidate")
 
     assert_equal candidate.fetch("schema"), SecurityJwtJumpRtTokenCodec::SCHEMA
     assert_equal candidate.fetch("rpl"), SecurityJwtJumpRtTokenCodec::REPLAY_POLICY
     assert_equal candidate.fetch("sub"), SecurityJwtJumpRtTokenCodec::TOKEN_SUBJECT
-    assert_equal candidate.dig("header", "alg"), SecurityJwtJumpRtTokenCodec::ALGORITHM
+    assert_equal "PS256", SecurityJwtJumpRtTokenCodec::ALGORITHM
+    assert_not_equal candidate.dig("header", "alg"), SecurityJwtJumpRtTokenCodec::ALGORITHM
     assert_equal candidate.dig("header", "typ"), SecurityJwtJumpRtTokenCodec::TOKEN_TYPE
   end
 

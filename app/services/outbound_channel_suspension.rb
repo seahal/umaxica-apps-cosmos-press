@@ -18,10 +18,12 @@ class OutboundChannelSuspension
   def self.suspended?(channel, flipper: Flipper)
     new(flipper: flipper).suspended?(channel)
   end
+  public_class_method :suspended?
 
   def initialize(flipper: Flipper)
     @flipper = flipper
   end
+  public
 
   # Suspending :email stops promotional mail as well: it is the wider switch.
   def suspended?(channel)

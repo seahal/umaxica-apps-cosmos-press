@@ -8,6 +8,7 @@ class CsrfNotificationSubscriber
     "csrf_javascript_blocked.action_controller" => ["security.csrf.javascript_blocked", :warn],
   }.freeze
   SEC_FETCH_SITE_VALUES = %w(cross-site same-origin same-site none).freeze
+  public
 
   def emit(event)
     event_name, severity = EVENT_CONFIG.fetch(event.name)

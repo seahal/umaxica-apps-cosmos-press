@@ -7,23 +7,28 @@
 # PostgreSQL triggers reject UPDATE and DELETE on these tables. The callbacks
 # here exist only to raise a readable Active Record error first.
 #
-# included do is retained so every snapshot table is immutable at the Active
-# Record boundary without each class re-stating the same two callbacks.
+# Snapshot models explicitly configure immutability after including this behavior concern.
 module PublishingTaxonomySnapshot
   extend ActiveSupport::Concern
 
-  # FIXME: Violates Umaxica/NoConcernInclusionHooks; move the declarations in this block into each class that includes this concern.
-  included do
-    before_update { raise(ActiveRecord::ReadOnlyRecord, "#{self.class.name} is immutable") }
-    before_destroy { raise(ActiveRecord::ReadOnlyRecord, "#{self.class.name} is immutable") }
+  class << self
+    public
 
-    validates :vocabulary_public_id_snapshot, :vocabulary_key_snapshot, :vocabulary_kind_snapshot,
-              :term_public_id_snapshot, :term_slug_snapshot, :term_name_snapshot, :locale_snapshot, presence: true
-    # Existing varchar(21) references reject longer input before the authoritative DB derivation.
-    # Shorter supplied values remain valid and are replaced; updates retain ReadOnlyRecord refusal.
-    validates :vocabulary_public_id_snapshot, :term_public_id_snapshot,
-              length: { maximum: 21 }, on: :create
+    def configure(model_class)
+      model_class.class_eval do
+        before_update { raise(ActiveRecord::ReadOnlyRecord, "#{self.class.name} is immutable") }
+        before_destroy { raise(ActiveRecord::ReadOnlyRecord, "#{self.class.name} is immutable") }
+
+        validates :vocabulary_public_id_snapshot, :vocabulary_key_snapshot, :vocabulary_kind_snapshot,
+                  :term_public_id_snapshot, :term_slug_snapshot, :term_name_snapshot, :locale_snapshot, presence: true
+        # Existing varchar(21) references reject longer input before the authoritative DB derivation.
+        # Shorter supplied values remain valid and are replaced; updates retain ReadOnlyRecord refusal.
+        validates :vocabulary_public_id_snapshot, :term_public_id_snapshot,
+                  length: { maximum: 21 }, on: :create
+      end
+    end
   end
+  public
 
   # Public rendering shape. Database identifiers never appear here.
   def as_public_json

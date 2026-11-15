@@ -6,6 +6,7 @@ module Authentication
   # to domain policies after authentication, not to these unchanged admission predicates.
   class AccessPolicy < ActionPolicy::Base
     authorize :user, optional: true
+    public
 
     def public_strict?
       true

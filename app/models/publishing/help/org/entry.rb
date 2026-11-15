@@ -7,6 +7,8 @@ module Publishing
         self.table_name = "publishing_help_org_entries"
         include PublishingEntryRecord
 
+        PublishingEntryRecord.configure(self)
+
         SLUG_CLASS = Publishing::Help::Org::EntrySlug
 
         SURFACE = "help"

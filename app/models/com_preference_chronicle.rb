@@ -46,6 +46,8 @@ class ComPreferenceChronicle < ChronicleRecord
 
   include Retainable
 
+  Retainable.configure(self)
+
   # Audit actors may be omitted or belong to another record type.
   belongs_to :actor, polymorphic: true, optional: true
   belongs_to :com_preference_chronicle_level, foreign_key: :level_id, inverse_of: :com_preference_chronicles
@@ -84,6 +86,7 @@ class ComPreferenceChronicle < ChronicleRecord
   end
 
   public_class_method :lock_preference_audit_writers!, :lock_preference_audit_for_purge!
+  public
 
   def com_preference
     raise GovernanceUnavailableError, "Preference authority is unavailable"

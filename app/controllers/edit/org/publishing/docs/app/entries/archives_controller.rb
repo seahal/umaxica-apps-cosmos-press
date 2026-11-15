@@ -10,6 +10,8 @@ module Edit
             class ArchivesController < Edit::Org::ApplicationController
               include ::PublishingManagementArchivesActions
 
+              PublishingManagementCell.configure(self)
+
               AUTHENTICATION_MODE = :private
               declare_authentication_mode! :private
               PUBLISHING_SURFACE = "docs"

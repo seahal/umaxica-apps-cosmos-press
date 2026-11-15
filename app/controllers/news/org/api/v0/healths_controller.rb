@@ -13,12 +13,18 @@ module News
         # Health::*Check; the pass/warn/fail shape and the HTTP status from HealthStatusSerializer.
         class HealthsController < News::Org::BareController
           include ::HealthCheckRendering
+
+          HealthCheckRendering.configure(self)
           include ::MachineJsonNegotiation
+
+          MachineJsonNegotiation.configure(self)
 
           AUTHENTICATION_MODE = :bare
           HEALTH_PROFILE = ::Health::Profiles::Org
 
           before_action :refuse_unless_machine_json_acceptable
+
+          public
 
           def show
             render_health_status(

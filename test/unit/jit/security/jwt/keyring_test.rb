@@ -75,14 +75,27 @@ module Jit
 
         test "parse_header returns header for valid token" do
           # Create a minimal valid JWT header
-          header = { "alg" => "ES384", "typ" => "JWT" }
+          header = { "alg" => "PS256", "typ" => "JWT" }
           encoded = Base64.urlsafe_encode64(header.to_json, padding: false)
           token = "#{encoded}.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature"
 
           result = JitSecurityJwtKeyring.parse_header(token)
 
-          assert_equal "ES384", result["alg"]
+          assert_equal "PS256", result["alg"]
           assert_equal "JWT", result["typ"]
+        end
+
+        test "signs first-party tokens with PS256" do
+          token = JitSecurityJwtKeyring.encode({ "sub" => "subject" }, typ: "JWT")
+          _payload, header = JWT.decode(
+            token,
+            JitSecurityJwtKeyring.public_key_for_active,
+            true,
+            algorithms: ["PS256"],
+          )
+
+          assert_equal "PS256", header.fetch("alg")
+          assert_equal "JWT", header.fetch("typ")
         end
 
         test "parse_header returns empty hash on decode error" do

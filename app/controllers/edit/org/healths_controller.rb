@@ -6,6 +6,8 @@ module Edit
     class HealthsController < BareController
       include ::HealthCheckRendering
 
+      HealthCheckRendering.configure(self)
+
       AUTHENTICATION_MODE = :bare
       HEALTH_PROFILE = ::Health::Profiles::EditOrg
 

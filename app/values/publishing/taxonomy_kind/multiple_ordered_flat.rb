@@ -5,6 +5,8 @@ module Publishing
     # Any number of terms per vocabulary, in an author-controlled order, drawn
     # from a flat list. Tag is the initial vocabulary using this kind.
     class MultipleOrderedFlat
+      public
+
       def key = TaxonomyKind::MULTIPLE_ORDERED_FLAT
 
       def hierarchical? = false

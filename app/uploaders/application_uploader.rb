@@ -40,6 +40,7 @@ class ApplicationUploader < Shrine
   def self.storage_boundary
     nil
   end
+  public_class_method :storage_boundary
 
   def self.storage_boundary!
     storage_boundary ||
@@ -48,6 +49,7 @@ class ApplicationUploader < Shrine
         "#{name} must declare self.storage_boundary before it can select a storage",
       )
   end
+  public_class_method :storage_boundary!
 
   # Storage is selected from the uploader's declared boundary alone. It is never
   # derived from Current, Actor, the request host, the session, or cookies, so
@@ -71,6 +73,7 @@ class ApplicationUploader < Shrine
     io.rewind if io.respond_to?(:rewind)
     digest.hexdigest
   end
+  public
 
   # Object key layout. This is an internal implementation detail and NOT a public
   # URL contract: it may change, and nothing may treat a generated key as a

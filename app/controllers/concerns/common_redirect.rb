@@ -19,6 +19,9 @@ module CommonRedirect
     # strip scheme remnants and spaces
     host.to_s.downcase.sub(%r{^https?://}i, "").split("/").first
   end
+  public_class_method :normalize_host
+
+  public
 
   def allowed_hosts
     # NOTE: External redirect is disabled. This list remains only for diagnostics/auditing.

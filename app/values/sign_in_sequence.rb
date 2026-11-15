@@ -25,6 +25,7 @@ class SignInSequence
   def self.missing
     new({})
   end
+  public_class_method :missing
 
   def initialize(payload)
     @payload = payload.to_h.stringify_keys
@@ -33,6 +34,7 @@ class SignInSequence
   delegate :blank?, to: :id
 
   delegate :present?, to: :id
+  public
 
   def id = payload["id"]
 

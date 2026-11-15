@@ -3,26 +3,33 @@
 module PublishingPublicationRecord
   extend ActiveSupport::Concern
 
-  # FIXME: Violates Umaxica/NoConcernInclusionHooks; move the declarations in this block into each class that includes this concern.
-  included do
-    include PublicId
+  class << self
+    public
 
-    # Keep required creation input distinct from unloaded attributes on projected existing rows.
-    validates :effective_from, exclusion: { in: [nil], message: :blank }, on: :create,
-                               if: -> { effective_from.nil? }
-    validate :effective_from_must_be_timestamp, on: :create
+    def configure(model_class)
+      model_class.include(PublicId)
+      PublicId.configure(model_class)
 
-    family = name.deconstantize
-    belongs_to :entry, class_name: "#{family}::Entry", inverse_of: :publications
-    belongs_to :entry_version, class_name: "#{family}::EntryVersion", inverse_of: :publications
+      model_class.class_eval do
+        # Keep required creation input distinct from unloaded attributes on projected existing rows.
+        validates :effective_from, exclusion: { in: [nil], message: :blank }, on: :create,
+                                   if: -> { effective_from.nil? }
+        validate :effective_from_must_be_timestamp, on: :create
 
-    scope :active, -> {
-      now = Time.current
-      where(cancelled_at: nil)
-        .where(effective_from: ..now)
-        .where("effective_until IS NULL OR effective_until > ?", now)
-    }
+        family = name.deconstantize
+        belongs_to :entry, class_name: "#{family}::Entry", inverse_of: :publications
+        belongs_to :entry_version, class_name: "#{family}::EntryVersion", inverse_of: :publications
+
+        scope :active, -> {
+          now = Time.current
+          where(cancelled_at: nil)
+            .where(effective_from: ..now)
+            .where("effective_until IS NULL OR effective_until > ?", now)
+        }
+      end
+    end
   end
+  public
 
   def cancelled? = cancelled_at.present?
 

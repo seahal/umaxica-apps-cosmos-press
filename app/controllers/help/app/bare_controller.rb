@@ -7,6 +7,8 @@ module Help
     # Do not normalize this inheritance; bare endpoints own only the callbacks declared here.
     class BareController < ActionController::Base
       include ::FqdnAvailabilityGate
+
+      FqdnAvailabilityGate.configure(self)
       include ::RateLimit
       include ::DefaultNoStore
 

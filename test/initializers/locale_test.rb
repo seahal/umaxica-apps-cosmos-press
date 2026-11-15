@@ -68,13 +68,23 @@ class LocaleInitializerTest < ActiveSupport::TestCase
   test "retained Edit notices and Publishing validation labels exist in both languages" do
     [:en, :ja].each do |locale|
       I18n.with_locale(locale) do
-        assert I18n.exists?("sign.shared.sign_out.completed_description")
-        assert I18n.exists?("sign.org.verification.step_up_unavailable")
-        assert I18n.exists?("auth.step_up.challenge.title")
-        assert I18n.exists?("activerecord.attributes.publishing/media_file.width")
-        assert I18n.exists?("activerecord.attributes.rp_edit_org_callback_state.state_digest")
-        assert I18n.exists?("attributes.event_uuid")
-        assert I18n.exists?("attributes.position")
+        assert_predicate I18n.t("sign.shared.sign_out.completed_description", fallback: false, raise: true),
+                         :present?
+        assert_predicate I18n.t("sign.org.verification.step_up_unavailable", fallback: false, raise: true),
+                         :present?
+        assert_predicate I18n.t("auth.step_up.challenge.title", fallback: false, raise: true),
+                         :present?
+        assert_predicate I18n.t("activerecord.attributes.publishing/media_file.width", fallback: false, raise: true),
+                         :present?
+        state_digest_label = I18n.t(
+          "activerecord.attributes.rp_edit_org_callback_state.state_digest",
+          fallback: false,
+          raise: true,
+        )
+
+        assert_predicate state_digest_label, :present?
+        assert_predicate I18n.t("attributes.event_uuid", fallback: false, raise: true), :present?
+        assert_predicate I18n.t("attributes.position", fallback: false, raise: true), :present?
       end
     end
   end

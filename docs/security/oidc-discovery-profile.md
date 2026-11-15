@@ -7,6 +7,11 @@
 > `app/values/oidc_issuer.rb`, and the live Visa/Base route registries. Do not use this document to
 > restore an Acme route family or a shared Base OP/RP host.
 
+> **Current algorithm policy (2026-11-13):** first-party JWTs use PS256 with RSA keys of at least
+> 3072 bits. The ES384 profile described below is historical and no longer governs current Rails
+> signing or verification. See
+> [the accepted PS256 decision](../../adr/cosmos-jwt-ps256-and-op-signing-in-aws-kms.md).
+
 Visa (`https://visa.umaxica.app`, `.com`, `.org`) is the only IdP / Authorization Server. Sign /
 Core / Base / Palm are relying parties and hold no IdP authority. The historical sections below
 retain Acme names where they describe the former profile. This document records the intentional,

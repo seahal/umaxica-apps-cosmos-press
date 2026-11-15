@@ -6,6 +6,8 @@ class ApplicationForm
   include ActiveModel::Attributes
   include ActiveModel::Validations::Callbacks
 
+  public
+
   # Form objects are not saved directly to the database.
   # Therefore, this method returns false by default.
   def persisted?

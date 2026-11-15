@@ -7,6 +7,8 @@ class PublicIdTest < ActiveSupport::TestCase
   # Define a dummy model for testing
   class DummyModel < ApplicationRecord
     include PublicId
+
+    PublicId.configure(self)
     # This model is not backed by a real table, so we fake whatever ActiveRecord needs.
     # The dummy_models table does not exist in the test database, but we can temporarily
     # create it via ActiveRecord::Base.connection.create_table or reuse an existing table

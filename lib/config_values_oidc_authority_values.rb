@@ -7,6 +7,8 @@ end
 ConfigValuesOidcAuthorityValues = ConfigValues::OidcAuthorityValues
 
 class << ConfigValues::OidcAuthorityValues
+  public
+
   def build(host_family_values)
     ConfigValues::OidcAuthorityValues.new(
       sign: {

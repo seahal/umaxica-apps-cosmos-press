@@ -9,10 +9,9 @@ require_relative "../../lib/architecture_baseline"
 
 # Ratchet for the Umaxica architecture cops.
 #
-# `.rubocop_todo.yml` keeps `bin/rubocop` green by excluding files that are already in debt, which
-# alone would let a new violation slip into one of those files unnoticed. This test measures the
-# repository with the excludes ignored and compares against the recorded per-file counts, so a debt
-# file may only improve. Regenerate both artifacts with `bin/rails architecture:baseline`.
+# This test measures the repository and compares it with the per-file ratchet. RuboCop itself has
+# no architecture-cop exclusions, and a file may only improve. Regenerate the count artifact with
+# `bin/rails architecture:baseline` only after reducing existing debt.
 class ArchitectureBaselineTest < ActiveSupport::TestCase
   def test_no_file_exceeds_its_recorded_architecture_debt
     measured = ArchitectureBaseline.measure
@@ -20,6 +19,8 @@ class ArchitectureBaselineTest < ActiveSupport::TestCase
 
     ArchitectureBaseline::COPS.each do |cop|
       recorded_files = recorded.fetch(cop)
+
+      assert_empty measured.fetch(cop), "#{cop} must report zero offenses"
 
       measured.fetch(cop).each do |path, count|
         allowed = recorded_files.fetch(path, 0)
@@ -31,20 +32,21 @@ class ArchitectureBaselineTest < ActiveSupport::TestCase
     end
   end
 
-  def test_baseline_and_rubocop_todo_describe_the_same_files
-    recorded = ArchitectureBaseline.recorded
-    todo = YAML.load_file(ArchitectureBaseline::TODO_PATH, aliases: false)
+  def test_rubocop_does_not_load_or_keep_an_architecture_suppression_file
+    config = ArchitectureBaseline::ROOT.join(".rubocop.yml").read
 
-    ArchitectureBaseline::COPS.each do |cop|
-      assert_equal recorded.fetch(cop).keys.sort, todo.fetch(cop).fetch("Exclude").sort, cop
-    end
+    assert_not_includes config, ".rubocop_todo.yml"
+    refute_path_exists ArchitectureBaseline::ROOT.join(".rubocop_todo.yml")
   end
 
   def test_baseline_does_not_list_resolved_files
     measured = ArchitectureBaseline.measure
 
     ArchitectureBaseline::COPS.each do |cop|
-      stale = ArchitectureBaseline.recorded.fetch(cop).keys - measured.fetch(cop).keys
+      recorded_files = ArchitectureBaseline.recorded.fetch(cop)
+
+      assert_empty recorded_files, "#{cop} must have no recorded offenses"
+      stale = recorded_files.keys - measured.fetch(cop).keys
 
       assert_empty stale,
                    "#{cop} baseline lists files with no remaining offenses. " \
@@ -52,16 +54,15 @@ class ArchitectureBaselineTest < ActiveSupport::TestCase
     end
   end
 
-  def test_write_updates_both_generated_artifacts_in_name_order
+  def test_write_updates_the_generated_artifact_in_name_order
     Dir.mktmpdir("architecture-baseline-test") do |directory|
       counts_path = Pathname.new(directory).join("architecture_baseline.yml")
-      todo_path = Pathname.new(directory).join("rubocop_todo.yml")
       counts = {
         "Umaxica/NoConcernInclusionHooks" => { "z.rb" => 1, "a.rb" => 2 },
         "Umaxica/ExplicitMethodVisibility" => {},
       }
 
-      with_output_paths(counts_path, todo_path) { ArchitectureBaseline.write(counts) }
+      with_output_path(counts_path) { ArchitectureBaseline.write(counts) }
 
       assert_equal(
         ArchitectureBaseline::HEADER + {
@@ -70,7 +71,6 @@ class ArchitectureBaselineTest < ActiveSupport::TestCase
         }.to_yaml,
         counts_path.read,
       )
-      assert_includes todo_path.read, "    - \"a.rb\"\n    - \"z.rb\"\n"
     end
   end
 
@@ -78,18 +78,13 @@ class ArchitectureBaselineTest < ActiveSupport::TestCase
 
   # `ArchitectureBaseline.write` intentionally targets repository artifacts; redirecting the two
   # path constants keeps this behavior test isolated from the shared worktree.
-  def with_output_paths(counts_path, todo_path)
+  def with_output_path(counts_path)
     original_counts_path = ArchitectureBaseline::COUNTS_PATH
-    original_todo_path = ArchitectureBaseline::TODO_PATH
     ArchitectureBaseline.send(:remove_const, :COUNTS_PATH)
     ArchitectureBaseline.const_set(:COUNTS_PATH, counts_path)
-    ArchitectureBaseline.send(:remove_const, :TODO_PATH)
-    ArchitectureBaseline.const_set(:TODO_PATH, todo_path)
     yield
   ensure
     ArchitectureBaseline.send(:remove_const, :COUNTS_PATH)
     ArchitectureBaseline.const_set(:COUNTS_PATH, original_counts_path)
-    ArchitectureBaseline.send(:remove_const, :TODO_PATH)
-    ArchitectureBaseline.const_set(:TODO_PATH, original_todo_path)
   end
 end

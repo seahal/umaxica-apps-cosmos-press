@@ -126,7 +126,7 @@ staff tooling across `umaxica.[app|com|org]` and auxiliary subdomains.
 - **FR-09**: Telephone registration controllers mirror email flow but dispatch OTP codes through
   `Outbound::Sms`.
 - **FR-10**: Authentication controllers (`Sign::App::Authentication::*`) must issue short-lived
-  access tokens (JWT ES384) and refresh tokens using `Auth::Base#log_in`. Refresh now requires
+  access tokens (JWT PS256) and refresh tokens using `Auth::Base#log_in`. Refresh now requires
   `device_id` (`jit_auth_device_id` cookie or `X-Device-Id` header). If both are present they must
   match; missing/mismatch must return `401`, force logout for browser clients (clear
   access/refresh/device cookies + reset session), and require re-login.

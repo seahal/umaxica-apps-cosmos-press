@@ -5,6 +5,8 @@ module Edit
   module Org
     class BareController < ActionController::Base
       include ::FqdnAvailabilityGate
+
+      FqdnAvailabilityGate.configure(self)
       include ::RateLimit
       include ::DefaultNoStore
 

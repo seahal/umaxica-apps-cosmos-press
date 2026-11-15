@@ -17,6 +17,7 @@ class PublishingRevisionContentDigest
   def self.call(...)
     new(...).call
   end
+  public_class_method :call
 
   def initialize(schema_version:, locale:, title:, summary:, body:)
     @schema_version = schema_version
@@ -25,6 +26,7 @@ class PublishingRevisionContentDigest
     @summary = summary
     @body = body
   end
+  public
 
   def call
     Digest::SHA256.hexdigest(JSON.generate(canonical_payload))

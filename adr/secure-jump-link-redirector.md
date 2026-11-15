@@ -4,6 +4,11 @@
 
 Accepted.
 
+Amended 2026-11-13 (owner): first-party Jump RTs and Rails return-token verification use PS256 with
+RSA keys of at least 3072 bits. Rails return verifiers accept PS256 only; no ES384 overlap window is
+used. Press is a Jump return-token receiver and has no Jump RT issuer namespace. The external
+gateway's signing key and deployed behavior remain outside this repository's change.
+
 ## Context
 
 Redirect intent must not be represented as a raw URL in application query parameters. Raw
@@ -29,7 +34,7 @@ The external Jump gateway verifies the inbound Rails-issued token against the is
 For an internal return, the gateway issues its own signed return token and redirects back to the
 app. The app verifies that returned token with `JumpRtReturnVerifier` against the Jump public JWKS
 only (`https://jump.umaxica.net/.well-known/jwks.json` derived from the configured Jump origin).
-Return tokens are ES384, at most 30 seconds, with 5 seconds of clock leeway. JWKS fetch failures
+Return tokens are PS256, at most 30 seconds, with 5 seconds of clock leeway. JWKS fetch failures
 fail closed. Rails must not hold the Jump gateway private key.
 
 This Rails app must not expose `jump_*` route helpers, DB-backed `JumpLink` models, or

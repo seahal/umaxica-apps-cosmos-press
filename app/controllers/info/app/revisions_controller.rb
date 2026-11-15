@@ -10,6 +10,8 @@ module Info
 
       AUTHENTICATION_MODE = :bare
 
+      public
+
       def show
         render_revision
       end

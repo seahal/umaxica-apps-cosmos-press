@@ -7,8 +7,12 @@ module News
       class ReadinessesController < BareController
         include ::HealthCheckRendering
 
+        HealthCheckRendering.configure(self)
+
         AUTHENTICATION_MODE = :bare
         HEALTH_PROFILE = ::Health::Profiles::Org
+
+        public
 
         def show
           render_probe(::Health::ReadinessCheck.call(profile: health_profile))

@@ -5,8 +5,9 @@
 > identifier criteria remain pending the separate model/database review.
 
 These are user-approved I requirements, expressed as observable criteria, not verification results.
-Scope and interpretation follow C01–C15 in the [integrated acceptance index](integrated-stack.md).
-The accepted [identifier contract](../../adr/identifier-contract.md) records the user decisions;
+Scope and interpretation follow C01–C15 in the integrated acceptance index (historical source
+unavailable in this Press checkout: `integrated-stack.md`). The accepted
+[identifier contract](../../adr/identifier-contract.md) records the user decisions;
 [column conventions](../reference/identifier-conventions.md) supply scoped mappings. Complete
 per-table classification remains incomplete and must not be inferred from ADR status. The existing
 [cross-database reference policy](../../adr/cross-db-reference-policy.md) remains a governing
@@ -119,13 +120,13 @@ triggers for additional tables.
   not acceptance of final NOT NULL cutover; ID-4/MIG-1 still require verified writer/proof
   readiness. The reviewed two-step final-constraint migrations now enforce NOT NULL in the current
   run-owned schema; this does not authorize a real-data writer or consumer cutover.
-- Check the actual function and attached trigger, exact inventory in
-  [enforcement tests](../../test/models/enforcement_triggers_test.rb), direct-SQL/bulk rejection
-  tests in
-  [the ORG Telephone identity suite](../../test/models/operator_telephone_public_id_immutability_test.rb),
-  and
-  [operational backfill tests](../../test/operations/operator_telephone_public_id_backfill_operation_test.rb).
-  Use only verified run-owned PostgreSQL catalogs. Approval and this criterion do not establish
+- Check the actual function and attached trigger, exact inventory in enforcement tests (historical
+  source unavailable in this Press checkout: `../../test/models/enforcement_triggers_test.rb`),
+  direct-SQL/bulk rejection tests in the ORG Telephone identity suite (historical source unavailable
+  in this Press checkout: `../../test/models/operator_telephone_public_id_immutability_test.rb`),
+  and operational backfill tests (historical source unavailable in this Press checkout:
+  `../../test/operations/operator_telephone_public_id_backfill_operation_test.rb`). Use only
+  verified run-owned PostgreSQL catalogs. Approval and this criterion do not establish
   implementation, production application, or protection against intentional administrator bypass.
 
 ## ID-4b — Owned preference and Client Passkey identities become required
@@ -147,16 +148,18 @@ triggers for additional tables.
 - This criterion does not make `webauthn_id`, `external_id`, or `operator_passkeys` owned public
   identities, and it does not establish full consumer cutover, all-table identifier acceptance, or
   production/shared-data application.
-- Check: the explicit model contract in
-  [`test/models/public_id_not_null_contract_test.rb`](../../test/models/public_id_not_null_contract_test.rb),
-  the NULL-only operation tests in
-  [`test/operations/public_id_null_only_backfill_operation_test.rb`](../../test/operations/public_id_null_only_backfill_operation_test.rb),
+- Check: the explicit model contract in `test/models/public_id_not_null_contract_test.rb`
+  (historical source unavailable in this Press checkout:
+  `../../test/models/public_id_not_null_contract_test.rb`), the NULL-only operation tests in
+  `test/operations/public_id_null_only_backfill_operation_test.rb` (historical source unavailable in
+  this Press checkout: `../../test/operations/public_id_null_only_backfill_operation_test.rb`),
   focused preference/passkey model tests, the preference collision/immutability boundary in
-  [`test/models/preference_public_id_collision_test.rb`](../../test/models/preference_public_id_collision_test.rb),
-  the six P12a migrations, and a fresh isolated schema reconstruction plus down/up rehearsal. Direct
-  catalog checks must distinguish current nullable state, temporary checks and final `attnotnull`;
-  do not treat a generated schema file alone as a clean migration proof. The model boundary does not
-  replace the direct-SQL/database-enforcement portion of ID-4.
+  `test/models/preference_public_id_collision_test.rb` (historical source unavailable in this Press
+  checkout: `../../test/models/preference_public_id_collision_test.rb`), the six P12a migrations,
+  and a fresh isolated schema reconstruction plus down/up rehearsal. Direct catalog checks must
+  distinguish current nullable state, temporary checks and final `attnotnull`; do not treat a
+  generated schema file alone as a clean migration proof. The model boundary does not replace the
+  direct-SQL/database-enforcement portion of ID-4.
 
 ## ID-4c — Staff identity audit-event keys have an identity-preserving bigint cutover
 
@@ -203,10 +206,12 @@ triggers for additional tables.
   and limit−1/limit/limit+1 attempts where reachable. Start from PublicId tests;
   `LogoutTransaction.issue!` and its named-index retry/limit tests are additional concrete examples;
   the three realm-specific EnforcementCase writers are covered by
-  [`test/models/enforcement_case_public_id_test.rb`](../../test/models/enforcement_case_public_id_test.rb),
-  and the APP TOTP credential management identity is covered by
-  [`test/models/client_totp_credential_public_id_collision_test.rb`](../../test/models/client_totp_credential_public_id_collision_test.rb).
-  Large random samples do not prove collision safety.
+  `test/models/enforcement_case_public_id_test.rb` (historical source unavailable in this Press
+  checkout: `../../test/models/enforcement_case_public_id_test.rb`), and the APP TOTP credential
+  management identity is covered by `test/models/client_totp_credential_public_id_collision_test.rb`
+  (historical source unavailable in this Press checkout:
+  `../../test/models/client_totp_credential_public_id_collision_test.rb`). Large random samples do
+  not prove collision safety.
 
 ## ID-4d — Setting preference identities have bounded database capacity
 
@@ -273,12 +278,13 @@ triggers for additional tables.
   `com_zenith` visitor and company records, `org_zenith` agent and bureau records, app/com/org
   ticket and signal records, the app `members` and legacy logout transaction resource, and Avatar
   group, Avatar, membership, handle, post and post-version records. The complete table list is the
-  `CAPACITY_TABLES` inventory in
-  [`test/models/public_id_capacity_contract_test.rb`](../../test/models/public_id_capacity_contract_test.rb).
-  Provider/protocol identifiers, the ORG human-entered operator code, and the two retired legacy
-  tables `app_zenith.legacy_replaced_clients` and `org_zenith.legacy_operator_department_accounts`
-  are outside this criterion until their consumer and retention meaning is resolved. Other
-  unclassified inventory candidates are also outside this criterion.
+  `CAPACITY_TABLES` inventory in `test/models/public_id_capacity_contract_test.rb` (historical
+  source unavailable in this Press checkout:
+  `../../test/models/public_id_capacity_contract_test.rb`). Provider/protocol identifiers, the ORG
+  human-entered operator code, and the two retired legacy tables
+  `app_zenith.legacy_replaced_clients` and `org_zenith.legacy_operator_department_accounts` are
+  outside this criterion until their consumer and retention meaning is resolved. Other unclassified
+  inventory candidates are also outside this criterion.
 - Given any table in that explicit inventory, a direct SQL or bulk writer that attempts a
   `public_id` longer than 25 characters is rejected by PostgreSQL after the named database check has
   been validated. Existing rows and issued identities remain unchanged; no value is truncated,
@@ -287,17 +293,18 @@ triggers for additional tables.
   `char_length(public_id) <= 25` checks as `NOT VALID`, followed by a separate validation migration.
   Reversing validation restores the unvalidated checks and reversing the additive migration removes
   them. The existing string representation and NanoID-21 issuance remain unchanged.
-- Check: the metadata assertions in
-  [`test/models/public_id_capacity_contract_test.rb`](../../test/models/public_id_capacity_contract_test.rb),
-  the 16 P12a capacity migrations under `db/*_migrate/` with the `owned_public_id_capacity_checks`
-  filenames, generated structure dumps for all eight owning databases, and isolated down/up
-  rehearsal. The five concrete model targets also exercise direct oversized SQL writes inside a
-  savepoint. The initial 42-table result is recorded in
-  [`N9K4`](../../evidence/2026-10-12-public-id-capacity-gate-N9K4.md), and the four-table extension
-  is recorded in [`V2J6`](../../evidence/2026-10-12-public-id-capacity-extension-V2J6.md). This
-  criterion proves only the listed disposable-schema boundary; it does not close the remaining
-  identifier inventory, approve a global type narrowing, validate shared/production rows, or
-  establish the final staff-event bigint cutover.
+- Check: the metadata assertions in `test/models/public_id_capacity_contract_test.rb` (historical
+  source unavailable in this Press checkout:
+  `../../test/models/public_id_capacity_contract_test.rb`), the 16 P12a capacity migrations under
+  `db/*_migrate/` with the `owned_public_id_capacity_checks` filenames, generated structure dumps
+  for all eight owning databases, and isolated down/up rehearsal. The five concrete model targets
+  also exercise direct oversized SQL writes inside a savepoint. The initial 42-table result is
+  recorded in [`N9K4`](../../evidence/2026-10-12-public-id-capacity-gate-N9K4.md), and the
+  four-table extension is recorded in
+  [`V2J6`](../../evidence/2026-10-12-public-id-capacity-extension-V2J6.md). This criterion proves
+  only the listed disposable-schema boundary; it does not close the remaining identifier inventory,
+  approve a global type narrowing, validate shared/production rows, or establish the final
+  staff-event bigint cutover.
 
 ## ID-7 — External protocols and issued-value continuity
 

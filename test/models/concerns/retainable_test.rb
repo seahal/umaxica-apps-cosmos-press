@@ -10,6 +10,8 @@ class RetainableTest < ActiveSupport::TestCase
     include ActiveModel::Validations
     include Retainable
 
+    Retainable.configure(self)
+
     attribute :created_at, :datetime, default: -> { Time.current }
 
     class << self

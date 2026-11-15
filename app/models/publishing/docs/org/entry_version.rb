@@ -7,6 +7,8 @@ module Publishing
         self.table_name = "publishing_docs_org_entry_versions"
         include PublishingEntryVersionRecord
 
+        PublishingEntryVersionRecord.configure(self)
+
         has_many :restored_revisions,
                  class_name: "Publishing::Docs::Org::EntryRevision",
                  foreign_key: :restored_from_version_id,

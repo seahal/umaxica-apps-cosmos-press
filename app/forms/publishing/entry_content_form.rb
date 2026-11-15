@@ -18,6 +18,7 @@ module Publishing
 
     validate :title_must_be_present
     validate :body_must_be_json_object
+    public
 
     def message_hash
       errors.details.to_h { |attribute, list|

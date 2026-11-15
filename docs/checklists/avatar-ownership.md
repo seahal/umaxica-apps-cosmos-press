@@ -11,8 +11,9 @@ rejected options; its Binding-only Grants, residual idempotency gap and shared-D
 are superseded by those approvals, not acceptance alternatives. The criteria below preserve the
 approved decisions for an investigator without the chat. The
 [trigger ADR](../../adr/database-trigger-usage-boundary.md) applies with only the narrow
-D-3/D-4/D-10 exceptions; no new SQL/trigger permission is granted here. Follow the
-[investigation procedure](integrated-stack.md#independent-investigation).
+D-3/D-4/D-10 exceptions; no new SQL/trigger permission is granted here. Follow the investigation
+procedure (historical source unavailable in this Press checkout:
+`integrated-stack.md#independent-investigation`).
 
 ## AV-1 — Concrete organization authority and identities
 
@@ -28,10 +29,10 @@ D-3/D-4/D-10 exceptions; no new SQL/trigger permission is granted here. Follow t
   Avatar transaction, using `Avatar.created_at` as its initial boundary. The legacy period remains
   for the staged reader transition; retained data and direct test factories are not silently treated
   as migrated concrete ownership.
-- Check schema/associations/resolvers, app initial and org optional provisioning, existing
-  [transfer operation tests](../../test/operations/avatar_ownership_transfers_test.rb) and app/org
-  controller tests. New concrete-model/provisioning coverage is planned; legacy test names are not
-  proof.
+- Check schema/associations/resolvers, app initial and org optional provisioning, existing transfer
+  operation tests (historical source unavailable in this Press checkout:
+  `../../test/operations/avatar_ownership_transfers_test.rb`) and app/org controller tests. New
+  concrete-model/provisioning coverage is planned; legacy test names are not proof.
 
 The public concrete-owner regression in `test/models/avatar_test.rb` follows an Avatar's current
 Enterprise period to its actual organization, with no Persona/Agent Binding required. The primary
@@ -105,13 +106,15 @@ boundary while the remaining writer/cutover and cross-isolation acceptance stays
   terminology inventory check described in the
   [P7 evidence](../../evidence/2026-10-12-avatar-p7-concurrency-7K4M.md). These results prove
   deterministic period refusal and history preservation for this P7 slice, not the complete
-  ownership-acceptance race, transfer cutover or dump/restore acceptance. Start at the
-  [concurrency tests](../../test/operations/avatar_ownership_transfers_concurrency_test.rb),
-  [concrete-period tests](../../test/models/avatar_concrete_ownership_period_test.rb) and
-  [trigger tests](../../test/models/enforcement_triggers_test.rb). Approximately twenty draft
-  triggers is not a required count. The same run's no-delete database/role preflight also verified
-  20 disposable databases and 12 scoped HMAC roles after receipt-verified cleanup of stale worker
-  clones. Block runtime acceptance without isolation.
+  ownership-acceptance race, transfer cutover or dump/restore acceptance. Start at the concurrency
+  tests (historical source unavailable in this Press checkout:
+  `../../test/operations/avatar_ownership_transfers_concurrency_test.rb`), concrete-period tests
+  (historical source unavailable in this Press checkout:
+  `../../test/models/avatar_concrete_ownership_period_test.rb`) and trigger tests (historical source
+  unavailable in this Press checkout: `../../test/models/enforcement_triggers_test.rb`).
+  Approximately twenty draft triggers is not a required count. The same run's no-delete
+  database/role preflight also verified 20 disposable databases and 12 scoped HMAC roles after
+  receipt-verified cleanup of stale worker clones. Block runtime acceptance without isolation.
 
 Current resume evidence reran the concrete-period, registry-concurrency and trigger-inventory
 selection against the run-owned four-worker manifest:
@@ -219,12 +222,13 @@ writer quiescence or the P12b marker.
   replay case or every client migration.
 - Check public transport and all four concurrent families, original caller inventory/exit
   conditions, key format partitions/length boundaries and authorized/unauthorized replay. Start at
-  [app controller tests](../../test/controllers/base/app/avatar_ownership_transfers_controller_test.rb)
-  and
-  [org controller tests](../../test/controllers/base/org/avatar_ownership_transfers_controller_test.rb).
-  HTTP tests now also refuse a reused key with a different target or from a different initiator
-  (APP) without changing the recorded reservation, and refuse keyless legacy requests after the
-  cutover marker (APP and ORG); see
+  app controller tests (historical source unavailable in this Press checkout:
+  `../../test/controllers/base/app/avatar_ownership_transfers_controller_test.rb`) and org
+  controller tests (historical source unavailable in this Press checkout:
+  `../../test/controllers/base/org/avatar_ownership_transfers_controller_test.rb`). HTTP tests now
+  also refuse a reused key with a different target or from a different initiator (APP) without
+  changing the recorded reservation, and refuse keyless legacy requests after the cutover marker
+  (APP and ORG); see
   [`evidence/2026-10-15-step17-step18-followups-M2T6.md`](../../evidence/2026-10-15-step17-step18-followups-M2T6.md).
   Client-transition coverage for existing keyless callers remains planned.
 
@@ -315,9 +319,9 @@ the independent-connection concurrency cases; it does not replace them or the cu
   readers and data must migrate before future removal; no automatic Phase G deletion or controller
   redesign. If existing evidence cannot settle domain semantics, mark this criterion BLOCKED with
   exact decision, not PASS, a guessed conversion or NOT_APPLICABLE.
-- Check Group policies/resolvers/provisioning and
-  [existing Group period tests](../../test/models/avatar_group_ownership_period_test.rb), then
-  concrete Group and transfer consequence tests. The registry acceptance regression in
+- Check Group policies/resolvers/provisioning and existing Group period tests (historical source
+  unavailable in this Press checkout: `../../test/models/avatar_group_ownership_period_test.rb`),
+  then concrete Group and transfer consequence tests. The registry acceptance regression in
   `test/operations/avatar_ownership_transfers_test.rb` now proves that an ownership transfer removes
   an owner-mismatched membership while preserving each Group's independent
   `account_surface`/`account_public_id` context and a target-matched membership. This hold affects
@@ -345,14 +349,15 @@ the independent-connection concurrency cases; it does not replace them or the cu
 - Ownership during suspension/logical deletion remains valid. Unresolved attribute/handle/media
   deletion/anonymization policy is recorded separately; preserving history is not indefinite PII
   retention permission. Identifier dead history follows CONTACT-7/9 independently.
-- Check [retention job tests](../../test/jobs/retention_purge_job_test.rb) and the focused
-  [Avatar retention tests](../../test/jobs/avatar_retention_purge_test.rb). The implemented
-  `avatar_purge_deferrals` table records an idempotent `(avatar_id, reason_code)` observation and
-  increments it under a row lock; ownership history is never physically deleted by the purge job. An
-  eligible Avatar without concrete ownership history also remains intact, with an explicit
-  `retention_policy_pending` deferral; encrypted moniker history is preserved. The absence of
-  ownership periods does not authorize deletion. Personal-data retention duration and final
-  deletion/anonymization policy remain unresolved and are not inferred from this deferral mechanism.
+- Check [retention job tests](../../test/jobs/retention_purge_job_test.rb) and the focused Avatar
+  retention tests (historical source unavailable in this Press checkout:
+  `../../test/jobs/avatar_retention_purge_test.rb`). The implemented `avatar_purge_deferrals` table
+  records an idempotent `(avatar_id, reason_code)` observation and increments it under a row lock;
+  ownership history is never physically deleted by the purge job. An eligible Avatar without
+  concrete ownership history also remains intact, with an explicit `retention_policy_pending`
+  deferral; encrypted moniker history is preserved. The absence of ownership periods does not
+  authorize deletion. Personal-data retention duration and final deletion/anonymization policy
+  remain unresolved and are not inferred from this deferral mechanism.
 
 ## AV-10 — Explicit lifecycle catalog booleans
 
@@ -362,5 +367,6 @@ the independent-connection concurrency cases; it does not replace them or the cu
   value. False persists as a valid value; nil and empty boolean inputs are rejected before model
   insertion. PostgreSQL NOT NULL independently rejects validation-disabled NULL writes.
 - Current catalog values, lifecycle transition edges and projected existing-record behavior remain
-  unchanged. Check [catalog model tests](../../test/models/avatar_lifecycle_state_test.rb),
-  lifecycle transition tests and the Avatar authority lifecycle invariant.
+  unchanged. Check catalog model tests (historical source unavailable in this Press checkout:
+  `../../test/models/avatar_lifecycle_state_test.rb`), lifecycle transition tests and the Avatar
+  authority lifecycle invariant.

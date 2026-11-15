@@ -10,7 +10,7 @@ class JwtTemporalValidationTest < ActiveSupport::TestCase
     travel_to Time.utc(2026, 10, 22, 12) do
       now = Time.current.to_i
       issuer = "https://visa.example/org"
-      key = OpenSSL::PKey::EC.generate("secp384r1")
+      key = OpenSSL::PKey::RSA.generate(3072)
       jwk = JitSecurityJwtJwk.export_public(key, kid: "temporal-key")
       jwks_client = OidcOpJwksClient.new(
         jwks_uri: "https://base.example/.well-known/jwks.json",
@@ -35,7 +35,7 @@ class JwtTemporalValidationTest < ActiveSupport::TestCase
         ["exp", now - 29, true], ["exp", now - 30, false], ["exp", now - 31, false],
       ]
       cases.each do |claim, value, accepted|
-        token = JWT.encode(payload.merge(claim => value), key, "ES384", { typ: "at+jwt", kid: "temporal-key" })
+        token = JWT.encode(payload.merge(claim => value), key, "PS256", { typ: "at+jwt", kid: "temporal-key" })
         result = OidcOpAccessTokenVerifier.new(
           access_token: token, client_id: "edit-org-ww", realm: "org", issuer: issuer,
           audience: "edit-org-ww", jwks_client: jwks_client,
@@ -50,7 +50,7 @@ class JwtTemporalValidationTest < ActiveSupport::TestCase
     travel_to Time.utc(2026, 10, 22, 12) do
       now = Time.current.to_i
       issuer = "https://visa.example/org"
-      key = OpenSSL::PKey::EC.generate("secp384r1")
+      key = OpenSSL::PKey::RSA.generate(3072)
       jwk = JitSecurityJwtJwk.export_public(key, kid: "temporal-key")
       jwks_client = OidcOpJwksClient.new(
         jwks_uri: "https://base.example/.well-known/jwks.json",
@@ -75,7 +75,7 @@ class JwtTemporalValidationTest < ActiveSupport::TestCase
         ["exp", now - 29, true], ["exp", now - 30, false], ["exp", now - 31, false],
       ]
       cases.each do |claim, value, accepted|
-        token = JWT.encode(payload.merge(claim => value), key, "ES384", { typ: "id-token+jwt", kid: "temporal-key" })
+        token = JWT.encode(payload.merge(claim => value), key, "PS256", { typ: "id-token+jwt", kid: "temporal-key" })
         result = OidcOpIdTokenVerifier.new(
           id_token: token, client_id: "edit-org-ww", realm: "org", issuer: issuer,
           expected_nonce: "temporal-nonce", jwks_client: jwks_client,
@@ -90,7 +90,7 @@ class JwtTemporalValidationTest < ActiveSupport::TestCase
     travel_to Time.utc(2026, 10, 22, 12) do
       now = Time.current.to_i
       issuer = "https://visa.example/org"
-      key = OpenSSL::PKey::EC.generate("secp384r1")
+      key = OpenSSL::PKey::RSA.generate(3072)
       jwk = JitSecurityJwtJwk.export_public(key, kid: "temporal-key")
       jwks_client = OidcOpJwksClient.new(
         jwks_uri: "https://base.example/.well-known/jwks.json",
@@ -113,7 +113,7 @@ class JwtTemporalValidationTest < ActiveSupport::TestCase
         ["exp", now - 29, true], ["exp", now - 30, false], ["exp", now - 31, false],
       ]
       cases.each do |claim, value, accepted|
-        token = JWT.encode(payload.merge(claim => value), key, "ES384", { typ: "logout+jwt", kid: "temporal-key" })
+        token = JWT.encode(payload.merge(claim => value), key, "PS256", { typ: "logout+jwt", kid: "temporal-key" })
         result = OidcOpLogoutTokenVerifier.new(
           logout_token: token, client_id: "edit-org-ww", issuer: issuer, jwks_client: jwks_client,
         ).call
@@ -127,7 +127,7 @@ class JwtTemporalValidationTest < ActiveSupport::TestCase
     travel_to Time.utc(2026, 10, 22, 12) do
       now = Time.current.to_i
       issuer = "https://visa.example/org"
-      key = OpenSSL::PKey::EC.generate("secp384r1")
+      key = OpenSSL::PKey::RSA.generate(3072)
       jwk = JitSecurityJwtJwk.export_public(key, kid: "interval-key")
       jwks = OidcOpJwksClient.new(
         jwks_uri: "https://base.example/.well-known/jwks.json", fetcher: -> { { "keys" => [jwk] } },
@@ -149,7 +149,7 @@ class JwtTemporalValidationTest < ActiveSupport::TestCase
         [{ "iat" => now, "exp" => now + 301 }, false],
         [{ "iat" => now + 0.25, "exp" => now + 1.25 }, true],
       ].each do |overrides, accepted|
-        token = JWT.encode(payload.merge(overrides), key, "ES384", { typ: "logout+jwt", kid: "interval-key" })
+        token = JWT.encode(payload.merge(overrides), key, "PS256", { typ: "logout+jwt", kid: "interval-key" })
         result = OidcOpLogoutTokenVerifier.new(
           logout_token: token, client_id: "edit-org-ww", issuer: issuer, jwks_client: jwks,
         ).call

@@ -8,10 +8,14 @@ module Info
         class EntriesController < Info::App::BareController
           include ::PublishingContentRendering
 
+          PublishingContentRendering.configure(self)
+
           AUTHENTICATION_MODE = :bare
           PUBLISHING_AUDIENCE = "app"
           PUBLISHING_SURFACE = "info"
           ENTRY_CLASS = ::Publishing::Info::App::Entry
+
+          public
 
           def index
             render_publishing_entries_index

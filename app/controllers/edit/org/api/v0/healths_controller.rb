@@ -7,7 +7,11 @@ module Edit
       module V0
         class HealthsController < Edit::Org::BareController
           include ::HealthCheckRendering
+
+          HealthCheckRendering.configure(self)
           include ::MachineJsonNegotiation
+
+          MachineJsonNegotiation.configure(self)
 
           AUTHENTICATION_MODE = :bare
           HEALTH_PROFILE = ::Health::Profiles::EditOrg

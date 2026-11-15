@@ -24,6 +24,7 @@ module Publishing
     def self.window_constraint_name(entry_class)
       "excl_#{entry_class::SURFACE}_#{entry_class::AUDIENCE}_pub_windows"
     end
+    public_class_method :window_constraint_name
 
     def initialize(entry:, operator_public_id:, effective_from: nil)
       super()
@@ -31,6 +32,7 @@ module Publishing
       @operator_public_id = operator_public_id
       @effective_from = effective_from
     end
+    public
 
     def call
       entry.with_lock { publish }

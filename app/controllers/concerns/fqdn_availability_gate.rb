@@ -43,10 +43,12 @@ module FqdnAvailabilityGate
   # this from swallowing unrelated bugs the way `rescue StandardError` would.
   FLAG_STORE_ERRORS = [ActiveRecord::ActiveRecordError].freeze
 
-  # FIXME: Violates Umaxica/NoConcernInclusionHooks; move the declarations in this block into each class that includes this concern.
-  included do
-    prepend_before_action(:enforce_fqdn_availability!)
+  # Each surface controller opts into the gate at the same point in its class body where it
+  # includes this concern. This keeps the order visible beside the surface's other callbacks.
+  def self.configure(controller)
+    controller.prepend_before_action(:enforce_fqdn_availability!)
   end
+  public_class_method :configure
 
   class_methods do
     # A `prepend_before_action` declared in a subclass lands ahead of one declared in its parent, so

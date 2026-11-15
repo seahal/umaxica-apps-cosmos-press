@@ -24,6 +24,9 @@ These are durable requirements, not current verification results.
   kept; one-time semantics belong to the receiving flow. `src` is an origin without a path, query,
   or fragment.
 - JUMP-6: A fetched Jump JWKS document over 64 KiB or with more than 10 keys is refused.
+- JUMP-7: The Rails Jump return verifier accepts PS256 only and refuses an ES384 token. Imported
+  keys are RSA, public-only JWKs with `alg=PS256`, `use=sig`, and a modulus of at least 3072 bits.
+  Protocol fixtures exercise this policy; they do not verify the external Jump deployment.
 
 Sources: [Jump handoff contract](../../adr/jump-directed-rails-handoff-contract.md),
 [Jump redirector](../../adr/secure-jump-link-redirector.md).

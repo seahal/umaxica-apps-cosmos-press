@@ -8,10 +8,14 @@ module News
         class EntriesController < News::Com::BareController
           include ::PublishingContentRendering
 
+          PublishingContentRendering.configure(self)
+
           AUTHENTICATION_MODE = :bare
           PUBLISHING_AUDIENCE = "com"
           PUBLISHING_SURFACE = "news"
           ENTRY_CLASS = ::Publishing::News::Com::Entry
+
+          public
 
           def index
             render_publishing_entries_index

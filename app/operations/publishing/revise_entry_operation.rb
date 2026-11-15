@@ -12,6 +12,7 @@ module Publishing
       @lock_version = lock_version
       @operator_public_id = operator_public_id
     end
+    public
 
     # Failure messages are single strings, not arrays. They reach the edit view through the same
     # `errors` prop as `ReviseEntryForm#message_hash`, and `ManagementEdit` types that prop as

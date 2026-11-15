@@ -14,23 +14,27 @@ module Retainable
   private_constant :REGISTRY
 
   class << self
+    public
+
+    def configure(model_class)
+      model_class.class_eval do
+        attribute(:discard_at, :datetime, default: -> { Retainable::SENTINEL })
+        attribute(:purge_eligible_at, :datetime, default: -> { Retainable::SENTINEL })
+
+        validates :discard_at, presence: true
+        validates :purge_eligible_at, presence: true
+        validate :retention_order_valid
+        validate :retention_times_not_before_created_at, on: :update
+      end
+
+      Retainable.registry << model_class unless Retainable.registry.include?(model_class)
+    end
+
     def registry
       REGISTRY
     end
   end
-
-  # FIXME: Violates Umaxica/NoConcernInclusionHooks; move the declarations in this block into each class that includes this concern.
-  included do
-    attribute :discard_at, :datetime, default: -> { SENTINEL }
-    attribute :purge_eligible_at, :datetime, default: -> { SENTINEL }
-
-    validates :discard_at, presence: true
-    validates :purge_eligible_at, presence: true
-    validate :retention_order_valid
-    validate :retention_times_not_before_created_at, on: :update
-
-    Retainable.registry << self unless Retainable.registry.include?(self)
-  end
+  public
 
   # NOTE: ActiveRecord scope intentionally omitted (conflicts with pre-existing
   #   `.active` / `.deletable` semantics). Use raw `where('discard_at > ?', Time.current)` for queries.

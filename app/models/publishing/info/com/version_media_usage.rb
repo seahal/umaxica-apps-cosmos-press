@@ -6,6 +6,8 @@ module Publishing
       class VersionMediaUsage < PublishingRecord
         self.table_name = "publishing_info_com_version_media_usages"
         include PublishingVersionMediaUsageRecord
+
+        PublishingVersionMediaUsageRecord.configure(self)
       end
     end
   end

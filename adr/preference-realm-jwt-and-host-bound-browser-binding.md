@@ -9,6 +9,11 @@ ownership decisions remain useful where they do not conflict with this ADR. The 
 credential scope clauses in [`cookie-domain-scope-by-surface.md`](cookie-domain-scope-by-surface.md)
 are also superseded.
 
+Amended 2026-11-13 (owner): every first-party JWT, including the realm JWT below, uses PS256 with an
+RSA key of at least 3072 bits. Verifiers accept PS256 only. The previous ES384 algorithm statement
+is superseded; realm separation, claims, cookie behavior and authorization boundaries remain
+unchanged.
+
 ## Decision
 
 Each preference realm issues one signed Preference JWT on the `umaxica.<realm>` cookie domain and
@@ -17,7 +22,7 @@ Only that realm's Base and Visa surfaces hold the signing key and write Preferen
 hosts verify with the configured realm public key and never write, create a row, or issue or delete
 the shared cookies.
 
-The realm JWT uses ES384 with JOSE header `typ=JWT` and exactly seven claims: `iss`, `sub`, `aud`,
+The realm JWT uses PS256 with JOSE header `typ=JWT` and exactly seven claims: `iss`, `sub`, `aud`,
 `iat`, `exp`, `jti`, and `preferences`. `sub` is the anonymous Preference row's public identifier;
 `aud` is exactly `app`, `com`, or `org` for the corresponding realm. Each realm has an independent
 keyring (`preference_app`, `preference_com`, or `preference_org`). The token lifetime is 400 days

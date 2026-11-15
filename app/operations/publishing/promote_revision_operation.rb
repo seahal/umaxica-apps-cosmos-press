@@ -16,6 +16,7 @@ module Publishing
     def self.idempotency_index_name(entry_class)
       "uidx_#{entry_class::SURFACE}_#{entry_class::AUDIENCE}_ver_on_revision"
     end
+    public_class_method :idempotency_index_name
 
     def initialize(revision:, operator_public_id: nil)
       super()
@@ -23,6 +24,7 @@ module Publishing
       @operator_public_id = operator_public_id
       @cell = ContentFamilies::CELL_BY_REVISION[revision.class]
     end
+    public
 
     def call
       raise RevisionMismatchError, "unsupported publishing revision class" unless cell

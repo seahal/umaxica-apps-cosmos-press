@@ -15,6 +15,7 @@ class ChronicleResultWriter < ChronicleApplicationService
     @subject = subject
     @error = error
   end
+  public
 
   def call
     # The intent row carries the pre-operation state; a completed operation may add what it observed

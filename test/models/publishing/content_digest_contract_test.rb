@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "database_consistency"
 
 module Publishing
   class ContentDigestContractTest < ActiveSupport::TestCase
@@ -60,21 +61,24 @@ module Publishing
           end
         end
 
-        [nil, "", "d" * 63, "g" * 64, "e" * 64].each do |value|
+        [nil, "", "d" * 63, "d" * 65, "g" * 64, "A" * 64].each do |value|
           revision.content_digest = value
-          error =
-            assert_raises(ActiveRecord::StatementInvalid) do
-              revision_class.transaction(requires_new: true) { revision.save! }
-            end
-          assert_instance_of PG::RestrictViolation, error.cause
+          assert_raises(ActiveRecord::RecordInvalid) { revision.save! }
           assert_equal digest, revision.reload.content_digest
         end
+        revision.content_digest = "e" * 64
+        error = assert_raises(ActiveRecord::StatementInvalid) { revision.save! }
+        assert_instance_of PG::RestrictViolation, error.cause
+        assert_equal digest, revision.reload.content_digest
 
-        [nil, "", "d" * 63, "d" * 65, "g" * 64].each do |value|
+        [nil, "", "d" * 63, "d" * 65, "g" * 64, "A" * 64].each do |value|
           version.content_digest = value
-          assert_raises(ActiveRecord::ReadOnlyRecord) { version.save! }
+          assert_raises(ActiveRecord::RecordInvalid) { version.save! }
           assert_equal digest, version.reload.content_digest
         end
+        version.content_digest = "e" * 64
+        assert_raises(ActiveRecord::ReadOnlyRecord) { version.save! }
+        assert_equal digest, version.reload.content_digest
       end
 
       test "#{revision_class.name} and version reject malformed digests before insertion" do
@@ -100,6 +104,53 @@ module Publishing
             assert_raises(ActiveRecord::RecordInvalid) { record.save! }
             assert_predicate record, :new_record?
           end
+        end
+      end
+    end
+
+    test "all twelve publishing cells route revisions and versions through the digest concern" do
+      expected_cells = [
+        "Docs/App", "Docs/Com", "Docs/Org", "Help/App", "Help/Com", "Help/Org", "Info/App", "Info/Com",
+        "Info/Org", "News/App", "News/Com", "News/Org",
+      ].sort
+      actual_cells = FAMILIES.map do |entry_class, _revision_class, _version_class|
+        entry_class.name.split("::").values_at(1, 2).join("/")
+      end.sort
+
+      assert_equal expected_cells, actual_cells
+
+      FAMILIES.each do |_entry_class, revision_class, version_class|
+        [
+          [revision_class, "PublishingEntryRevisionRecord.configure(self)"],
+          [version_class, "PublishingEntryVersionRecord.configure(self)"],
+        ].each do |model_class, configuration_call|
+          source = Rails.root.join("app/models/#{model_class.name.underscore}.rb").read
+
+          assert_includes source, configuration_call, model_class.name
+        end
+      end
+
+      ["publishing_entry_revision_record", "publishing_entry_version_record"].each do |concern_name|
+        source = Rails.root.join("app/models/concerns/#{concern_name}.rb").read
+
+        assert_includes source, "model_class.include(PublishingEncryptedContent)", concern_name
+        assert_includes source, "PublishingEncryptedContent.configure(model_class)", concern_name
+      end
+    end
+
+    test "all revision and version digest columns pass database consistency nullability" do
+      FAMILIES.each do |_entry_class, revision_class, version_class|
+        [revision_class, version_class].each do |model_class|
+          column = model_class.columns_hash.fetch("content_digest")
+          report = DatabaseConsistency::Checkers::NullConstraintChecker.new(model_class, column).report(
+            catch_errors: false,
+          )
+          presence_report = DatabaseConsistency::Checkers::ColumnPresenceChecker.new(
+            model_class, :content_digest, model_class.validators_on(:content_digest),
+          ).report(catch_errors: false)
+
+          assert_equal :ok, report.status, model_class.name
+          assert_equal :ok, presence_report.status, model_class.name
         end
       end
     end

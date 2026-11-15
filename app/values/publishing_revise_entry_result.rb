@@ -9,10 +9,12 @@ class PublishingReviseEntryResult
   def self.success(revision)
     new(ok: true, revision: revision, errors: {})
   end
+  public_class_method :success
 
   def self.failure(errors)
     new(ok: false, revision: nil, errors: errors)
   end
+  public_class_method :failure
 
   attr_reader :revision, :errors
 
@@ -21,6 +23,7 @@ class PublishingReviseEntryResult
     @revision = revision
     @errors = errors
   end
+  public
 
   def ok?
     @ok

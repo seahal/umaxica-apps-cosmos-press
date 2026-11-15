@@ -20,10 +20,13 @@
 module HealthCheckRendering
   extend ActiveSupport::Concern
 
-  # FIXME: Violates Umaxica/NoConcernInclusionHooks; move the declarations in this block into each class that includes this concern.
-  included do
-    before_action :disable_health_response_cache
+  # Health controllers explicitly install no-store before serving probe results.
+  def self.configure(controller)
+    controller.before_action :disable_health_response_cache
   end
+  public_class_method :configure
+
+  public
 
   # Probe endpoints (liveness/readiness/startup): text/plain, no redirect, no layout, no
   # negotiation. `result.ok?` already folds the probe-specific rule that liveness tolerates a

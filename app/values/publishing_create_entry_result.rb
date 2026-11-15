@@ -11,10 +11,12 @@ class PublishingCreateEntryResult
   def self.success(entry)
     new(ok: true, entry: entry, errors: {})
   end
+  public_class_method :success
 
   def self.failure(errors)
     new(ok: false, entry: nil, errors: errors)
   end
+  public_class_method :failure
 
   attr_reader :entry, :errors
 
@@ -23,6 +25,7 @@ class PublishingCreateEntryResult
     @entry = entry
     @errors = errors
   end
+  public
 
   def ok?
     @ok

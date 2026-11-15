@@ -9,6 +9,8 @@ class RpEditOrgPrincipal < RpEditOrgRecord
   CLIENT_ID = CELL.client_id
 
   include PublicId
+
+  PublicId.configure(self)
   include RpPrincipal
 
   has_many :identity_bindings, class_name: "RpEditOrgIdentityBinding", foreign_key: :principal_id,

@@ -22,6 +22,7 @@ module Publishing
       @reason = reason
       @operator_public_id = operator_public_id
     end
+    public
 
     def call
       publication.entry.with_lock do

@@ -4,7 +4,7 @@ require "test_helper"
 
 class SecurityJwtRfc9068AccessTokenProfileTest < ActiveSupport::TestCase
   test "access token headers require the configured algorithm type and key id" do
-    valid = { "alg" => "ES384", "typ" => "at+jwt", "kid" => "key-1" }
+    valid = { "alg" => "PS256", "typ" => "at+jwt", "kid" => "key-1" }
 
     assert SecurityJwtRfc9068AccessTokenProfile.header_valid?(valid)
     [
@@ -29,13 +29,13 @@ class SecurityJwtRfc9068AccessTokenProfileTest < ActiveSupport::TestCase
       ["not-a-header", "MALFORMED_TOKEN"],
       [{}, "MALFORMED_TOKEN"],
       [{ "alg" => "" }, "MALFORMED_TOKEN"],
-      [{ "alg" => "ES384" }, "MISSING_KID"],
-      [{ "alg" => "ES384", "kid" => "" }, "MISSING_KID"],
+      [{ "alg" => "PS256" }, "MISSING_KID"],
+      [{ "alg" => "PS256", "kid" => "" }, "MISSING_KID"],
       [{ "alg" => "none", "kid" => "key-1" }, "ALG_NONE"],
       [{ "alg" => "RS256", "kid" => "key-1" }, "ALG_MISMATCH"],
-      [{ "alg" => "ES384", "kid" => "key-1" }, "MISSING_TYP"],
-      [{ "alg" => "ES384", "kid" => "key-1", "typ" => "" }, "MISSING_TYP"],
-      [{ "alg" => "ES384", "kid" => "key-1", "typ" => "JWT" }, "TYP_MISMATCH"],
+      [{ "alg" => "PS256", "kid" => "key-1" }, "MISSING_TYP"],
+      [{ "alg" => "PS256", "kid" => "key-1", "typ" => "" }, "MISSING_TYP"],
+      [{ "alg" => "PS256", "kid" => "key-1", "typ" => "JWT" }, "TYP_MISMATCH"],
     ]
 
     cases.each do |header, expected_reason|
@@ -74,11 +74,11 @@ class SecurityJwtRfc9068AccessTokenProfileTest < ActiveSupport::TestCase
   end
 
   test "Jump RT encoding places its token type and key id in the JOSE header" do
-    private_key = OpenSSL::PKey::EC.generate("secp384r1")
+    private_key = OpenSSL::PKey::RSA.generate(3072)
     token = SecurityJwtJumpRtTokenCodec.encode({ "sub" => "jump-redirect" }, private_key:, kid: "jump-key-1")
     _payload, header = JWT.decode(token, nil, false)
 
-    assert_equal "ES384", header.fetch("alg")
+    assert_equal "PS256", header.fetch("alg")
     assert_equal "JWT", header.fetch("typ")
     assert_equal "jump-key-1", header.fetch("kid")
   end

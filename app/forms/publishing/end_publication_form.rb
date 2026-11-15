@@ -12,6 +12,7 @@ module Publishing
     attribute :reason, :string
 
     validates :reason, presence: true
+    public
 
     def message_hash
       errors.details.to_h { |attribute, list|

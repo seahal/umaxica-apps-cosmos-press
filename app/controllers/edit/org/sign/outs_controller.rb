@@ -7,7 +7,11 @@ module Edit
       class OutsController < Edit::Org::BareController
         include ::BrowserRpAuthentication
         include ::SignOutNotice
+
+        SignOutNotice.configure(self)
         include ::OidcRpLogoutLauncher
+
+        OidcRpLogoutLauncher.configure(self)
         include ::SignOutClearSiteData
         include ::SignErrorResponses
 

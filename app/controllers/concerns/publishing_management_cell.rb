@@ -38,16 +38,18 @@ module PublishingManagementCell
     end
   end
 
-  # FIXME: Violates Umaxica/NoConcernInclusionHooks; move the declarations in this block into each class that includes this concern.
-  included do
+  # Publishing management controllers explicitly opt into staff authentication at their include
+  # site, keeping the protected boundary visible in each action concern's owner.
+  def self.configure(controller)
     # The CMS is staff-only. Every action writes or reads unpublished content,
     # including drafts that were never published and the bodies of archived
     # entries, so there is no action here that an anonymous request may reach.
     #
     # The surface web rate limit comes from the staff ApplicationController
     # these controllers inherit (Edit::Org::ApplicationController).
-    before_action :authenticate_browser_rp!
+    controller.before_action :authenticate_browser_rp!
   end
+  public_class_method :configure
 
   private
 

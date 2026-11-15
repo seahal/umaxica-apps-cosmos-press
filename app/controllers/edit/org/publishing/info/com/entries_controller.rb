@@ -9,6 +9,8 @@ module Edit
           class EntriesController < Edit::Org::ApplicationController
             include ::PublishingManagementEntriesActions
 
+            PublishingManagementCell.configure(self)
+
             AUTHENTICATION_MODE = :private
             declare_authentication_mode! :private
             PUBLISHING_SURFACE = "info"

@@ -18,6 +18,8 @@ module PublishingManagementPublicationsActions
 
   include ::PublishingManagementCell
 
+  public
+
   def create
     form = Publishing::PublishEntryForm.new(publish_form_attributes)
     unless form.valid?

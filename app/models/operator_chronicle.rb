@@ -43,6 +43,8 @@
 class OperatorChronicle < ChronicleRecord
   include Retainable
 
+  Retainable.configure(self)
+
   attribute :level_id, default: OperatorChronicleLevel::NOTHING
   attr_readonly :sign_flow_transaction_public_id, :sign_flow_halt_generation
 

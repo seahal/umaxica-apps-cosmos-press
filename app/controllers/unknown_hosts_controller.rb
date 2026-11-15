@@ -15,6 +15,8 @@
 class UnknownHostsController < ApplicationController
   AUTHENTICATION_MODE = :bare
 
+  public
+
   # Machine-readable only, and deliberately not localized: the reader is an operator or a probe
   # diagnosing a misdirected request, never an end user. `unknown_host` reads alongside the
   # `unknown_fqdn` the availability gate returns, which is the neighbouring failure -- a Host that

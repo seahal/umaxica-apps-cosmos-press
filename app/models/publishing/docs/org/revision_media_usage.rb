@@ -6,6 +6,8 @@ module Publishing
       class RevisionMediaUsage < PublishingRecord
         self.table_name = "publishing_docs_org_revision_media_usages"
         include PublishingRevisionMediaUsageRecord
+
+        PublishingRevisionMediaUsageRecord.configure(self)
       end
     end
   end

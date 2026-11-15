@@ -1,5 +1,5 @@
-# Config used by `ArchitectureBaseline.measure`: the two architecture cops only, with the
-# `.rubocop_todo.yml` excludes deliberately absent so debt files are still measured.
+# Config used by `ArchitectureBaseline.measure`: the two architecture cops only, with all files
+# measured so the ratchet rejects new debt even before the full RuboCop run.
 inherit_from:
   - umaxica.yml
 

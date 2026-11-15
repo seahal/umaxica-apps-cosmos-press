@@ -23,6 +23,7 @@ class OutboundEmailSuspensionInterceptor
       ),
     )
   end
+  public_class_method :delivering_email
 
   def self.channel_for(message)
     mailer = message.delivery_handler&.name.to_s

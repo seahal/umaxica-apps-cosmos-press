@@ -7,6 +7,7 @@ class PublishingMediaUploader < ApplicationUploader
   def self.storage_boundary
     :publishing
   end
+  public_class_method :storage_boundary
 
   Attacher.validate do
     validate_max_size MAX_SIZE

@@ -7,6 +7,8 @@ module Publishing
         self.table_name = "publishing_docs_app_entries"
         include PublishingEntryRecord
 
+        PublishingEntryRecord.configure(self)
+
         SLUG_CLASS = Publishing::Docs::App::EntrySlug
 
         SURFACE = "docs"

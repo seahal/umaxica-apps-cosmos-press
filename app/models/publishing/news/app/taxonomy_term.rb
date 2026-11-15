@@ -7,6 +7,8 @@ module Publishing
         self.table_name = "publishing_news_app_taxonomy_terms"
         include PublishingTaxonomyTermRecord
 
+        PublishingTaxonomyTermRecord.configure(self)
+
         has_many :revision_single_taxonomy_assignments,
                  class_name: "Publishing::News::App::RevisionSingleTaxonomyAssignment",
                  inverse_of: :taxonomy_term, dependent: :restrict_with_exception

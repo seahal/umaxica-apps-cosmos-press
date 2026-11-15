@@ -116,7 +116,7 @@ end
 class DatabaseConsistencyLengthNullabilityTest < Minitest::Test
   include ActiveSupport::Testing::Assertions
 
-  def test_positive_constant_length_proves_nil_refusal_in_creation_context
+  def test_positive_constant_length_rejects_nil_but_is_not_a_checker_presence_proof
     [DatabaseConsistencyLengthSubjects::Exact, DatabaseConsistencyLengthSubjects::Minimum,
      DatabaseConsistencyLengthSubjects::RangeBound, DatabaseConsistencyLengthSubjects::Creation,
      DatabaseConsistencyLengthSubjects::ExceptUpdate,
@@ -129,7 +129,9 @@ class DatabaseConsistencyLengthNullabilityTest < Minitest::Test
         model, DatabaseConsistencyLengthSubjects::COLUMN,
       ).report(catch_errors: false)
 
-      assert_equal :ok, report.status, model.name
+      # DatabaseConsistency recognizes explicit presence validators and equivalent nil checks;
+      # it does not infer presence from a length validator, even when Rails rejects nil on create.
+      assert_equal :fail, report.status, model.name
     end
   end
 

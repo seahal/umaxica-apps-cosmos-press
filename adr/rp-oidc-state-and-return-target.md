@@ -8,11 +8,15 @@ implementation in its work unit WU-43. The current implementation covers the RP-
 path-only target, one-pending entry rule, callback interruption, and related Rails tests. Production
 key rotation, external Jump/Edge behavior, and deployment evidence remain separate operational work.
 
+Amended 2026-11-13 (owner): signed `state` uses PS256 and an RSA key of at least 3072 bits. Its
+verifier accepts PS256 only. The ES384 algorithm in the original decision text below is superseded;
+the OIDC client key namespace, claims, expiry, browser binding and validation order are unchanged.
+
 ## Decision
 
-1. **`state` is an ES384 JWS** signed with the RP's existing `oidc_client:<namespace>` key (no new
+1. **`state` is a PS256 JWS** signed with the RP's existing `oidc_client:<namespace>` key (no new
    key; sharing the key with client assertions is an accepted trade-off). Header `typ`
-   `umaxica-oidc-state+jwt`; `alg` exactly ES384 in the header and the verifier allow list; `kid`
+   `umaxica-oidc-state+jwt`; `alg` exactly PS256 in the header and the verifier allow list; `kid`
    resolved only in the RP's own key set. Claims at least `iss`, `aud` (state-specific), `jti`,
    `iat`, `exp`, `v`, and `target_link_uri`; never `sid`, `code_verifier` or session secrets.
    Verification uses the `jwt` gem's supported options (`verify_expiration`, `verify_not_before`,

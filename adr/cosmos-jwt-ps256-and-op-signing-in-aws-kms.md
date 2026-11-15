@@ -2,9 +2,10 @@
 
 ## Status
 
-Accepted (2026-11-09). Implementation starts after the Cosmos repository split is complete; until
-then the existing ES384 keys and key handling stay unchanged. The implementation proposal is
-`docs/backlog/2026-11-08-jwt-key-handling-after-cosmos-split.md` (Access repository).
+Accepted (2026-11-09). The original start condition and algorithm transition plan below are retained
+as history; the owner amendment dated 2026-11-13 defines the current one-step implementation. The
+implementation proposal is `docs/backlog/2026-11-08-jwt-key-handling-after-cosmos-split.md` (Access
+repository).
 
 This record replaces the key specification in the 2026-10-23 amendment of
 `adr/runtime-secret-isolation-deferred.md` (`ECC_NIST_P384`, `ECDSA_SHA_384`) and the "Only ES384"
@@ -43,11 +44,18 @@ would add latency to a gateway whose value is having none. This is a deliberate 
 private key never leaves KMS": the Jump key is visible to whoever administers the Workers secrets,
 so restrict that access, rotate the key on any suspicion, and keep Jump's token lifetime short.
 
+Amended 2026-11-13 (owner): **the cutover is one step, with no dual-algorithm acceptance window.**
+All first-party JWTs use PS256 and RSA keys of at least 3072 bits. Verifiers reject ES384 as soon as
+this cutover is deployed; the prior staged ES384/PS256 overlap proposal is superseded because no
+token family has launched. KMS signing remains deferred for this cutover: each application continues
+loading signing material through its existing environment/credential path. This does not change
+non-JWT cryptography or the external Jump gateway's key custody.
+
 ## Context
 
-Every JWT is signed with ES384 today, and Discovery advertises only ES384 for both
-`id_token_signing_alg_values_supported` and `token_endpoint_auth_signing_alg_values_supported`
-(`app/values/oidc_discovery_document.rb`).
+At the time of the 2026-11-09 decision, JWTs were signed with ES384 and Discovery advertised only
+ES384 for both `id_token_signing_alg_values_supported` and
+`token_endpoint_auth_signing_alg_values_supported` (`app/values/oidc_discovery_document.rb`).
 
 Access is the only OP and the only issuer of ID and access tokens. Governance, Press and Sphere are
 first-party RPs. Production runs on AWS EKS. Sphere is deployed region by region and may run where
@@ -117,10 +125,8 @@ not make Cosmos conformant to FAPI 2.0 as a whole.
 
 ## Not Decided Here
 
-- Storage of RP private keys for `private_key_jwt`, including Sphere regions without AWS.
-- Whether ID tokens, access tokens and other JWTs share a key.
-- Signing in development and test, where AWS KMS is not available.
-- The ES384-to-PS256 migration window and the handling of tokens issued before it.
+- The future production key custody for RP `private_key_jwt` and non-Access signers, including
+  deployment regions without AWS; this cutover keeps each repository's existing loading path.
 - Algorithms of JWTs that Cosmos verifies but does not sign, such as DPoP proofs.
 - Whether `kms:Sign` stays with the Access Rails process or moves to a narrow signing component that
   sets `iat` and `exp` itself (see the threats section of the backlog entry).

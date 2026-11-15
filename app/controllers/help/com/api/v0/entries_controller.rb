@@ -8,10 +8,14 @@ module Help
         class EntriesController < Help::Com::BareController
           include ::PublishingContentRendering
 
+          PublishingContentRendering.configure(self)
+
           AUTHENTICATION_MODE = :bare
           PUBLISHING_AUDIENCE = "com"
           PUBLISHING_SURFACE = "help"
           ENTRY_CLASS = ::Publishing::Help::Com::Entry
+
+          public
 
           def index
             render_publishing_entries_index

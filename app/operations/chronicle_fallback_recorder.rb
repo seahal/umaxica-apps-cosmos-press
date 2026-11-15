@@ -14,6 +14,7 @@ class ChronicleFallbackRecorder < ChronicleApplicationService
     @error = error
     @manual_recovery_required = manual_recovery_required
   end
+  public
 
   def call
     Rails.logger.error(JitLogEvent.format("chronicle.fallback_record", payload: payload))

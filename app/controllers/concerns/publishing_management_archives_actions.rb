@@ -15,6 +15,8 @@ module PublishingManagementArchivesActions
 
   include ::PublishingManagementCell
 
+  public
+
   def create
     form = Publishing::ArchiveEntryForm.new(archive_form_attributes)
     unless form.valid?

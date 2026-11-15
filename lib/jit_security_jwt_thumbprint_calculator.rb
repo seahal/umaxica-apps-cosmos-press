@@ -24,9 +24,11 @@ class JitSecurityJwtThumbprintCalculator
     digest = OpenSSL::Digest.digest("SHA256", json)
     Base64.urlsafe_encode64(digest, padding: false)
   end
+  public_class_method :calculate
 
   def self.ath(access_token)
     digest = OpenSSL::Digest.digest("SHA256", access_token.to_s)
     Base64.urlsafe_encode64(digest, padding: false)
   end
+  public_class_method :ath
 end

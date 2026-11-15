@@ -45,6 +45,8 @@ class OrgPreferenceChronicle < ChronicleRecord
 
   include Retainable
 
+  Retainable.configure(self)
+
   # Audit actors may be omitted or belong to another record type.
   belongs_to :actor, polymorphic: true, optional: true
   belongs_to :org_preference_chronicle_level, foreign_key: :level_id, inverse_of: :org_preference_chronicles
@@ -85,6 +87,7 @@ class OrgPreferenceChronicle < ChronicleRecord
       end
     end
   end
+  public
 
   def org_preference
     raise GovernanceUnavailableError, "Preference authority is unavailable"

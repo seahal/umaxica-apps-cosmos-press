@@ -1,7 +1,7 @@
 # Method Visibility and Concern Inclusion Hooks
 
 Two architecture rules are enforced statically by custom RuboCop cops in `lib/rubocop/cop/umaxica/`.
-Both are normative for new and modified application code under `app/` and `lib/`.
+Both apply to all application code under `app/` and `lib/`.
 
 ## Rule 1 — no concern inclusion hooks (`Umaxica/NoConcernInclusionHooks`)
 
@@ -13,7 +13,9 @@ associations, `attribute`, `class_attribute`, enums, delegation, `before_action`
 other framework registration. A reader of the host class must be able to see what it does without
 opening every included module.
 
-A concern may still supply shared implementation methods. That is not what this rule bans.
+A concern may supply shared implementation methods. Any host behavior it registers is activated by
+an explicit `configure(self)` call at the owning class, after inclusion; inclusion alone installs no
+callbacks, validations, associations, or other host behavior.
 
 ```ruby
 # bad
@@ -27,7 +29,10 @@ end
 
 # good
 module Normalizable
-  private
+  def self.configure(model_class)
+    model_class.before_validation :normalize_name
+  end
+  public_class_method :configure
 
   def normalize_name
   end
@@ -35,14 +40,13 @@ end
 
 class User < ApplicationRecord
   include Normalizable
-
-  before_validation :normalize_name
+  Normalizable.configure(self)
 end
 ```
 
-Existing hooks are legacy debt recorded in the baseline. Do not migrate one mechanically: the hook
-body may depend on inclusion order, on the host's table, or on being evaluated in the host's
-context. Migrate only with tests that cover the behavior being moved.
+The `configure` method evaluates host declarations in the class context and is called at the former
+include site. Preserve callback order and table-dependent declarations, and cover any behavior moved
+from an inclusion hook with the existing public-boundary tests.
 
 ## Rule 2 — explicit method visibility (`Umaxica/ExplicitMethodVisibility`)
 
@@ -80,19 +84,18 @@ promote `private` to `protected` because a test calls it, and do not add a test-
 reach in with `send`. If reducing visibility breaks a test, the test is coupled to an implementation
 detail; move it to the public behavior. See `.agents/harnesses/rules/generic/no-test-only-code.mdc`.
 
-## Baseline and ratchet
+## Per-file ratchet
 
-Existing violations are technical debt, not permission.
+The architecture cops run over every in-scope file with no `Exclude` list. Any remaining per-file
+counts are a non-suppressive ratchet: a file may only improve, and the ordinary RuboCop check still
+reports every offense.
 
-- `.rubocop_todo.yml` — per-cop `Exclude` lists, so `bin/rubocop` (CI step "Style: Ruby") stays
-  green while rejecting any violation in a file that is not already in debt.
 - `.rubocop/architecture_baseline.yml` — per-file offense counts.
-  `test/tooling/architecture_baseline_test.rb` (CI step "Tests: Rails") re-measures the repository
-  with the excludes ignored and fails if any file exceeds its recorded count, or if the baseline
-  still lists a file that is now clean.
+  `test/tooling/architecture_baseline_test.rb` re-measures the repository and fails if any file
+  exceeds its recorded count, or if the baseline still lists a file that is now clean.
 
-Both artifacts are generated together by `bin/rails architecture:baseline`. Regenerate it only to
-record a reduction. Regenerating it to absorb a violation you just introduced defeats the mechanism
-and will show up as a growing count in review.
+Regenerate it with `bin/rails architecture:baseline` only to record a reduction. Regenerating it to
+absorb a violation you just introduced defeats the mechanism and will show up as a growing count in
+review.
 
 When you touch a file that carries debt, prefer clearing its entries over preserving them.

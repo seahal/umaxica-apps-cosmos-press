@@ -10,6 +10,8 @@ module Edit
             class PublicationsController < Edit::Org::ApplicationController
               include ::PublishingManagementPublicationsActions
 
+              PublishingManagementCell.configure(self)
+
               AUTHENTICATION_MODE = :private
               declare_authentication_mode! :private
               PUBLISHING_SURFACE = "help"

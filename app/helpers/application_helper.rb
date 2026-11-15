@@ -4,6 +4,7 @@
 module ApplicationHelper
   # Brand title editions are the content audience hosts served by this application.
   BRAND_TLD_LABELS = %w(app com org).freeze
+  public
 
   def brand_tld
     label = request.host.to_s.downcase.split(".").reverse.find { |part| BRAND_TLD_LABELS.include?(part) }

@@ -7,6 +7,8 @@ module Publishing
         self.table_name = "publishing_docs_app_entry_revisions"
         include PublishingEntryRevisionRecord
 
+        PublishingEntryRevisionRecord.configure(self)
+
         has_many :current_entries, class_name: "Publishing::Docs::App::Entry",
                                    foreign_key: :current_revision_id, inverse_of: :current_revision,
                                    dependent: :restrict_with_exception

@@ -10,6 +10,8 @@ class RpEditOrgSession < RpEditOrgRecord
 
   include PublicId
 
+  PublicId.configure(self)
+
   belongs_to :op_session_binding, class_name: "RpEditOrgOpSessionBinding", inverse_of: :sessions
 
   # The partial index counts every unrevoked row, including an expired one.

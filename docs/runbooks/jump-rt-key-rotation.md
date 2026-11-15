@@ -2,7 +2,12 @@
 
 ## Purpose
 
-This runbook manages ES384 signing keys for Jump redirect tokens.
+This runbook manages PS256 / RSA signing keys for Rails-issued Jump redirect tokens.
+
+The 2026-11-13 cutover uses PS256 only with RSA keys of at least 3072 bits. No dual-algorithm
+acceptance period is used. Press has no Jump RT issuer namespace and is receiver-only; this runbook
+does not provision Press signing keys. The external Hono gateway's return-signing key is outside
+this repository and is not changed here.
 
 Jump RT keys are issuer-surface scoped. Do not reuse one private key or `kid` across issuer
 namespaces or across the `auth`, `base`, `visa`, `core`, `warp` and `palm` issuer groups.
@@ -38,8 +43,8 @@ At boot, `Jit::Security::Jwt::Registry` builds immutable issuer/key records:
 - current public JWK is derived once from the current private key;
 - legacy/grace public JWKs are loaded from `JWT_<NAMESPACE>_PUBLIC_KEYSET`;
 - revoked kids are loaded from `JWT_<NAMESPACE>_REVOKED_KIDS`;
-- malformed JWKs, private JWK fields, wrong `alg`, wrong `kty`, wrong `crv`, active/public mismatch,
-  and non-default duplicate kids fail boot.
+- malformed JWKs, private JWK fields, wrong `alg`, wrong `kty`, undersized RSA modulus,
+  active/public mismatch, and non-default duplicate kids fail boot.
 
 The JWKS endpoint must only render the prebuilt public JWKS. It must not read private keys,
 credentials, files, KMS, or the network while serving a request.
@@ -96,8 +101,8 @@ signer is published only if it is listed in `PUBLIC_KEYSET`.
 
 ### Phase A: pre-publish K2
 
-1. Generate a new P-384 private key `K2`.
-2. Choose a globally unique `kid`, for example `auth-app-jump-rt-es384-prod-2026-06-a`.
+1. Generate a new RSA 3072-bit-or-larger PKCS#8 private key `K2`.
+2. Choose a globally unique `kid`, for example `auth-app-jump-rt-ps256-prod-2026-06-a`.
 3. Store `K2` as a new, inactive version of the `JWT_<NAMESPACE>_PRIVATE_KEY` secret. Do not switch
    the runtime reference to it yet: a private key that changes while `ACTIVE_KID` still names `K1`
    fails boot as an active/public mismatch.
@@ -115,7 +120,7 @@ signer is published only if it is listed in `PUBLIC_KEYSET`.
    other.
 2. Keep both public JWKs in `PUBLIC_KEYSET`.
 3. Deploy issuer instances and confirm boot validation passes.
-4. Issue a smoke token and confirm its header has `alg: ES384` and the `K2` kid.
+4. Issue a smoke token and confirm its header has `alg: PS256` and the `K2` kid.
 5. Confirm Jump accepts the new token.
 
 ### Grace removal
@@ -196,7 +201,7 @@ JWKS may be cached publicly, but emergency revoke must not depend on CDN expiry.
 Before production deployment:
 
 - `kid` is globally unique and includes token family, surface, environment, date, and sequence.
-- The key is P-384 and signs with ES384.
+- The key is RSA with a modulus of at least 3072 bits and signs with PS256.
 - Active private key derives the active public JWK.
 - JWKS contains no private fields: `d`, PEM, DER, `k`, or secret backend names.
 - Revoked kids are absent from JWKS.
@@ -213,7 +218,8 @@ no emulator exists. `JUMP_GATEWAY_URL` was removed and fails boot if still set.
 it, even empty, fails boot. There are no Jump-specific development settings. Development signs with
 the installer-owned keys in `tmp/local_jwt_keysets.json` (kid `development-<namespace>-es384-a`); a
 `JWT_<NAMESPACE>_*` environment value that does not match that store fails boot, so no other key
-material can be injected locally.
+material can be injected locally. Generated keys are RSA 3072-bit-or-larger and use the
+`development-<namespace>-ps256-a` kid suffix.
 
 Press has no local Jump issuer surface after the repository split. Its issuer catalog is empty;
 foreign namespace URL inputs are not provisioned here, and attempts to issue a local Jump RT fail

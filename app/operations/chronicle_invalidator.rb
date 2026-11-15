@@ -12,6 +12,7 @@ class ChronicleInvalidator < ChronicleApplicationService
     @subject = subject
     @error = error
   end
+  public
 
   def call
     chronicle.update!(result: "manual_recovery_required")

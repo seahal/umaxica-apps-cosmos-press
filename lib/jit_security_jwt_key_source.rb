@@ -6,6 +6,7 @@ class JitSecurityJwtKeySource
     @env = env
     @credentials = credentials
   end
+  public
 
   def fetch(name, default = nil)
     @env.fetch(name.to_s, default)

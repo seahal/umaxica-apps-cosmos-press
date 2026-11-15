@@ -12,10 +12,9 @@ class BranchCoverageBatch30LibEasyArmsTest < ActiveSupport::TestCase
       JitSecurityJwtJwk.normalize_public(
         "alg" => JitSecurityJwtJwk::ALGORITHM,
         "use" => "sig",
-        "kty" => "EC",
-        "crv" => JitSecurityJwtJwk::CURVE,
-        "x" => "x",
-        "y" => "y",
+        "kty" => "RSA",
+        "n" => "n",
+        "e" => "AQAB",
         "kid" => "k",
         "d" => "private",
       )
@@ -24,10 +23,9 @@ class BranchCoverageBatch30LibEasyArmsTest < ActiveSupport::TestCase
       JitSecurityJwtJwk.validate_public!(
         "alg" => JitSecurityJwtJwk::ALGORITHM,
         "use" => "sig",
-        "kty" => "RSA",
-        "crv" => JitSecurityJwtJwk::CURVE,
-        "x" => "x",
-        "y" => "y",
+        "kty" => "EC",
+        "n" => "n",
+        "e" => "AQAB",
         "kid" => "k",
       )
     end
@@ -46,10 +44,9 @@ class BranchCoverageBatch30LibEasyArmsTest < ActiveSupport::TestCase
       JitSecurityJwtJwk.validate_public!(
         "alg" => "ES256",
         "use" => "sig",
-        "kty" => "EC",
-        "crv" => JitSecurityJwtJwk::CURVE,
-        "x" => "x",
-        "y" => "y",
+        "kty" => "RSA",
+        "n" => "n",
+        "e" => "AQAB",
         "kid" => "k",
       )
     end
@@ -57,10 +54,9 @@ class BranchCoverageBatch30LibEasyArmsTest < ActiveSupport::TestCase
       JitSecurityJwtJwk.validate_public!(
         "alg" => JitSecurityJwtJwk::ALGORITHM,
         "use" => "enc",
-        "kty" => "EC",
-        "crv" => JitSecurityJwtJwk::CURVE,
-        "x" => "x",
-        "y" => "y",
+        "kty" => "RSA",
+        "n" => "n",
+        "e" => "AQAB",
         "kid" => "k",
       )
     end

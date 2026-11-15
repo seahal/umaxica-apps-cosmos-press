@@ -17,6 +17,7 @@ class PublishingManagementEntriesQuery
   def self.call(...)
     new(...).call
   end
+  public_class_method :call
 
   DEFAULT_PER_PAGE = 25
   MIN_PER_PAGE = 1
@@ -27,10 +28,12 @@ class PublishingManagementEntriesQuery
   def self.clamp_per_page(value)
     value.clamp(MIN_PER_PAGE, MAX_PER_PAGE)
   end
+  public_class_method :clamp_per_page
 
   def initialize(entry_class:)
     @entry_class = entry_class
   end
+  public
 
   def call
     scoped.includes(:current_revision, :canonical_slug, :active_publication)

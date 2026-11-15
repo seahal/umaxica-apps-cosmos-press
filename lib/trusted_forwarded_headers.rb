@@ -15,6 +15,7 @@ class TrustedForwardedHeaders
     @app = app
     @trusted_proxies = trusted_proxies
   end
+  public
 
   def call(env)
     strip_forwarded_headers(env) unless trusted_peer?(env["REMOTE_ADDR"])

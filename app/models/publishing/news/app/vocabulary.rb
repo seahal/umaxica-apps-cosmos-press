@@ -7,6 +7,8 @@ module Publishing
         self.table_name = "publishing_news_app_vocabularies"
         include PublishingVocabularyRecord
 
+        PublishingVocabularyRecord.configure(self)
+
         has_many :revision_single_taxonomy_assignments,
                  class_name: "Publishing::News::App::RevisionSingleTaxonomyAssignment",
                  inverse_of: :vocabulary, dependent: :restrict_with_exception

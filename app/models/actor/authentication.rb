@@ -17,6 +17,7 @@ class Actor
       @active_sign_sequence_id = active_sign_sequence_id
       freeze
     end
+    public
 
     def null?
       login_public_id.blank? && access_claims.blank?

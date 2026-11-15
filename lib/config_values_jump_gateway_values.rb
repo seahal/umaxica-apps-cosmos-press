@@ -23,6 +23,7 @@ class << ConfigValues::JumpGatewayValues
     JUMP_GATEWAY_URL PUBLIC_JUMP_GATEWAY_JWKS_URL JUMP_GATEWAY_JWKS_URL
     PUBLIC_JUMP_GATEWAY_AUDIENCE JUMP_GATEWAY_AUDIENCE
   ).freeze
+  public
 
   def build(env:)
     if env.key?(UNSUPPORTED_PRIVATE_ENV)

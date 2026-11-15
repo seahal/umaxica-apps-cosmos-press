@@ -11,10 +11,9 @@
 # PUBLISHING_SURFACE, and ENTRY_CLASS as explicit constants. Those values are
 # never inferred from the class name or request path.
 #
-# This concern installs no callbacks of its own. ApiContentNegotiation, included
-# below, registers before_action filters because content negotiation must run
-# before every JSON action on these endpoints; duplicating those filters on
-# twelve controllers would hide the same contract.
+# This concern installs no callbacks of its own. Each content controller calls
+# `PublishingContentRendering.configure(self)` to install the API negotiation
+# filters in its own visible callback list.
 #
 # Pagination uses Pagy's offset paginator (Pagy 43 `pagy(:offset, ...)`).
 # Source: https://ddnexus.github.io/pagy/toolbox/paginators/offset/
@@ -24,6 +23,11 @@ module PublishingContentRendering
   include ProblemDetailsRendering
   include ApiContentNegotiation
   include Pagy::Method
+
+  def self.configure(controller)
+    ApiContentNegotiation.configure(controller)
+  end
+  public_class_method :configure
 
   class_methods do
     def publishing_audience

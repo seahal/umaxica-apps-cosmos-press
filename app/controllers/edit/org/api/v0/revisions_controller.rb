@@ -9,6 +9,8 @@ module Edit
           include ::ApplicationRevisionRendering
           include ::MachineJsonNegotiation
 
+          MachineJsonNegotiation.configure(self)
+
           AUTHENTICATION_MODE = :bare
 
           before_action :refuse_unless_machine_json_acceptable

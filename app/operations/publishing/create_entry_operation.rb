@@ -23,6 +23,7 @@ module Publishing
     def self.slug_index_name(entry_class)
       "uidx_#{entry_class::SURFACE}_#{entry_class::AUDIENCE}_slug_locale"
     end
+    public_class_method :slug_index_name
 
     def initialize(entry_class:, locale:, slug:, title:, summary:, body:, operator_public_id:)
       super()
@@ -34,6 +35,7 @@ module Publishing
       @body = body
       @operator_public_id = operator_public_id
     end
+    public
 
     def call
       entry = nil

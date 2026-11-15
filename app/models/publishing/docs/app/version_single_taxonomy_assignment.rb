@@ -6,7 +6,11 @@ module Publishing
       class VersionSingleTaxonomyAssignment < PublishingRecord
         self.table_name = "publishing_docs_app_version_single_taxonomy_assignments"
         include PublishingFamilyTaxonomyAssignment
+
+        PublishingFamilyTaxonomyAssignment.configure(self)
         include PublishingTaxonomySnapshot
+
+        PublishingTaxonomySnapshot.configure(self)
 
         belongs_to :entry_version, class_name: "Publishing::Docs::App::EntryVersion",
                                    inverse_of: :single_taxonomy_assignments
@@ -16,6 +20,7 @@ module Publishing
         validates :vocabulary_id, uniqueness: { scope: :entry_version_id }, on: :create
 
         def self.expected_kind = Publishing::TaxonomyKind::SINGLE_HIERARCHICAL
+        public_class_method :expected_kind
       end
     end
   end

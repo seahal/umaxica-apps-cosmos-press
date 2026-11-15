@@ -6,8 +6,8 @@ Authority: O00–O13's approved local remediation, with the existing
 [logging ADR](../../adr/application-logging-boundary.md) and
 [observability boundary](../security/observability-boundary.md). The local scope does not close
 older production/Sentry/broader-review obligations: those remain separately owned and excluded here
-(C10/C14). No incident or current PASS is asserted. Follow the
-[investigation procedure](integrated-stack.md#independent-investigation).
+(C10/C14). No incident or current PASS is asserted. Follow the investigation procedure (historical
+source unavailable in this Press checkout: `integrated-stack.md#independent-investigation`).
 
 ## MAIL-1 — Sensitive filtering without lost safe diagnostics
 
@@ -43,10 +43,11 @@ older production/Sentry/broader-review obligations: those remain separately owne
   surface mailers and OutboundEmailSuspensionInterceptor. The local logger policy and delivery
   contract are represented by
   [the ActionMailer policy test](../../test/unit/security/action_mailer_logging_policy_test.rb),
-  existing [surface mailer tests](../../test/mailers/email/surface_mailers_test.rb), and the
-  interceptor tests. Perform direct safe boot and synthetic capture; all-surface
-  success/suspension/failure/retry behavior coverage remains a current-checkout investigation, not a
-  permanent PASS. The current local policy and full-gate result are recorded in
+  existing surface mailer tests (historical source unavailable in this Press checkout:
+  `../../test/mailers/email/surface_mailers_test.rb`), and the interceptor tests. Perform direct
+  safe boot and synthetic capture; all-surface success/suspension/failure/retry behavior coverage
+  remains a current-checkout investigation, not a permanent PASS. The current local policy and
+  full-gate result are recorded in
   [`O9P4`](../../evidence/2026-10-12-observability-env-and-gate-O9P4.md). Do not add setup-only
   Minitest cases or send real mail to prove configuration.
 

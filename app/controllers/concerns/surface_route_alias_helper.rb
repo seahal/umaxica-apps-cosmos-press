@@ -10,6 +10,8 @@ module SurfaceRouteAliasHelper
     "base_com_" => "acme_com_",
   }.freeze
 
+  public
+
   def method_missing(name, ...)
     aliased_name = aliased_surface_helper_name(name)
     return super if aliased_name.nil?

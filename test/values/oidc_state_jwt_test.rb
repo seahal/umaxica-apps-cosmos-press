@@ -9,9 +9,11 @@ class OidcStateJwtTest < ActiveSupport::TestCase
 
   test "a state issued by the RP verifies for that RP and carries its jti and target" do
     state, jti = OidcStateJwt.issue(client_id: CLIENT_ID, target_link_uri: "/dashboard")
+    _payload, header = JWT.decode(state, nil, false)
     result = OidcStateJwt.verify(client_id: CLIENT_ID, token: state)
 
     assert_predicate result, :valid?
+    assert_equal "PS256", header.fetch("alg")
     assert_equal [jti, "/dashboard"], [result.jti, result.target_link_uri]
   end
 

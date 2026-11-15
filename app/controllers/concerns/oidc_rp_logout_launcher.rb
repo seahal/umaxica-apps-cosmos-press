@@ -6,11 +6,15 @@ require "securerandom"
 module OidcRpLogoutLauncher
   extend ActiveSupport::Concern
 
-  # FIXME: Violates Umaxica/NoConcernInclusionHooks; move the declarations in this block into each class that includes this concern.
-  included do
-    prepend_before_action :normalize_rp_logout_region!, if: -> { action_name == "create" }
-    ensure_fqdn_gate_first!
+  # The Edit sign-out controller opts into the callback pair explicitly, preserving the region
+  # normalization and FQDN-gate order at its include site.
+  def self.configure(controller)
+    controller.class_eval do
+      prepend_before_action(:normalize_rp_logout_region!, if: -> { action_name == "create" })
+      ensure_fqdn_gate_first!
+    end
   end
+  public_class_method :configure
 
   public
 

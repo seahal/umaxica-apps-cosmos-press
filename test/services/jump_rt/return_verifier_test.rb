@@ -40,11 +40,8 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
   self.fixture_table_names = []
 
   setup do
-    @private_key = OpenSSL::PKey::EC.generate("secp384r1")
-    @public_jwk = JWT::JWK.new(@private_key, kid: "jump-test").export.stringify_keys.except("d").merge(
-      "alg" => "ES384",
-      "use" => "sig",
-    )
+    @private_key = OpenSSL::PKey::RSA.generate(3072)
+    @public_jwk = JitSecurityJwtJwk.export_public(@private_key, kid: "jump-test")
     @now = Time.current.change(usec: 0)
     @previous_cache = Rails.cache
     Rails.cache = ActiveSupport::Cache::MemoryStore.new
@@ -62,6 +59,45 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
     assert_predicate result, :success?
     assert_equal "https://jump.umaxica.net", result.payload.fetch("iss")
     assert_equal "https://auth.umaxica.app", result.payload.fetch("src")
+  end
+
+  test "accepts 4096-bit Jump PS256 return keys" do
+    larger_key = OpenSSL::PKey::RSA.generate(4096)
+    jwk = JitSecurityJwtJwk.export_public(larger_key, kid: "jump-test")
+
+    assert_predicate verify(sign_return_token_with(larger_key), jwks: [jwk]), :success?
+  end
+
+  test "rejects 2048-bit Jump RSA keys as below the 3072-bit minimum" do
+    undersized_key = OpenSSL::PKey::RSA.generate(2048)
+    jwk = JWT::JWK.new(undersized_key, kid: "jump-test").export.stringify_keys.merge(
+      "alg" => "PS256", "use" => "sig",
+    )
+
+    assert_equal "jwks_unavailable", verify(
+      sign_return_token_with(undersized_key), jwks: [jwk],
+    ).error
+  end
+
+  test "refuses ES384 RS256 PS384 and a PS256 signature with a mismatched alg header" do
+    legacy_key = OpenSSL::PKey::EC.generate("secp384r1")
+    legacy_token = JWT.encode(return_payload, legacy_key, "ES384", { typ: "JWT", kid: "jump-test" })
+
+    assert_not_predicate verify(legacy_token), :success?
+
+    { "RS256" => "RS256", "PS384" => "PS384" }.each do |label, algorithm|
+      key = OpenSSL::PKey::RSA.generate(3072)
+      token = JWT.encode(return_payload, key, algorithm, { typ: "JWT", kid: "jump-test" })
+
+      assert_not_predicate verify(token), :success?, label
+    end
+
+    token = sign_return_token
+    header, body, signature = token.split(".")
+    changed_header = JSON.parse(Base64.urlsafe_decode64(header)).merge("alg" => "RS256")
+    mismatched = [Base64.urlsafe_encode64(JSON.generate(changed_header), padding: false), body, signature].join(".")
+
+    assert_not_predicate verify(mismatched), :success?, "header alg mismatch"
   end
 
   test "a reusable return token verifies repeatedly and records no consumed jti" do
@@ -176,7 +212,7 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
   end
 
   test "rejects the same kid signed with a different private key" do
-    other_key = OpenSSL::PKey::EC.generate("secp384r1")
+    other_key = OpenSSL::PKey::RSA.generate(3072)
     token = sign_return_token_with(other_key)
 
     assert_equal "invalid_signature", verify(token).error
@@ -449,7 +485,7 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
       test "rejects a #{label} #{claim} claim" do
         payload = return_payload.merge(claim => convert.call(return_payload.fetch(claim)))
         jwt = JWT::Token.new(payload: payload, header: { "typ" => "JWT", "kid" => "jump-test" })
-        jwt.sign!(algorithm: "ES384", key: @private_key)
+        jwt.sign!(algorithm: "PS256", key: @private_key)
 
         result = verify(jwt.jwt)
 
@@ -767,7 +803,7 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
 
   def compact_token_with_size(target_bytes)
     header = Base64.urlsafe_encode64(
-      { typ: "JWT", alg: "ES384", kid: "jump-test" }.to_json,
+      { typ: "JWT", alg: "PS256", kid: "jump-test" }.to_json,
       padding: false,
     )
     (0..512).each do |payload_padding|
@@ -787,24 +823,24 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
     raise RuntimeError, "could not construct a syntactically compact JWT of #{target_bytes} bytes"
   end
 
-  def verify(token)
+  def verify(token, jwks: [@public_jwk])
     JumpRtReturnPolicy.stub(:namespace_for_origin, ->(origin) { FIXTURE_ORIGIN_NAMESPACES[origin] }) do
       JumpRtReturnVerifier.call(
         token: token,
         request_url: "https://www.umaxica.app/path?ok=1&rt=#{token}",
         request_base_url: "https://www.umaxica.app",
-        fetcher: -> { { "keys" => [@public_jwk] } },
+        fetcher: -> { { "keys" => jwks } },
         now: @now,
       )
     end
   end
 
   def sign_return_token(overrides = {})
-    JWT.encode(return_payload.merge(overrides), @private_key, "ES384", { typ: "JWT", kid: "jump-test" })
+    JWT.encode(return_payload.merge(overrides), @private_key, "PS256", { typ: "JWT", kid: "jump-test" })
   end
 
   def sign_return_token_with(private_key, overrides = {})
-    JWT.encode(return_payload.merge(overrides), private_key, "ES384", { typ: "JWT", kid: "jump-test" })
+    JWT.encode(return_payload.merge(overrides), private_key, "PS256", { typ: "JWT", kid: "jump-test" })
   end
 
   def return_payload
@@ -826,6 +862,6 @@ class JumpRtReturnVerifierTest < ActiveSupport::TestCase
   end
 
   def sign_return_token_without(claim)
-    JWT.encode(return_payload.except(claim), @private_key, "ES384", { typ: "JWT", kid: "jump-test" })
+    JWT.encode(return_payload.except(claim), @private_key, "PS256", { typ: "JWT", kid: "jump-test" })
   end
 end

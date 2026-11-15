@@ -7,6 +7,8 @@ module Publishing
         self.table_name = "publishing_news_com_revision_multiple_taxonomy_assignments"
         include PublishingFamilyTaxonomyAssignment
 
+        PublishingFamilyTaxonomyAssignment.configure(self)
+
         belongs_to :entry_revision, class_name: "Publishing::News::Com::EntryRevision",
                                     inverse_of: :multiple_taxonomy_assignments
         validates :position,
@@ -20,6 +22,7 @@ module Publishing
         validates :position, uniqueness: { scope: %i(entry_revision_id vocabulary_id) }
 
         def self.expected_kind = Publishing::TaxonomyKind::MULTIPLE_ORDERED_FLAT
+        public_class_method :expected_kind
       end
     end
   end

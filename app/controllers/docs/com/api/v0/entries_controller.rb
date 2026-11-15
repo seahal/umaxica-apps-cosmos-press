@@ -8,10 +8,14 @@ module Docs
         class EntriesController < Docs::Com::BareController
           include ::PublishingContentRendering
 
+          PublishingContentRendering.configure(self)
+
           AUTHENTICATION_MODE = :bare
           PUBLISHING_AUDIENCE = "com"
           PUBLISHING_SURFACE = "docs"
           ENTRY_CLASS = ::Publishing::Docs::Com::Entry
+
+          public
 
           def index
             render_publishing_entries_index

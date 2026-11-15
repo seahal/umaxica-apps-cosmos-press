@@ -31,6 +31,7 @@ module Health
       @generated_at = generated_at.utc
       @revision = revision.presence
     end
+    public
 
     def ok?
       http_status == 200
@@ -84,6 +85,7 @@ module Health
       @status = status
       @message = message
     end
+    public
 
     def ok?
       status == :ok
@@ -108,10 +110,12 @@ module Health
         raise ArgumentError, "unknown health status: #{status}"
       end
     end
+    public_class_method :http_status
 
     def initialize(acceptable_degraded_kinds: [])
       @acceptable_degraded_kinds = acceptable_degraded_kinds.map(&:to_sym).freeze
     end
+    public
 
     def status_for(results)
       return :ok if results.all?(&:ok?)
@@ -138,6 +142,8 @@ module Health
     # Startup check: confirms Rails finished initialization. Intentionally
     # lightweight; it must not touch external dependencies.
     class Boot
+      public
+
       def call
         return DependencyResult.new(kind: :boot, status: :ok) if Rails.application.initialized?
 
@@ -155,6 +161,7 @@ module Health
         @record_class = record_class
         @deadline = deadline
       end
+      public
 
       def call
         with_deadline { check_roles }
@@ -207,6 +214,7 @@ module Health
         @record_classes = record_classes.freeze
         @status_policy = status_policy
       end
+      public
 
       def readiness_checks
         record_classes.map { |record_class| Checks::Database.new(record_class: record_class) }
@@ -255,10 +263,12 @@ module Health
     def self.call(profile:)
       new(profile: profile).call
     end
+    public_class_method :call
 
     def initialize(profile:)
       @profile = profile
     end
+    public
 
     def call
       status = Rails.application.initialized? ? :ok : :starting
@@ -278,10 +288,12 @@ module Health
     def self.call(profile:)
       new(profile: profile).call
     end
+    public_class_method :call
 
     def initialize(profile:)
       @profile = profile
     end
+    public
 
     def call
       build_result
@@ -324,10 +336,12 @@ module Health
     def self.call(profile:)
       new(profile: profile).call
     end
+    public_class_method :call
 
     def initialize(profile:)
       @profile = profile
     end
+    public
 
     def call
       boot = Checks::Boot.new.call
@@ -346,10 +360,12 @@ module Health
     def self.call(profile:)
       new(profile: profile).call
     end
+    public_class_method :call
 
     def initialize(profile:)
       @profile = profile
     end
+    public
 
     def call
       sub_results = {

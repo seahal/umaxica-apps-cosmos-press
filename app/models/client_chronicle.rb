@@ -43,6 +43,8 @@
 class ClientChronicle < ChronicleRecord
   include Retainable
 
+  Retainable.configure(self)
+
   attribute :level_id, default: ClientChronicleLevel::NOTHING
   attribute :subject_id, :string
 
@@ -70,6 +72,7 @@ class ClientChronicle < ChronicleRecord
   before_create :set_timestamp
 
   scope :recent_activity_first, -> { order(arel_table[:occurred_at].desc, arel_table[:created_at].desc) }
+  public
 
   # Helper methods for compatibility with existing code
   def user

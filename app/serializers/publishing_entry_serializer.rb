@@ -15,6 +15,7 @@ class PublishingEntrySerializer
   def self.call(...)
     new(...).call
   end
+  public_class_method :call
 
   def initialize(entry:, namespace:, surface:, vocabularies: nil)
     @entry = entry
@@ -22,6 +23,7 @@ class PublishingEntrySerializer
     @surface = surface
     @vocabularies = vocabularies
   end
+  public
 
   def call
     version = published_version

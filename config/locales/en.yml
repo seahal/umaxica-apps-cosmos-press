@@ -1,22 +1,8 @@
 ---
 en:
   actions:
-    actions: Actions
-    add: Add
-    back: Back
     cancel: Cancel
-    cancel_and_start: Cancel and start new verification
-    connect: Connect
     continue: Continue
-    delete: Delete
-    destroy: Delete
-    disconnect: Disconnect
-    edit: Edit
-    restart: Restart verification
-    save: Save
-    submit: "Submit"
-    up: Back
-    update: "Update"
   activemodel:
     errors:
       models:
@@ -37,76 +23,20 @@ en:
         state_digest: Callback state digest
     errors:
       messages:
-        birthdate_before_today: must be before today
-        birthdate_format: must be entered in YYYY-MM-DD format
-        code_format: must contain only uppercase letters, numbers, and underscores
-        country_code_cannot_start_with_zero: country code cannot start with zero
-        exceeds_e164_length: exceeds E.164 maximum length of %{max} digits
-        identity_audit_event_format_invalid:
-          must be composed of uppercase letters and underscores only
-        invalid_e164_format: must be in E.164 format (e.g., +819012345678)
         record_invalid: "Validation failed: %{errors}"
         restrict_dependent_destroy:
           has_many: Cannot delete record because dependent %{record} exist
           has_one: Cannot delete record because a dependent %{record} exists
-        uuid_format: must be a valid UUID
       models:
         operator:
           attributes:
             public_id:
-              invalid_format: must be 16 uppercase characters from SecureRandom::BASE32_ALPHABET
         org_document_tagger:
           attributes:
             org_document_tag_id:
-              already_tagged: is already tagged to this document
         staff:
           attributes:
             public_id:
-              invalid_format: must be 16 uppercase characters from SecureRandom::BASE32_ALPHABET
-  app_document_categories:
-    "%{id}": app_document_category_%{id}
-    announcement: Announcement
-    article: Article
-    faq: FAQ
-    guide: Guide
-    news: News
-    reference: Reference
-    release_note: Release Note
-    tutorial: Tutorial
-  app_document_tags:
-    "%{id}": app_document_tag_%{id}
-    backend: Backend
-    business: Business
-    database: Database
-    design: Design
-    development: Development
-    frontend: Frontend
-    marketing: Marketing
-    none: None
-    security: Security
-    technology: Technology
-  app_timeline_categories:
-    "%{id}": app_timeline_category_%{id}
-    announcement: Announcement
-    article: Article
-    faq: FAQ
-    guide: Guide
-    news: News
-    reference: Reference
-    release_note: Release Note
-    tutorial: Tutorial
-  app_timeline_tags:
-    "%{id}": app_timeline_tag_%{id}
-    backend: Backend
-    business: Business
-    database: Database
-    design: Design
-    development: Development
-    frontend: Frontend
-    marketing: Marketing
-    none: None
-    security: Security
-    technology: Technology
   attributes:
     ack_deactivate_today: Deactivation confirmation
     ack_schedule_purge: Purge schedule confirmation
@@ -255,73 +185,10 @@ en:
     vocabulary_public_id_snapshot: Vocabulary public ID snapshot
     webauthn_id: WebAuthn ID
   auth:
-    session_expired: Your session has expired. Please sign in again.
     step_up:
-      canceled: Cancel verification
       challenge:
         description: Your request was not completed. Confirm your identity before trying again.
         title: Confirm your identity
-      completed: Continue
-      emergency_unavailable:
-        This session was established through Emergency Access and cannot perform step-up
-        verification. Sign out and sign in normally to continue.
-      fresh_sign_in_required: Sign out and sign in again to register your first verification method.
-      invalid_request: Invalid verification request.
-      method_unavailable: Selected verification method is unavailable.
-      register_methods_required: No step-up methods available. Please register passkey/email/totp.
-      required: Step-up authentication is required to continue.
-      session_expired: Verification required.
-      verification_required: Verification required.
-    unauthorized: You are not authorized to access this page.
-  com_document_categories:
-    "%{id}": com_document_category_%{id}
-    announcement: Announcement
-    article: Article
-    faq: FAQ
-    guide: Guide
-    news: News
-    reference: Reference
-    release_note: Release Note
-    tutorial: Tutorial
-  com_document_tags:
-    "%{id}": com_document_tag_%{id}
-    backend: Backend
-    business: Business
-    database: Database
-    design: Design
-    development: Development
-    frontend: Frontend
-    marketing: Marketing
-    none: None
-    security: Security
-    technology: Technology
-  com_timeline_categories:
-    "%{id}": com_timeline_category_%{id}
-    announcement: Announcement
-    article: Article
-    faq: FAQ
-    guide: Guide
-    news: News
-    reference: Reference
-    release_note: Release Note
-    tutorial: Tutorial
-  com_timeline_tags:
-    "%{id}": com_timeline_tag_%{id}
-    backend: Backend
-    business: Business
-    database: Database
-    design: Design
-    development: Development
-    frontend: Frontend
-    marketing: Marketing
-    none: None
-    security: Security
-    technology: Technology
-  common:
-    ok: OK
-  custom:
-    error:
-      key: Custom Error
   date:
     abbr_day_names:
       - Sun
@@ -426,50 +293,12 @@ en:
       Run the appropriate database reset/migration workflow, review the schema dump changes, and
       commit the intended dumps.
     unable_to_inspect: Unable to inspect schema dump drift.
-  defaults:
-    never: Never
-  description: Withdrawal
-  docs:
-    app:
-      preferences:
-        footer:
-          home: Home
-          preference: Preferences
-    com:
-      preferences:
-        footer:
-          home: Home
-          preference: Preferences
-    org:
-      preferences:
-        footer:
-          home: Home
-          preference: Preferences
-    posts:
-      index:
-        count: "%{count} documents"
-        empty: No documents found
-        search_all: All
-        search_button: Search
-        search_found: "%{count} found"
-        search_placeholder: Search...
-        select_description: Click on a document from the list to view its details
-        select_title: Select a document
-        title: Documents
-    versions:
-      index:
-        description: Document versions list
-        title: Versions
-      show:
-        description: Document version details
-        title: Version
   errors:
     forbidden: "Access is forbidden."
     format: "%{attribute} %{message}"
     fqdn_availability:
       unavailable: This service is temporarily unavailable. Please try again later.
     invalid_authenticity_token: Your session has expired. Please reload the page.
-    login_failed: Login failed
     messages:
       accepted: must be accepted
       already_authenticated: "You are already signed in."
@@ -535,183 +364,13 @@ en:
       wrong_length:
         one: is the wrong length (should be %{count} character)
         other: is the wrong length (should be %{count} characters)
-    not_implemented: This feature is not implemented
-    otp_locked: You have exceeded the maximum number of attempts. Please start over.
     rate_limit:
-      backend_unavailable: Authorization is temporarily unavailable. Please try again later.
       exceeded: Too many requests. Please try again later.
-      retry_later: Please retry in a little while.
-      too_many_requests: Too many requests right now. Please try again shortly.
     template:
       body: "There were problems with the following fields:"
       header:
         one: "%{count} error prohibited this %{model} from being saved"
         other: "%{count} errors prohibited this %{model} from being saved"
-  hello: Hello world 2
-  help:
-    app:
-      contacts:
-        create:
-          success: Your inquiry has been received.
-        new:
-          badge: Contact
-          body: Body
-          cancel: Cancel
-          category_id: Inquiry Category
-          confirm_policy: I agree to the privacy policy
-          confirm_policy_note: You must agree to the privacy policy before submitting.
-          description: Please fill out the form below to contact us.
-          email_address: Email Address
-          error_heading:
-            one: 1 error prohibited this contact from being saved.
-            other: "%{count} errors prohibited this contact from being saved."
-          page_title: Contact Us
-          submit: Create
-          telephone_number: Telephone Number
-          title: Title
-      preference:
-        cookie:
-          edit:
-            accept_consent_cookies: About allowing consent cookies
-            accept_functional_cookies: About allowing functional cookies
-            accept_necessary_cookies: About allowing necessary cookies (required)
-            accept_performance_cookies: About allowing performance cookies
-            accept_targeting_cookies: About allowing targeting cookies
-            h1: Cookie settings
-        theme:
-          edit:
-            description: Choose a display mode that suits your working environment.
-            hints:
-              dark: Best for night-time work or when you want to reduce eye strain.
-              light: Recommended for shared spaces and brightly lit offices.
-              system: Switches together with the theme of your operating system.
-            legend: Select a theme
-            options:
-              dark: Dark — easy on the eyes in low-light environments
-              light: Light — bright background suited to daytime work
-              system: System — switches automatically with your device setting
-            title: Theme settings (switch between light and dark)
-      preferences:
-        footer:
-          document: Document
-          help_center: Help Center
-          home: Home
-          newsroom: NewsRoom
-          preference: Preferences
-    com:
-      contact:
-        emails:
-          create:
-            failure: Unable to send verification code. Please try again.
-            hotp_code_invalid: Invalid verification code. Please try again.
-            hotp_code_required: Please enter the verification code.
-            success: Email address verified successfully.
-          edit:
-            code_label: Verification Code
-            description: Enter the 6-digit code we sent to your email address.
-            heading: Verify your email
-            page_title: Enter Verification Code
-            resend_code: Resend code
-            retry: Start over
-            session_expired: Your session has expired. Please start over.
-            submit: Verify email
-            telephone_link: Verify phone number
-          new:
-            description: We will send a verification code to your email address.
-            email_label: Email Address
-            heading: Enter your email address
-            page_title: Verify Email Address
-            submit: Send verification code
-          update:
-            expired: Verification code has expired. Please request a new code.
-            invalid_code: Invalid verification code. %{attempts_left} attempts remaining.
-            max_attempts: Maximum verification attempts exceeded. Please request a new code.
-            session_expired: Your session has expired. Please start over.
-            success: Email verified successfully. Please verify your phone number.
-      contacts:
-        create:
-          confirm_policy_error: You must agree to the privacy policy to continue.
-          failure: Unable to process your request. Please check the form and try again.
-          success: Thank you for contacting us. Please verify your email address.
-        new:
-          badge: Contact
-          body: Body
-          cancel: Cancel
-          category_id: Inquiry Category
-          confirm_policy: I agree to the privacy policy
-          confirm_policy_note: You must agree to the privacy policy before submitting.
-          contact_category_title: Inquiry Category
-          description: Please fill out the form below to contact us.
-          email_address: Email Address
-          error_heading:
-            one: 1 error prohibited this contact from being saved.
-            other: "%{count} errors prohibited this contact from being saved."
-          heading: Send us a message
-          page_title: Contact Us
-          submit: Continue
-          telephone_number: Telephone Number
-          title: Title
-        update:
-          success: Your inquiry has been received.
-      preference:
-        theme:
-          edit:
-            options:
-              dark: Dark — easy on the eyes in low-light environments
-              light: Light — bright background suited to daytime work
-              system: System — switches automatically with your device setting
-      preferences:
-        footer:
-          document: Document
-          help_center: Help Center
-          home: Home
-          newsroom: NewsRoom
-          preference: Preferences
-    contact:
-      errors:
-        id_required: Contact ID is required
-        invalid_status: "Invalid contact status: expected SET_UP, got %{current_status}"
-        not_found: Contact not found
-    org:
-      contacts:
-        create:
-          confirm_policy_error: You must agree to the privacy policy to continue.
-          failure: Unable to process your request. Please check the form and try again.
-          success: Your inquiry has been received.
-        new:
-          badge: Contact
-          body: Body
-          cancel: Cancel
-          category_id: Inquiry Category
-          confirm_policy: I agree to the privacy policy
-          confirm_policy_note: You must agree to the privacy policy before submitting.
-          contact_category_title: Inquiry Category
-          description: Please fill out the form below to contact us.
-          email_address: Email Address
-          error_heading:
-            one: 1 error prohibited this contact from being saved.
-            other: "%{count} errors prohibited this contact from being saved."
-          heading: Send us a message
-          page_title: Contact Us
-          submit: Continue
-          telephone_number: Telephone Number
-          title: Title
-        update:
-          success: Your inquiry has been received.
-      preference:
-        theme:
-          edit:
-            options:
-              dark: Dark — easy on the eyes in low-light environments
-              light: Light — bright background suited to daytime work
-              system: System — switches automatically with your device setting
-      preferences:
-        footer:
-          document: Document
-          help_center: Help Center
-          home: Home
-          newsroom: NewsRoom
-          preference: Preferences
   helpers:
     select:
       prompt: Please select
@@ -719,45 +378,6 @@ en:
       create: Create %{model}
       submit: Save %{model}
       update: Update %{model}
-  jump:
-    redirector:
-      unavailable: This jump link is unavailable.
-  landing:
-    sign_in: Sign in
-    thin_endpoint: Use the options below to continue.
-  languages:
-    english: English
-    japanese: 日本語
-  news:
-    app:
-      preferences:
-        footer:
-          home: Home
-          preference: Preferences
-    com:
-      preferences:
-        footer:
-          home: Home
-          preference: Preferences
-    org:
-      preferences:
-        footer:
-          home: Home
-          preference: Preferences
-    posts:
-      index:
-        count: "%{count} posts"
-        empty: No posts found
-        select_description: Click on a post from the list to view its details
-        select_title: Select a post
-        title: News
-    versions:
-      index:
-        description: News versions list
-        title: Versions
-      show:
-        description: News version details
-        title: Version
   number:
     currency:
       format:
@@ -809,68 +429,12 @@ en:
     precision:
       format:
         delimiter: ""
-  oidc:
-    rp_logout:
-      local_only:
-        This domain has been signed out. You are still signed in to sign. To sign out everywhere,
-        use session management at %{idp_sessions_url}.
   oidc_rp:
     interruption:
       body: Sign-in could not be completed. Please sign in again.
       sign_in: Sign in
       title: Sign-in could not be completed
       top: Top page
-  org_document_categories:
-    "%{id}": org_document_category_%{id}
-    announcement: Announcement
-    article: Article
-    faq: FAQ
-    guide: Guide
-    news: News
-    reference: Reference
-    release_note: Release Note
-    tutorial: Tutorial
-  org_document_tags:
-    "%{id}": org_document_tag_%{id}
-    backend: Backend
-    business: Business
-    database: Database
-    design: Design
-    development: Development
-    frontend: Frontend
-    marketing: Marketing
-    none: None
-    security: Security
-    technology: Technology
-  org_timeline_categories:
-    "%{id}": org_timeline_category_%{id}
-    announcement: Announcement
-    article: Article
-    faq: FAQ
-    guide: Guide
-    news: News
-    reference: Reference
-    release_note: Release Note
-    tutorial: Tutorial
-  org_timeline_tags:
-    "%{id}": org_timeline_tag_%{id}
-    backend: Backend
-    business: Business
-    database: Database
-    design: Design
-    development: Development
-    frontend: Frontend
-    marketing: Marketing
-    none: None
-    security: Security
-    technology: Technology
-  sequential_flow:
-    invalid_step: Invalid access. Please start from the beginning.
-  shared:
-    links:
-      acme_preference: Acme preferences
-    page_header:
-      up_label_fallback: Back
   sign:
     org:
       verification:
@@ -888,18 +452,12 @@ en:
           already open will ask you to sign in the next time they communicate.
         completed_title: You are signed out
         confirm_description: Once you log out, you will need to log in again.
-        forbidden_description: This action is not allowed.
         home_link: Go to home
-        idp_session_error:
-          We could not confirm the identity-provider session. No session was signed out.
-        invalid_request: This sign-out request is invalid.
         indeterminate_description:
           We could not confirm whether sign-out finished. Open this service again to see your
           current state.
         indeterminate_title: Sign-out result is unknown
         retry_button: Try signing out again
-        stale_description:
-          This sign-out request has expired. Start again if you still want to sign out.
         title: Do you want to sign out?
         unavailable_description:
           Your current session may still be active. Please try signing out again.
@@ -909,26 +467,6 @@ en:
       last_word_connector: ", and "
       two_words_connector: " and "
       words_connector: ", "
-  test:
-    email:
-      com:
-        application_mailer:
-          subject: "Corporate sample"
-      org:
-        application_mailer:
-          subject: "Organization sample"
-    error:
-      key: Test Error
-    support:
-      fix_fk_dependency:
-        apply: Applying FK Dependency Patch...
-  test_data:
-    contact_topic_description: Details about the topic.
-    inquiry_detail: Detail of inquiry.
-  themes:
-    dark: Dark Theme
-    light: Light Theme
-    system: System Theme
   time:
     am: am
     formats:
@@ -936,19 +474,10 @@ en:
       long: "%B %d, %Y %H:%M"
       short: "%d %b %H:%M"
     pm: pm
-  trusted_origin:
-    null_origin_error: The browser returned a null Origin header for an origin-protected request.
   ui:
     skip_to_content: Skip to content
   ui_presentation:
     body_json: Enter the document as JSON.
-    confirmation_required: Check the confirmation above to enable this action.
-    display_preferences_description: Choose your display preferences.
-    information: Information
     navigation:
       authentication: Authentication
-      footer: Footer navigation
       pagination: Pagination
-      preferences: Display preferences
-      primary: Primary navigation
-    processing: Processing. Please wait.
