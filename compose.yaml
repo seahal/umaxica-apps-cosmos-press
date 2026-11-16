@@ -268,6 +268,54 @@ services:
     volumes:
       - valkey-volume:/data
 
+  # Cloudflare Tunnel connector for host-native Rails. A plain `podman compose up -d` starts it
+  # with the rest of the stack, so the tunnel is back after a VM restart.
+  # TUNNEL_TOKEN identifies and authenticates the remotely managed tunnel. Put
+  # CLOUDFLARED_TOKEN in the git-ignored .envrc.credential; never commit or paste it.
+  #
+  # Rails runs on the host, not in a container. The connector keeps its own network namespace
+  # (host networking is forbidden, see test/tooling/compose_host_port_exposure_test.rb): pasta's
+  # `--map-host-loopback 169.254.1.3` makes 169.254.1.3 inside the container reach the host's 127.0.0.1,
+  # and `extra_hosts` points every Rails hostname used by the tunnel's ingress rules at it. The
+  # ingress origins stay `http://<name>.localhost:$PORT`. Add a name here when an ingress rule
+  # gains one. cloudflared's /ready and /metrics listen only inside the container.
+  #
+  # `--protocol auto` prefers QUIC (outbound UDP 7844) and falls back to HTTP/2 instead of
+  # exiting. `--no-autoupdate`: the image tag is the release we run.
+  # `on-failure:3` bounds the restart loop when the token is missing or wrong.
+  cloudflare-tunnel:
+    image: docker.io/cloudflare/cloudflared:2026.11.0
+    command: tunnel --no-autoupdate --protocol auto --metrics 127.0.0.1:2000 run
+    environment:
+      TUNNEL_TOKEN: "${CLOUDFLARED_TOKEN:-}"
+    network_mode: "pasta:--map-host-loopback,169.254.1.3"
+    extra_hosts:
+      - "edit.org.localhost:169.254.1.3"
+      - "mission.core.dev.localhost:169.254.1.3"
+      - "flipper.core.dev.localhost:169.254.1.3"
+      - "blazer.core.dev.localhost:169.254.1.3"
+      - "pghero.core.dev.localhost:169.254.1.3"
+      - "swagger.core.dev.localhost:169.254.1.3"
+      - "coverband.core.dev.localhost:169.254.1.3"
+    restart: on-failure:3
+
+  # Connector for the dedicated Workers VPC tunnel `umaxica-dev-workers-vpc`
+  # (03a4a67c-2aca-4f2c-9aeb-d1666f18bc87). Edge Press Workers reach this Rails through
+  # the VPC Service `umaxica-dev-rails-api`; Cloudflare routes that traffic from the VPC
+  # Service target, so this tunnel has no ingress rules, public hostname, or Access app.
+  # The VPC Service target must be 169.254.1.3 and the Rails port from .envrc: inside this
+  # container 169.254.1.3 reaches the host's 127.0.0.1 (pasta --map-host-loopback).
+  # Opt-in: podman compose --profile tunnel up -d cloudflare-tunnel-workers-vpc
+  # Put CLOUDFLARED_WORKERS_VPC_TOKEN in the git-ignored .envrc.credential.
+  cloudflare-tunnel-workers-vpc:
+    image: docker.io/cloudflare/cloudflared:2026.11.0
+    profiles: ["tunnel"]
+    command: tunnel --no-autoupdate --protocol auto --metrics 127.0.0.1:2000 run
+    environment:
+      TUNNEL_TOKEN: "${CLOUDFLARED_WORKERS_VPC_TOKEN:-}"
+    network_mode: "pasta:--map-host-loopback,169.254.1.3"
+    restart: on-failure:3
+
 networks:
   backend: {}
 # Explicit names let the renamed project reuse existing development data.

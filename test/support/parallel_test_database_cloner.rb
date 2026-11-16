@@ -181,8 +181,10 @@ module ParallelTestDatabaseCloner
       end
     end
 
+    # Copy files instead of logging every template block; ext4 needs no reflink support.
     admin_connection.exec(
-      "create database #{admin_connection.quote_ident(clone)} template #{admin_connection.quote_ident(source)}",
+      "create database #{admin_connection.quote_ident(clone)} " \
+      "template #{admin_connection.quote_ident(source)} strategy = file_copy",
     )
     return unless sha
 

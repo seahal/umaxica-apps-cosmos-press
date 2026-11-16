@@ -16,8 +16,11 @@ profile leaks values between repositories and makes the setup differ between mac
   directory and unloads it on leaving.
 - A developer runs `direnv allow` once after cloning and again after each reviewed change to
   `.envrc`.
-- Secrets and machine-specific values stay out of version control. Keep them in the git-ignored
-  `.envrc.credential`, which `.envrc` loads last when present.
+- Files load in this order, broadest first, and a later file overrides an earlier one:
+  1. `.envrc` (committed): every shared development value, including development-only placeholder
+     keys and passwords such as `pass`, `test`, or `local-…`.
+  2. `.envrc.credential` (git-ignored): real credentials only. It is empty by default.
+  3. `.envrc.local` (git-ignored): overrides for one developer's machine.
 - Rails, Vite, and Compose inherit local settings from their process environment. CI and deployment
   continue to supply their own environment.
 
