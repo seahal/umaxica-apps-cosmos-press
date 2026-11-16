@@ -2,15 +2,20 @@
 
 set -e
 
+# PORT comes from .envrc (direnv); fail before preparing the database when it is missing or malformed.
+dev_port="${PORT:?PORT is not set; run this from a direnv-allowed shell (see .envrc)}"
+case "$dev_port" in
+  ''|*[!0-9]*) echo "PORT must be a decimal port number, got '$dev_port'" >&2; exit 1 ;;
+esac
+
 rm -f tmp/pids/server.pid
 
 if [ "${SKIP_DB_PREPARE:-}" = "" ]; then
-echo "Preparing database..."
-bin/rails db:prepare || {
+  echo "Preparing database..."
+  bin/rails db:prepare || {
     echo "Database preparation failed. Try running: bin/setup" >&2
-exit 1
-}
+    exit 1
+  }
 fi
 
-dev_port=$(ruby -e 'puts Integer(ENV.fetch("PORT"), 10)')
 exec bundle exec foreman start -e /dev/null -p "$dev_port" -f Procfile.dev "$@"
