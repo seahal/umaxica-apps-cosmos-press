@@ -24,7 +24,8 @@ REPLICATION_SLOT_NAME="replication_slot_slave1"
 POSTGRES_HOME="/var/lib/postgresql"
 
 wait_for_local_server() {
-	local attempts=120 attempt
+	# Crash recovery can replay several minutes of WAL after a host reboot.
+	local attempts=600 attempt
 	for ((attempt = 1; attempt <= attempts; attempt++)); do
 		if PGPASSWORD="${POSTGRES_PASSWORD_VALUE}" pg_isready \
 			-h 127.0.0.1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then

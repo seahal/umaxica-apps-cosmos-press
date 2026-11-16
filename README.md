@@ -68,59 +68,27 @@ bin/rails assets:clobber        # Remove compiled assets
 - Node.js `26.13.1` (pinned in `.node-version`; `package.json` accepts `>=26.13.1 <27`)
 - Bun `1.4.0`
 
-### Credentials and secrets
+### Host setup
 
-`config/credentials/development.key`, `config/credentials/test.key`, and the repository-root `.env`
-are not tracked in git. Obtain the two key files from the development lead; without them the
-application cannot boot and `bin/rails test` cannot run. Credentials for AWS, Cloudflare, Fastly,
-and other providers — staging, production, or an individual environment — are also requested from
-the development lead and are never committed.
-
-See `docs/operations/development-credential-provisioning.md` for the full procedure. For the
-complete portable configuration contract, see `docs/operations/global-portability.md`.
-`.env.container.devcontainer` contains the non-secret local defaults that
-`.devcontainer/compose.yaml` loads into `core`. Every process, whatever its runtime role, reads the
-Rails-standard `config/credentials/<env>.yml.enc`; there are no per-role credential bundles.
-
-### The Bun toolchain
-
-The development image provides the pinned Bun runtime declared by `package.json#packageManager`. Do
-not install a second JavaScript package manager inside the container — a second copy on `PATH` makes
-which tool ran depend on shell state.
-
-`package.json#packageManager` declares the Bun version expected by the project and CI. Keep that pin
-aligned with the Bun toolchain copied into the development and asset images. Corepack is not used,
-and no `corepack enable` step is required.
-
-A fresh clone needs no local file. Start the standard stack, install dependencies, and boot the app:
+Install the Ruby, Node.js and Bun versions pinned by mise. The tracked `.envrc` supplies local
+defaults. Review and authorize it in your shell. Provision both Rails credential keys through the
+development lead and keep local settings in the ignored `.envrc.credential` or `.envrc.local`.
 
 ```bash
-git clone https://github.com/seahal/umaxica-apps-cosmos-press.git
-cd umaxica-apps-cosmos-press
-
-# creating a local override is NOT required
-docker compose config     # resolves as-is
-
-docker compose up
-bundle install
-bun install --frozen-lockfile
-bin/setup
+mise install
+direnv allow
+test -d tmp/pg || install -d -m 0777 tmp/pg
+podman compose up -d
 ```
 
-`compose.yaml` owns shared infrastructure. Rails runs only in the Dev Container:
-`.devcontainer/compose.yaml` adds `core`, and the same three commands above are run by hand inside
-`core` — `devcontainer.json` declares no `postCreateCommand`, so creating the container neither
-fetches dependencies nor touches a database. Running Rails directly on the host is not supported.
-`compose.override.yaml` is the only other root Compose file. It is **untracked and gitignored**
-(since 2026-09-14), auto-discovered by a bare `podman compose`, and everything in it is
-profile-gated: it carries the opt-in `remote-access` Tailscale/sshd overlay of `core` and is where
-per-machine settings go. Being untracked is what keeps those settings per-machine; a fresh clone
-does not have the file, and does not need it. See the Dev Container startup documentation.
+Compose starts PostgreSQL, Valkey and FakeCloud. Rails and Vite run on the host. Development uses
+PostgreSQL on loopback ports 25432 and 25433. Rails tests connect through the primary's socket in
+`tmp/pg`. The Cloudflare connectors use the opt-in `tunnel` and `workers-vpc` profiles.
 
-`config/database.yml` fixes the development and test connections to the Compose services: writers
-and test databases on `primary`, development replicas on `replica`, port `5432`, user `root`,
-password `development`. These are non-secret local values and are not read from the environment.
-Production connections still come from the `NEON_*` variables.
+For new volumes, initialize the development and test databases from migrations before setup.
+Structure dumps omit reference rows inserted by migrations. See the
+[DB workflow](docs/operations/db-workflow.md). Stop Compose with `podman compose down -t 120` to
+allow PostgreSQL to shut down cleanly.
 
 WebAuthn uses one RP ID and one exact origin per surface (`app` and `org`). Production requires them
 as environment variables; other environments read the same variables first and fall back to the
@@ -144,7 +112,7 @@ bin/dev
 `bin/dev` is the unified local entrypoint. It runs `bin/rails db:prepare` unless
 `SKIP_DB_PREPARE=1`, then starts:
 
-- `web`: Rails server on port `3000`
+- `web`: Rails server on loopback port `3030`
 - `vite`: `bin/vite dev`
 - `jobs`: `bin/jobs start`
 
@@ -153,21 +121,15 @@ bin/dev
 Modern browsers resolve `*.localhost` to `127.0.0.1`, so extra `/etc/hosts` entries are usually not
 needed.
 
-The URLs below use port `3000`, where host-native Rails listens. The Dev Container publishes its
-Rails port `3000` on host port `3001` and Vite on `3036`, both on `127.0.0.1` only, so from the host
-a Dev Container is reached on `:3001`. Substituting the host's LAN or Tailscale address will not
-connect, by design. `compose.yaml` publishes the PostgreSQL writer and reader and the Valkey
-services to loopback as well (`5432`, `5433`, and `6379` to `6381` by default) so host-native Rails
-can use them; containers continue to use Compose DNS names. See
-`docs/operations/development-host-port-exposure.md`.
+Rails and Vite listen on loopback ports 3030 and 3036 as configured in `.envrc`.
 
 | Surface        | URL                                                                           |
 | :------------- | :---------------------------------------------------------------------------- |
-| Edit           | `https://edit.umaxica.org` and `http://edit.org.localhost:3000`               |
-| Info           | `http://info.{app,com,org}.localhost:3000`                                    |
-| Docs           | `http://docs.{app,com,org}.localhost:3000`                                    |
-| News           | `http://news.{app,com,org}.localhost:3000`                                    |
-| Help           | `http://help.{app,com,org}.localhost:3000`                                    |
+| Edit           | `https://edit.umaxica.org` and `http://edit.org.localhost:3030`               |
+| Info           | `http://info.{app,com,org}.localhost:3030`                                    |
+| Docs           | `http://docs.{app,com,org}.localhost:3030`                                    |
+| News           | `http://news.{app,com,org}.localhost:3030`                                    |
+| Help           | `http://help.{app,com,org}.localhost:3030`                                    |
 | Operator tools | `https://{mission,flipper,blazer,pghero,swagger,coverband}-press.umaxica.dev` |
 
 Operator tools also retain their route-local development aliases under `*.core.dev.localhost`.

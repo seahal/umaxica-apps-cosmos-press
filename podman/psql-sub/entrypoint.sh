@@ -17,6 +17,31 @@ while ! PGPASSWORD="${POSTGRES_PASSWORD}" psql -h primary -U "$POSTGRES_USER" -d
 	sleep 1s ; \
 done
 
+primary_query() {
+	PGPASSWORD="${POSTGRES_PASSWORD}" psql -h primary -U "$POSTGRES_USER" -d "$POSTGRES_DB" -p 5432 -Atqc "$1"
+}
+
+# Resume an existing standby instead of re-cloning the whole primary on every start (a full
+# pg_basebackup copies every database, about 12 GB for Access). Resuming is safe only when the
+# copy still belongs to this primary and the primary kept the WAL it needs:
+#   - the system identifier matches (a recreated primary volume has a new one), and
+#   - the replication slot still reserves WAL (restart_lsn set, wal_status not "lost";
+#     max_slot_wal_keep_size invalidates the slot when a stopped replica falls too far behind).
+# Otherwise discard the copy and clone again below.
+if [ -f "$PGDATA/standby.signal" ]; then
+	local_id=$(pg_controldata "$PGDATA" 2>/dev/null | awk -F': *' '/^Database system identifier/{print $2}')
+	primary_id=$(primary_query "select system_identifier from pg_control_system()")
+	slot_ok=$(primary_query "select count(*) from pg_replication_slots
+		where slot_name = 'replication_slot_slave1' and restart_lsn is not null
+		and wal_status in ('reserved', 'extended', 'unreserved')")
+	if [ -n "$local_id" ] && [ "$local_id" = "$primary_id" ] && [ "$slot_ok" = 1 ]; then
+		echo "Resuming the existing standby (system identifier ${local_id}, slot reserves WAL)"
+		exec bash /usr/local/bin/docker-entrypoint.sh -c 'config_file=/etc/postgresql/postgresql.conf' -c 'hba_file=/etc/postgresql/pg_hba.conf'
+	fi
+	echo "Existing standby cannot resume (local id '${local_id}', primary id '${primary_id}', slot ok '${slot_ok}'); re-cloning" >&2
+	rm -rf "${PGDATA:?}"/* "${PGDATA:?}"/.[!.]* 2>/dev/null || true
+fi
+
 # Clone from the primary. A failed basebackup must not fall through to the
 # stock entrypoint: with an empty PGDATA that would initdb a standalone
 # writable instance, orphaning the primary's replication slot (which then
@@ -47,5 +72,6 @@ for attempt in $(seq 1 "$basebackup_attempts"); do
 	sleep 3s
 done
 
-# start postgres
-bash /usr/local/bin/docker-entrypoint.sh -c 'config_file=/etc/postgresql/postgresql.conf' -c 'hba_file=/etc/postgresql/pg_hba.conf'
+# start postgres. exec so PostgreSQL receives the stop signal (SIGINT) directly; as a child of
+# this script it ignored `podman stop` until the timeout forced a SIGKILL.
+exec bash /usr/local/bin/docker-entrypoint.sh -c 'config_file=/etc/postgresql/postgresql.conf' -c 'hba_file=/etc/postgresql/pg_hba.conf'

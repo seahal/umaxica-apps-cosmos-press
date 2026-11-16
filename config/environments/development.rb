@@ -3,6 +3,8 @@
 
 require "active_support/core_ext/integer/time"
 
+require_relative "../../lib/development_port"
+
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
 
@@ -250,6 +252,7 @@ Rails.application.configure do
       [origin.host, ("#{origin.host}:#{origin.port}" if origin.port != default_port)]
     end
 
+  localhost_tunnel_hosts += localhost_tunnel_hosts.map { |host| host.sub(/:\d+\z/, ":#{DevelopmentPort.value}") }
   config.hosts.concat(
     (boot_config_hosts + localhost_tunnel_hosts + env_hosts).compact_blank.uniq,
   )

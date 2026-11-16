@@ -58,7 +58,6 @@ I# See https://help.github.com/articles/ignoring-files for more about ignoring f
 .vscode-server
 .ssh
 .gnupg
-.envrc
 !.vscode/
 .vscode/*
 !.vscode/extensions.json
@@ -223,3 +222,7 @@ twelve.md
 # RuboCop result cache written when the cache root resolved under config/.
 /config/tmp/
 .vscode/extensions.json
+
+/.envrc.credential
+/.envrc.local
+/mise.local.toml

@@ -4,6 +4,7 @@
 require "test_helper"
 # require "helpers/global_test_support"
 require "jit_security_jwt_local_keyset_installer"
+require "tmpdir"
 
 module Jit
   module Security
@@ -12,7 +13,8 @@ module Jit
         self.fixture_table_names = []
 
         setup do
-          @store_path = Rails.root.join("tmp/tests/local_jwt_keysets_#{SecureRandom.hex(8)}.json")
+          @store_dir = Dir.mktmpdir("press-local-jwt-")
+          @store_path = Pathname.new(@store_dir).join("keysets.json")
           @env_keys = local_jwt_env_keys
           @previous = @env_keys.index_with { |key| ENV[key] }
           @original_issuers = JitSecurityJwtRegistry.instance_variable_get(:@issuers)
@@ -22,7 +24,7 @@ module Jit
         teardown do
           JitSecurityJwtRegistry.instance_variable_set(:@issuers, @original_issuers)
           @previous.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
-          FileUtils.rm_f(@store_path)
+          FileUtils.remove_entry(@store_dir) if @store_dir
         end
 
         test "partial keyset env is repaired from local store as one matching set" do

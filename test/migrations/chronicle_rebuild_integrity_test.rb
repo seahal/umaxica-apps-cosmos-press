@@ -8,7 +8,8 @@ class ChronicleRebuildIntegrityTest < Minitest::Test
     raise ArgumentError, "isolated PostgreSQL verification requires test" unless Rails.env.test?
 
     original = ActiveRecord::Base.configurations.configs_for(env_name: "test", name: "chronicle")
-    raise ArgumentError, "unexpected PostgreSQL host" unless original.configuration_hash.fetch(:host) == "primary"
+    expected_host = Umaxica::TestEnvironment::DatabaseSafety::TEST_HOST
+    raise ArgumentError, "unexpected PostgreSQL host" unless original.configuration_hash.fetch(:host) == expected_host
 
     database = "test_press_chronicle_integrity_#{SecureRandom.hex(6)}"
     @previous_config = ActiveRecord::Base.connection_db_config

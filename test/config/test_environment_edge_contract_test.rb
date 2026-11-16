@@ -40,7 +40,10 @@ class TestEnvironmentEdgeContractTest < ActiveSupport::TestCase
 
   test "database safety reports each configured test connection" do
     assert_equal(
-      [{ name: "primary", database: "test_primary_db", host: "primary", port: 5432 }],
+      [{ name: "primary",
+         database: "test_primary_db",
+         host: Umaxica::TestEnvironment::DatabaseSafety::TEST_HOST,
+         port: 5432, }],
       Umaxica::TestEnvironment::DatabaseSafety.report(
         configurations: [database_config],
         environment: database_environment,
@@ -67,12 +70,30 @@ class TestEnvironmentEdgeContractTest < ActiveSupport::TestCase
     cases = {
       "blank host" => database_config(values: { port: 5432, username: "root" }),
       "wrong host" => database_config(values: { host: "other-db", port: 5432, username: "root" }),
-      "port just below" => database_config(values: { host: "primary", port: 5431, username: "root" }),
-      "port just above" => database_config(values: { host: "primary", port: 5433, username: "root" }),
-      "missing port" => database_config(values: { host: "primary", username: "root" }),
+      "port just below" => database_config(
+        values: { host: Umaxica::TestEnvironment::DatabaseSafety::TEST_HOST,
+                  port: 5431,
+                  username: "root", },
+      ),
+      "port just above" => database_config(
+        values: { host: Umaxica::TestEnvironment::DatabaseSafety::TEST_HOST,
+                  port: 5433,
+                  username: "root", },
+      ),
+      "missing port" => database_config(
+        values: { host: Umaxica::TestEnvironment::DatabaseSafety::TEST_HOST,
+                  username: "root", },
+      ),
       "non-test database" => database_config(database: "development_primary_db"),
-      "wrong user" => database_config(values: { host: "primary", port: 5432, username: "other-user" }),
-      "missing user" => database_config(values: { host: "primary", port: 5432 }),
+      "wrong user" => database_config(
+        values: { host: Umaxica::TestEnvironment::DatabaseSafety::TEST_HOST,
+                  port: 5432,
+                  username: "other-user", },
+      ),
+      "missing user" => database_config(
+        values: { host: Umaxica::TestEnvironment::DatabaseSafety::TEST_HOST,
+                  port: 5432, },
+      ),
     }
 
     cases.each do |label, config|
@@ -232,7 +253,7 @@ class TestEnvironmentEdgeContractTest < ActiveSupport::TestCase
   end
 
   def database_config_values
-    { host: "primary", port: 5432, username: "root" }
+    { host: Umaxica::TestEnvironment::DatabaseSafety::TEST_HOST, port: 5432, username: "root" }
   end
 
   def valkey_environment

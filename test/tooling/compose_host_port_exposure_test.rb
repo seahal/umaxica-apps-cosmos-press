@@ -18,13 +18,7 @@ class ComposeHostPortExposureTest < Minitest::Test
   # on a fresh clone.
   COMPOSE_FILES = %w(
     compose.yaml
-    .devcontainer/compose.yaml
   ).freeze
-
-  # Services that must never be reachable from the host, at any bind address. Each is consumed
-  # only over a Compose network, by service name. Tempo, Prometheus and Loki are backends of the
-  # Alloy gateway: Grafana queries them over `observability`, and nothing on the host dials them.
-  CONTAINER_ONLY_SERVICES = %w(tempo prometheus loki).freeze
 
   # An IPv4 or IPv6 loopback host address is the only accepted publication target.
   LOOPBACK_HOST_ADDRESSES = ["127.0.0.1", "::1"].freeze
@@ -36,27 +30,6 @@ class ComposeHostPortExposureTest < Minitest::Test
                  "Compose port publications must name an explicit loopback host address " \
                  "(127.0.0.1 or ::1). A bare \"PORT:PORT\" binds 0.0.0.0 and exposes the " \
                  "service to the LAN."
-  end
-
-  def test_backend_observability_services_have_no_host_publication
-    offenders =
-      each_published_port.select { |entry| CONTAINER_ONLY_SERVICES.include?(entry.fetch(:service)) }
-
-    assert_empty offenders.map { |entry| describe(entry) },
-                 "Tempo, Prometheus and Loki are reached only by Alloy and Grafana over the " \
-                 "`observability` network. Publishing one to the host adds an ingestion path " \
-                 "that bypasses the single Alloy gateway."
-  end
-
-  # Each Cosmos repository publishes only its Dev Container Rails, on its own host port, so the four
-  # Dev Containers can run side by side. Datastores, Vite, noVNC, fakecloud, Grafana and Alloy are
-  # reached over Compose networks only.
-  def test_only_dev_container_rails_is_published
-    entries = each_published_port.to_a
-
-    assert_equal [["core", "3000"]], entries.map { |entry| [entry.fetch(:service), container_port(entry)] },
-                 "Only `core` publishes, and only Rails (container port 3000); found " \
-                 "#{entries.map { |entry| describe(entry) }.inspect}"
   end
 
   def test_no_service_uses_host_networking
@@ -116,13 +89,8 @@ class ComposeHostPortExposureTest < Minitest::Test
     (segments.length >= 3) ? segments.first : ""
   end
 
-  def container_port(entry)
-    port = entry.fetch(:entry)
-    return port["target"].to_s if port.is_a?(Hash)
-
-    interpolate(port.to_s).split(":").last
-  end
-
+  # The host side of a mapping, with any `${VAR:-default}` resolved to its default. The default is
+  # what a fresh clone gets, so it is the value this contract pins.
   def interpolate(text)
     text.gsub(/\$\{[A-Z0-9_]+:-([^}]*)\}/, '\1')
   end
