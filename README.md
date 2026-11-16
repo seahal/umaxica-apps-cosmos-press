@@ -65,17 +65,19 @@ bin/rails assets:clobber        # Remove compiled assets
 - Docker Compose, or rootless Podman with `podman-compose`
 - Ruby `4.0.x`
 - Bundler
-- Node.js `26.13.1` (pinned in `.node-version`; `package.json` accepts `>=26.13.1 <27`)
-- Bun `1.4.0`
+- Node.js `26.13.1` and Bun `1.4.0`, provided by the Vite+ global CLI (`vp env`) from `engines.node`
+  and `packageManager` in `package.json`
 
 ### Host setup
 
-Install the Ruby, Node.js and Bun versions pinned by mise. The tracked `.envrc` supplies local
-defaults. Review and authorize it in your shell. Provision both Rails credential keys through the
-development lead and keep local settings in the ignored `.envrc.credential` or `.envrc.local`.
+mise installs Ruby from `.ruby-version`; Vite+ (`vp env`) installs Node.js and Bun from
+`package.json`. The tracked `.envrc` supplies local defaults. Review and authorize it in your shell.
+Provision both Rails credential keys through the development lead and keep local settings in the
+ignored `.envrc.credential` or `.envrc.local`.
 
 ```bash
 mise install
+vp env install
 direnv allow
 test -d tmp/pg || install -d -m 0777 tmp/pg
 podman compose up -d

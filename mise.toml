@@ -1,5 +1,5 @@
+# mise provides Ruby only, from .ruby-version. Node.js and Bun come from the Vite+ global CLI
+# (`vp env`), which reads `engines.node` and `packageManager` in package.json; CI reads the same
+# fields. Do not add Node.js or Bun here: two managers for one tool is how the versions drifted.
 [settings]
-idiomatic_version_file_enable_tools = ["ruby", "node"]
-
-[tools]
-bun = "1.4.0"
+idiomatic_version_file_enable_tools = ["ruby"]
