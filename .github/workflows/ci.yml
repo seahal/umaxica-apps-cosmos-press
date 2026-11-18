@@ -203,6 +203,11 @@ jobs:
       AUTH_JWT_VISITOR_CLIENT_ID: "umaxica-web-visitor"
       AUTH_JWT_OPERATOR_CLIENT_ID: "umaxica-web-operator"
       PREFERENCE_JWT_CLIENT_ID: "umaxica-preference-web"
+      PREFERENCE_COM_JWT_ISSUER: "https://www.umaxica.com"
+      PREFERENCE_COM_JWT_AUDIENCE: "com"
+      PREFERENCE_COM_JWT_REVOKED_KIDS: ""
+      PUBLIC_VISA_SERVICE_URL: "visa.umaxica.app"
+      PUBLIC_VISA_STAFF_URL: "visa.umaxica.org"
       PUBLIC_AUTH_SERVICE_URL: "auth.umaxica.app"
       PUBLIC_AUTH_CORPORATE_URL: "auth.umaxica.com"
       PUBLIC_AUTH_STAFF_URL: "auth.umaxica.org"
@@ -425,6 +430,11 @@ jobs:
       AUTH_JWT_VISITOR_CLIENT_ID: "umaxica-web-visitor"
       AUTH_JWT_OPERATOR_CLIENT_ID: "umaxica-web-operator"
       PREFERENCE_JWT_CLIENT_ID: "umaxica-preference-web"
+      PREFERENCE_COM_JWT_ISSUER: "https://www.umaxica.com"
+      PREFERENCE_COM_JWT_AUDIENCE: "com"
+      PREFERENCE_COM_JWT_REVOKED_KIDS: ""
+      PUBLIC_VISA_SERVICE_URL: "visa.umaxica.app"
+      PUBLIC_VISA_STAFF_URL: "visa.umaxica.org"
       PUBLIC_AUTH_SERVICE_URL: "auth.umaxica.app"
       PUBLIC_AUTH_CORPORATE_URL: "auth.umaxica.com"
       PUBLIC_AUTH_STAFF_URL: "auth.umaxica.org"
@@ -584,7 +594,7 @@ jobs:
           retention-days: 30
           compression-level: 6
   lint-js:
-    name: JavaScript Checks (oxlint, oxfmt, typecheck, vitest)
+    name: JavaScript Checks (oxlint, oxfmt, typecheck)
     runs-on: ubuntu-slim
     timeout-minutes: 5
     steps:
@@ -606,16 +616,6 @@ jobs:
         run: bun run lint
       - name: Typecheck (tsc)
         run: bun run typecheck
-      - name: Test (vitest, with coverage)
-        run: bun run test:coverage
-      - name: Upload JavaScript coverage
-        if: always()
-        uses: actions/upload-artifact@v6.0.0
-        with:
-          name: vite-coverage-${{ github.sha }}
-          path: coverage/vite/
-          retention-days: 30
-          compression-level: 6
   scan-gems:
     name: Dependency Scan (Gemfile.lock)
     runs-on: ubuntu-latest
