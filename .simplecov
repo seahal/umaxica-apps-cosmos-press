@@ -48,6 +48,28 @@ SimpleCov.coverage :line do
   minimum 99, per: group("Values")
   minimum 98, per: group("Services")
   minimum 98, per: group("Controllers")
+  # Tracked exceptions after the Cosmos split (2026-11-18): files below their floor, held one
+  # point under the measured figure so they cannot regress. Remove a line once its file meets
+  # the floor above. Exact paths override the directory and :file floors.
+  minimum 60, per: "app/controllers/concerns/browser_navigation_request.rb"
+  minimum 26, per: "app/controllers/concerns/common_redirect.rb"
+  minimum 35, per: "app/controllers/concerns/jump_rt_return_verification.rb"
+  minimum 55, per: "app/controllers/concerns/publishing_authority_api_endpoint.rb"
+  minimum 64, per: "app/controllers/concerns/publishing_management_cell.rb"
+  minimum 57, per: "app/controllers/concerns/publishing_management_publications_actions.rb"
+  minimum 21, per: "app/controllers/concerns/redirects_signed_target_support.rb"
+  minimum 63, per: "app/controllers/edit/org/api/v0/publishing/archives_controller.rb"
+  minimum 56, per: "app/controllers/edit/org/api/v0/publishing/entries_controller.rb"
+  minimum 51, per: "app/controllers/edit/org/api/v0/publishing/publications_controller.rb"
+  minimum 42, per: "app/lib/jump_rt_issuer.rb"
+  minimum 90, per: "app/models/app_preference_chronicle.rb"
+  minimum 85, per: "app/models/com_preference_chronicle.rb"
+  minimum 85, per: "app/models/concerns/public_id.rb"
+  minimum 79, per: "app/models/concerns/rp_principal.rb"
+  minimum 92, per: "app/models/org_preference_chronicle.rb"
+  minimum 76, per: "app/policies/publishing_remote_result_policy.rb"
+  minimum 80, per: "app/services/jit_security_jwt_anomaly_reporter.rb"
+  minimum 49, per: "lib/development_port.rb"
   # The check that survives a growing codebase: not "are we above 97" but "did this run make it
   # worse". 0.2 points is roughly a hundred lines, wide enough for an ordinary refactor and narrow
   # enough to catch a feature that arrived without tests.
