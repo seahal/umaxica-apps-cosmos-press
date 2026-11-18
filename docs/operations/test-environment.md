@@ -8,8 +8,6 @@ Canonical Compose services are `valkey-cache` and `valkey-kvs`. Test cache does 
 Valkey; it uses `ActiveSupport::Cache::MemoryStore`. Rate-limit and auth-state use `valkey-kvs`
 logical DBs 4 and 6.
 
-Inside a Dev Container the supported entry point is:
-
 ```bash
 bundle exec rails test
 bun vitest run
@@ -77,3 +75,21 @@ for sensitive page data before sharing. Browser-wide external-network blocking i
 provider-backed scenarios need explicit network isolation. This setup has not been executed in
 Press. Dependency installation, browser availability, Ruby-client/CLI compatibility, and runtime
 behavior remain unverified.
+
+## First local run
+
+Start the checkout’s Compose stack and install the host dependencies using the
+[README](../../README.md). For an empty test cluster, create and migrate the test databases before
+running the suite.
+
+```sh
+RAILS_ENV=test bin/rails db:create
+RAILS_ENV=test bin/rails runner '
+  puts ActiveRecord::Base.configurations.configs_for(env_name: "test", include_hidden: true)
+    .select(&:replica?).map(&:database)' |
+  while read -r db; do
+    PGPASSWORD=development createdb -h "$PWD/tmp/pg" -U root "$db"
+  done
+RAILS_ENV=test bin/rails db:test:prepare
+bin/rails test
+```

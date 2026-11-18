@@ -12,8 +12,7 @@ class BranchCoverageBatch27ValuesLibEasyArmsTest < ActiveSupport::TestCase
     assert_equal "[FILTERED]", ObservabilityRedactor.scrub(password: "secret")[:password]
   end
 
-  test "lib LocalEnvironment and ConfigValuesOriginValue arms" do
-    assert_not LocalEnvironment.respond_to?(:enabled?)
+  test "lib ConfigValuesOriginValue arms" do
     assert_equal "https://example.com", ConfigValues.build("example.com").to_s
     assert_raises(ArgumentError) { ConfigValues.build("") }
   end

@@ -140,11 +140,7 @@ local and canonical hosts without copying environment values.
 
 The application contract supplies PUBLIC and PRIVATE URL values in both supported modes; Compose
 supplies only service topology. Each route host constraint lists the configured host alongside its
-localhost literal. Development is published through Cloudflare Tunnel behind Cloudflare Access;
-Access, not Host Authorization, keeps the development listener non-public. See
-`docs/architecture/cloudflare-request-paths.md` for the trust boundaries and
-`research/implementation/2026-08-10-development-tunnel-access-verification.md` for the measured
-end-to-end evidence.
+localhost literal.
 
 ## Code Quality
 

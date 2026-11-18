@@ -6,6 +6,8 @@ rules model-independent; configure models, permissions and tools in client setti
 
 ## Working Agreement
 
+- Agents must leave direnv approval to the user and must never run `direnv allow`.
+
 - For explanation, review, diagnosis or planning, inspect and report without repository edits unless
   also requested. Report read-only evidence in the conversation.
 - For implementation, finish authorized local changes, affected docs and proportionate verification.
@@ -161,8 +163,7 @@ concern also applies when no listed path is touched.
 - Paths: `docs/runbooks/**`. Concern: operator procedures for deployed environments, shared
   databases or external providers. Load: `docs/runbooks/README.md`. Keep runbooks in
   `docs/runbooks/` and update affected procedures in the same change.
-- Paths: `compose*.yaml`, `.devcontainer/**`. Load:
-  `docs/operations/development-host-port-exposure.md`.
+- Paths: `compose*.yaml`. Load: `docs/operations/development-host-port-exposure.md`.
 - Paths: `docs/mermaid/**`. Concern: state machines, flow/status columns or state/status writers.
   Load: `generic/lifecycle-transition-writers.mdc`, `docs/mermaid/README.md`. Establish the affected
   axis's owner from the inventory. Compare the owning diagram and transition inventory with code;

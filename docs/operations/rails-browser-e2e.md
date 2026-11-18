@@ -19,15 +19,6 @@ bun run test:e2e:rails --help
 node node_modules/playwright/cli.js install --with-deps chromium
 ```
 
-PostgreSQL and Valkey KVS must be running. Run inside the Dev Container: the PostgreSQL test target
-is fixed in `config/database.yml` (`primary:5432`). Supply `VALKEY_KVS_HOST` and `VALKEY_KVS_PORT`
-through the existing local contract. The KVS host must be `127.0.0.1`, `localhost`, or the canonical
-local `valkey-kvs` service; remote KVS hosts are rejected before Rails initialization. Never use
-production secrets or services. The bootstrap requires the dedicated
-`config/credentials/test.yml.enc` and `config/credentials/test.key`, rejects a generic
-`RAILS_MASTER_KEY` override, and uses a new synthetic cookie signing secret for each invocation.
-Test cache is memory; KVS uses test DBs 4 and 6.
-
 This command uses the ordinary `test_*` PostgreSQL databases in `config/database.yml`, prepared
 through the [database workflow](db-workflow.md). It requires no isolated source fleet, manifest,
 receipt or PostgreSQL run ID. Prepare current schemas and public-page reference data before running:

@@ -51,6 +51,7 @@ if Rails.env.development?
 end
 
 require_relative "../lib/runtime_role"
+require_relative "../lib/development_port"
 require_relative "../lib/jit_security_active_record_encryption_key_provider"
 require_relative "../lib/realm_identifier_encryption_key_provider"
 require_relative "../lib/app_config_loader"

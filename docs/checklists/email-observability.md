@@ -94,24 +94,6 @@ source unavailable in this Press checkout: `integrated-stack.md#independent-inve
   local facility exists. No Grafana/Tempo/Loki/SES query or production verification. Do not
   introduce setup tests or an alternate verification framework.
 
-## MAIL-5 — Host-managed read-only directory
-
-- Basis: O06/O07. Given root-first Compose resolution, rendered configuration points core's nested
-  directory mount from ./podman/alloy to /home/global/workspace/podman/alloy with read_only true,
-  following existing SELinux/mount conventions. Alloy's own config source remains read-only. On
-  SELinux-enforcing hosts, both consumers retain read access to the shared source after recreation,
-  including parent-workspace relabel effects and startup order. A private label on a shared source
-  is not justified by YAML parsing. A pre-existing user-added mount is preserved, not duplicated;
-  unavailable host edits are handed off without bypassing protection.
-- After the user's authorized rebuild/recreate, inspect effective mounts and an approved harmless
-  write-denial probe: core can read but cannot modify the policy directory. Host configuration
-  remains the source. No remount/protection bypass or reload machinery is introduced.
-- Check `.devcontainer/compose.yaml` and root compose.yaml through direct configuration rendering
-  (avoid printing secrets), then runtime inspection only when authorized/available. Declaration PASS
-  does not prove runtime mount PASS. Pending recreation leaves the dynamic subcondition NOT_RUN or
-  BLOCKED; it does not block isolated P3b after MAIL-1/2/3 primary controls and full gates are
-  satisfied.
-
 ## MAIL-6 — Scope, future production and truthful closure
 
 - Basis: O09–O13. Given the remediation diff and reporting, Sentry, production infrastructure,

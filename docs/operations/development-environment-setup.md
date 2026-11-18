@@ -7,10 +7,7 @@ other Cosmos repositories.
 
 ## Host prerequisites
 
-Install Podman 5 or newer, `podman-compose`, VS Code and the Dev Containers extension. Apply the
-one-time host configuration in
-[devcontainer-cli-podman-startup.md](devcontainer-cli-podman-startup.md); Podman-specific notes are
-in [container-engine-podman-notes.md](container-engine-podman-notes.md).
+Install Podman, podman-compose, direnv, and mise. Run `mise install` from the checkout.
 
 ## Local configuration
 
@@ -36,6 +33,6 @@ coordinate with those owners before attempting an end-to-end sign-in.
 
 ## Verification
 
-After configuration, start the Dev Container and confirm the retained hostnames resolve to the Rails
-service. Run `bin/rails routes` to inspect the local route set and follow the checks in
+After configuration, start Compose and Rails on the host and confirm the retained hostnames resolve
+to Rails. Run `bin/rails routes` to inspect the local route set and follow the checks in
 [the test environment guide](test-environment.md) for Rails behavior.

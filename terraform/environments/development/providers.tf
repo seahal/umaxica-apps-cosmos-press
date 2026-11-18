@@ -6,20 +6,7 @@
 # production environment reuses them unchanged and simply omits this provider
 # configuration in favour of the real AWS endpoints and a real credential source.
 #
-# The endpoint defaults to localhost, not `fakecloud`, because Terraform was
-# first driven from the developer's host against the loopback publication in
-# compose.yaml.
-#
-# `terraform` is installed inside `core` by the devcontainer feature in
-# .devcontainer/devcontainer.json. That feature was added 2026-09-14; comments
-# here and in three documents had claimed it since 2026-08-31, while the binary
-# was in fact absent. Running Terraform in `core` needs the container-side
-# address, because `localhost` in `core` is `core` itself:
-#
-#   TF_VAR_fakecloud_endpoint=http://fakecloud:4566 terraform plan
-#
-# Both paths work; only the endpoint differs. This is not yet exercised in
-# either location -- see the status note in variables.tf.
+# Run Terraform on the host against the loopback publication in compose.yaml.
 
 terraform {
   required_version = ">= 1.6"

@@ -59,8 +59,7 @@ point where the variable is read.
    ERB-templated YAML such as `config/database.yml`), `db/`, `bin/`, Rake tasks, and `test/`. Test
    code is not exempt.
 5. **Values come from the environment, not from code.** Development and test values live in the
-   checked-in environment files loaded by `LocalEnvironment.load!`; a variable a test needs is added
-   there, once.
+   shared development settings exported by `.envrc`; a variable a test needs is added there, once.
 6. **Existing violations are debt, not precedent.** New and edited code follows this decision even
    when neighbouring lines do not.
 7. **RuboCop's `Style/FetchEnvVar` stays disabled.** Its autocorrection rewrites `ENV["NAME"]` to

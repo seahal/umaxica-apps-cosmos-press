@@ -14,8 +14,6 @@ on one surface says nothing about the others.
 - `org` — staff and organization surface
 - `com` — public and corporate surface
 
-## Scanners and Cadence
-
 ### Transport and Headers
 
 | Scanner                  | URL                                             | Scope                                                              | Cadence                                                                                                      |

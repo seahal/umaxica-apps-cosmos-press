@@ -8,8 +8,6 @@ if ENV["RAILS_BROWSER_E2E"] && !(ENV.fetch("RAILS_BROWSER_E2E") == "1" && ENV.fe
   raise ArgumentError, "RAILS_BROWSER_E2E requires RAILS_ENV=test"
 end
 
-require_relative "../lib/local_environment"
-
 require "bundler/setup" # Set up gems listed in the Gemfile.
 
 # test boots (16 parallel workers) hammer the bootsnap cache, so keep it on

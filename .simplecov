@@ -70,7 +70,6 @@ SimpleCov.coverage :line do
   minimum 76, per: "app/policies/publishing_remote_result_policy.rb"
   minimum 80, per: "app/services/jit_security_jwt_anomaly_reporter.rb"
   minimum 49, per: "lib/development_port.rb"
-  minimum 68, per: "lib/local_environment.rb"
   # The check that survives a growing codebase: not "are we above 97" but "did this run make it
   # worse". 0.2 points is roughly a hundred lines, wide enough for an ordinary refactor and narrow
   # enough to catch a feature that arrived without tests.

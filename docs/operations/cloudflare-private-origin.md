@@ -1,5 +1,7 @@
 # Cloudflare Private Origin Contract
 
+> Historical reference. The local Compose stack no longer runs Cloudflare Tunnel.
+
 This repository exposes Rails to Cloudflare Tunnel only through the Podman `frontend` network. Two
 route types share that network but not a tunnel: published browser hostnames behind Access run over
 the `Auth` tunnel, and Workers VPC runs over its own dedicated `umaxica-dev-workers-vpc` tunnel.
@@ -71,12 +73,6 @@ section of `docs/architecture/cloudflare-request-paths.md` for how each family r
 `config.hosts`, and for the `FORCE_SECURE_COOKIES` trade-off between the tunnel path and the
 plain-`http` local path.
 
-`edit.umaxica.org` follows the same private-origin contract: its remotely managed Tunnel ingress
-uses `http://edit.org.localhost:3000` on `frontend`. The `core` aliases in
-`.devcontainer/compose.yaml` are the repository source of that origin name. The Cloudflare account
-owns the matching public-hostname, ingress, DNS, and Access records; update that remote
-configuration by merging with its current ingress rather than replacing it.
-
 Access is the control that keeps the development surface non-public, and it lives in the Cloudflare
 account rather than in this repository — see "External Checks" below.
 
@@ -129,11 +125,6 @@ Cloudflare account before rollout, not a Rails authentication bypass.
 
 ## Authenticating the Connector
 
-The Cloudflare account holds two remotely managed development tunnels, and a connector runs exactly
-one of them. Compose defines one connector service per tunnel. The primary connector is part of the
-default stack so the Dev Container lifecycle starts it. The alternative connector stays behind a
-profile:
-
 | Service                         | Profile                      | Token variable                  | Tunnel                               |
 | :------------------------------ | :--------------------------- | :------------------------------ | :----------------------------------- |
 | `cloudflare-tunnel`             | none (starts with the stack) | `CLOUDFLARED_TOKEN`             | `Auth` — published hostnames/Access  |
@@ -157,34 +148,26 @@ Retrieve a token in the Cloudflare dashboard:
 2. Open the tunnel you want this machine to connect.
 3. Select **Add a replica**.
 4. Copy only the `eyJ...` token from the displayed installation command.
-5. Store it in the repository root `.env` and restrict the file mode:
+5. Store it in the repository root `.envrc.credential` and restrict the file mode:
 
 ```dotenv
-CLOUDFLARED_TOKEN=<paste the first tunnel's token here>
-CLOUDFLARED_EDGE_TOKEN=<paste the second tunnel's token here>
-CLOUDFLARED_WORKERS_VPC_TOKEN=<paste the umaxica-dev-workers-vpc token here>
+export CLOUDFLARED_TOKEN='<paste the first tunnel's token here>'
+export CLOUDFLARED_EDGE_TOKEN='<paste the second tunnel's token here>'
+export CLOUDFLARED_WORKERS_VPC_TOKEN='<paste the umaxica-dev-workers-vpc token here>'
 ```
 
 ```bash
-chmod 600 .env
+chmod 600 .envrc.credential
 ```
 
-If `.env` already contains other settings, add or replace only the token lines. Never commit `.env`;
-the repository, Docker, and container build ignore files all exclude it.
+If `.envrc.credential` already contains other settings, add or replace only the token lines. Never
+commit `.envrc.credential`; the repository, Docker, and container build ignore files all exclude it.
 
 Both variables use `${VAR:-}` rather than `${VAR:?}`: Compose interpolates the whole file whichever
 service is named, so a required variable would stop `up core` on a machine that never runs a tunnel.
 A connector started without a token exits within milliseconds, and `restart: on-failure:3` bounds
 that into a visible, stopped container rather than a restart storm. Read `podman logs` for the
 connector when a tunnel does not come up.
-
-The primary connector starts with `devcontainer up` and with a plain Compose `up`. The alternative
-connector is opt-in. Run these from a host terminal, not from inside `core`:
-
-```bash
-devcontainer up --workspace-folder .         # starts cloudflare-tunnel
-podman compose --profile tunnel-edge up -d   # alternative tunnel
-```
 
 Starting both is supported: the two connectors then serve their own tunnels over the same private
 `*.localhost` origins on `frontend`. Nothing in Rails changes with the choice of tunnel — the

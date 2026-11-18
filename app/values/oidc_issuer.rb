@@ -98,7 +98,7 @@ module OidcIssuer
     return "" if Rails.env.production? || public_host?(host)
     return "" if host.include?(":")
 
-    ":3000"
+    ":#{DevelopmentPort.value}"
   end
 
   def public_host?(host)
