@@ -28,6 +28,11 @@ pre-commit:
     # A template with unbalanced ERB blocks only fails when its action renders,
     # and Brakeman skips files it cannot parse instead of reporting on them.
     # Compile every template so a structural break is caught at commit time.
+    - name: herb-lint
+      glob:
+        - "app/views/**/*.erb"
+      run: bun x herb-lint {staged_files}
+
     - name: erb-compiles
       glob:
         - "app/views/**/*.erb"

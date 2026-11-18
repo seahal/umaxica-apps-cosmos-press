@@ -20,7 +20,7 @@ CI.run do
   step "Style: Frozen string literals",
        "bundle exec rubocop --config .rubocop_frozen_string_literal.yml " \
        "--only Style/FrozenStringLiteralComment,Style/DisableCopsWithinSourceCodeDirective ."
-  step "Style: ERB", "bundle exec erb_lint --lint-all"
+  step "Style: ERB", "bun run lint:erb"
 
   step "Security: Gem audit", "bin/bundler-audit"
   step "Security: JavaScript audit", "bun audit"

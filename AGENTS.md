@@ -240,7 +240,7 @@ Static checks and the full gate (`config/ci.rb` defines the authoritative step l
 
 ```bash
 bin/rubocop                                # Ruby style
-bundle exec erb_lint --lint-all            # ERB style
+bun run lint:erb                           # ERB lint (Herb)
 bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error
 bun run check                              # JS format, lint, typecheck, knip, OpenAPI
 bin/ci                                     # full CI gate, including test database setup

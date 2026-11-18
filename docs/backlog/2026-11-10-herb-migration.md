@@ -1,9 +1,12 @@
 # Herb Migration (2026-11-10)
 
 Owner: each Cosmos repository; same work in all four. Status: decided, queued until the split
-cleanup in all four repositories is finished. Basis: an owner-supplied work order drafted with
-ChatGPT, checked against the repositories on 2026-11-10 and corrected below. Herb adoption is
-decided; it is not to be re-evaluated.
+cleanup in all four repositories is finished. Press: the linter part (phase 5 and 6 for erb_lint)
+was done on 2026-11-18; `.herb.yml` sets `framework: actionview` and fails on warnings,
+`bun run lint:erb` replaces erb_lint in CI, `bin/ci` and lefthook. erb_lint checks without a
+matching Herb rule were not inventoried. Rendering with Herb (phase 4) remains open. Basis: an
+owner-supplied work order drafted with ChatGPT, checked against the repositories on 2026-11-10 and
+corrected below. Herb adoption is decided; it is not to be re-evaluated.
 
 ## Goal
 

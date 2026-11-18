@@ -184,8 +184,6 @@ group :development, :test do
   gem "rubocop-rubycw", require: false
   # RuboCop Rails rules.
   gem "rubocop-rails", require: false
-  # ERB linter. A CI gate alongside RuboCop, so it installs with the test group.
-  gem "erb_lint", require: false
   # Type for ruby.
   gem "sorbet"
   # herb

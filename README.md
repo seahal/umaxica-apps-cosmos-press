@@ -206,13 +206,12 @@ flowchart LR
 ```bash
 bundle exec rubocop
 bundle exec rubocop -a
-bundle exec erb_lint .
-bundle exec erb_lint -a .
+bun run lint:erb
 bun run check
 bun run fix
 ```
 
-Use `rubocop -a`, `erb_lint -a .`, and `bun run fix` to apply auto-fixes where available.
+Use `rubocop -a`, `bun x herb-lint --fix`, and `bun run fix` to apply auto-fixes where available.
 
 ## Testing
 

@@ -10,14 +10,12 @@
     <%= local_assigns[:label] || yield %>
   <% end %>
 <% else %>
-  <button type="<%= type %>"
-          <%= "class=\"#{local_assigns[:class]}\"" if local_assigns[:class].present? %>
-          <%= "disabled" if local_assigns[:disabled] %>
-          <% if local_assigns[:data] %>
-          <% data.each do |k, v| %>
-          data-<%= k %>="<%= v %>"
-          <% end %>
-          <% end %>>
+  <%= tag.button(
+        type: type,
+        class: local_assigns[:class].presence,
+        disabled: local_assigns[:disabled] ? true : nil,
+        data: local_assigns[:data],
+      ) do %>
     <%= local_assigns[:label] || yield %>
-  </button>
+  <% end %>
 <% end %>

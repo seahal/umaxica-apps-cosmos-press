@@ -1,109 +1,32 @@
-# This file configures Herb for your project and team.
-# Settings here take precedence over individual editor preferences.
+# Herb configuration for HTML+ERB templates.
+# Configuration reference: https://herb-tools.dev/configuration
 #
-# Herb is a suite of tools for HTML+ERB templates including:
-# - Linter: Validates templates and enforces best practices
-# - Formatter: Auto-formats templates with intelligent indentation
-# - Language Server: Provides IDE support (VS Code, Zed, Neovim, etc.)
-#
-# Website: https://herb-tools.dev
-# Configuration: https://herb-tools.dev/configuration
-# GitHub Repo: https://github.com/marcoroth/herb
-#
+# The Herb Linter replaces erb_lint (docs/backlog/2026-11-10-herb-migration.md). Run it with
+# `bunx --bun herb-lint`. Rendering still uses Erubi; switching `erb_implementation` to Herb is a
+# separate phase of that plan. The formatter is out of scope.
 
-version: 0.11.1
+version: 0.11.2
 
-# # Framework and template engine configuration
-#
-# # Options: ruby | actionview | hanami | sinatra (default: ruby)
-# framework: ruby
-#
-# # Options: erubi | erb | herb (default: erubi)
-# template_engine: erubi
+framework: actionview
 
-# files:
-#   # Additional patterns beyond the defaults (**.html, **.rhtml, **.html.erb, etc.)
-#   include:
-#     - '**/*.xml.erb'
-#     - 'custom/**/*.html'
-#
-#   # Patterns to exclude (can exclude defaults too)
-#   exclude:
-#     - 'public/**/*'
-#     - 'tmp/**/*'
+files:
+  exclude:
+    - "vendor/**/*"
+    - "node_modules/**/*"
+    - "tmp/**/*"
+    - "public/**/*"
+    - "coverage/**/*"
 
-# engine:
-#   validators:
-#     security: true       # default: true
-#     nesting: true        # default: true
-#     accessibility: true  # default: true
+engine:
+  validators:
+    security: true
+    nesting: true
+    accessibility: true
 
 linter:
   enabled: true
-
-  # # Exit with error code when diagnostics of this severity or higher are present
-  # # Valid values: error (default), warning, info, hint
-  # failLevel: warning
-
-  # # Only report diagnostics of this severity or higher
-  # # Affects the CLI output only: lower-severity offenses are still counted in the
-  # # summary and still show up in your editor, they just aren't printed or
-  # # annotated in CI. Valid values: error, warning, info, hint (default)
-  # logLevel: warning
-
-  # # Additional patterns beyond the defaults for linting
-  # include:
-  #   - '**/*.xml.erb'
-  #
-  # # Patterns to exclude from linting
-  # exclude:
-  #   - 'app/views/admin/**/*'
-
-  # rules:
-  #   # The 'all' pseudo rule sets the default for every rule you don't list.
-  #   #   false: start from an empty set and opt back in explicitly
-  #   #   true:  start from every rule, including the ones off by default
-  #   all:
-  #     enabled: false
-  #
-  #   erb-no-extra-newline:
-  #     enabled: false
-  #
-  #   # Rules can have 'include', 'only', and 'exclude' patterns
-  #   some-rule:
-  #     # Additional patterns to check (additive, ignored when 'only' is present)
-  #     include:
-  #       - 'app/components/**/*'
-  #     # Don't apply this rule to files matching these patterns
-  #     exclude:
-  #       - 'app/views/admin/**/*'
-  #
-  #   another-rule:
-  #     # Only apply this rule to files matching these patterns (overrides all 'include')
-  #     only:
-  #       - 'app/views/**/*'
-  #     # Exclude still applies even with 'only'
-  #     exclude:
-  #       - 'app/views/admin/**/*'
+  # erb_lint failed on every offense; keep warnings as failures too.
+  failLevel: warning
 
 formatter:
   enabled: false
-  indentWidth: 2
-  indentStyle: space
-  maxLineLength: 80
-
-  # # Additional patterns beyond the defaults for formatting
-  # include:
-  #   - '**/*.xml.erb'
-  #
-  # # Patterns to exclude from formatting
-  # exclude:
-  #   - 'app/views/admin/**/*'
-
-  # # Rewriters modify templates during formatting
-  # rewriter:
-  #   # Pre-format rewriters (modify AST before formatting)
-  #   pre:
-  #     - tailwind-class-sorter
-  #   # Post-format rewriters (modify formatted output string)
-  #   post: []
