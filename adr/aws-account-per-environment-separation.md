@@ -47,6 +47,13 @@ this decision can be applied.
    development account is used when real delivery or a real AWS API must be exercised.
 6. A credential or key leak is handled by disabling the affected environment account's credentials
    and keys. The other environments keep operating.
+7. Development email is sent from `fake.umaxica.app` (App) and `fake.umaxica.org` (Org), verified as
+   SES domain identities in the development account only. The application reads each sender address
+   from an environment variable with no code default; production keeps its `umaxica.app` and
+   `umaxica.org` senders. The `dev.` subdomain is not used because it is easily confused with the
+   separately owned `umaxica.dev` domain, both when reading mail and when editing DNS or IAM sender
+   restrictions. The DKIM records belong in the `umaxica.app` and `umaxica.org` Cloudflare zones as
+   DNS-only (unproxied) CNAMEs.
 
 ## Not Decided Here
 
@@ -54,8 +61,8 @@ this decision can be applied.
   own account per environment.
 - Use of AWS Organizations, a management account without workloads, and IAM Identity Center for
   human access. These are the expected structure but have not been approved.
-- Sending domains per environment. A separate subdomain for each non-production environment (for
-  example `dev.` and `stg.`) would keep DKIM and reputation apart from production.
+- The staging sending domain. A separate subdomain would keep its DKIM and reputation apart from
+  production; avoid names that resemble other owned domains, as decision 7 does for development.
 - Account IDs, Regions per environment, and the migration order.
 - AWS-less Sphere Regions, which remain open in `adr/cosmos-jwt-ps256-and-op-signing-in-aws-kms.md`.
 
