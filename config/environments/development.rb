@@ -280,7 +280,7 @@ Rails.application.configure do
   mailer_url_options[:port] = mail_origin.port unless mail_origin.port == default_mail_port
   config.action_mailer.default_url_options = mailer_url_options
   config.action_mailer.smtp_settings = {
-    address: "email-smtp.#{ENV.fetch("AWS_SES_REGION", "ap-northeast-1")}.amazonaws.com",
+    address: "email-smtp.#{ENV.fetch("AWS_SES_REGION")}.amazonaws.com",
     user_name: Rails.app.creds.option(:AWS_SES_SMTP_USERNAME),
     password: Rails.app.creds.option(:AWS_SES_SMTP_PASSWORD),
     port: 465,
