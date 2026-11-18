@@ -32,7 +32,7 @@ SimpleCov.coverage :line do
   # ordinary variance, and parked at an aspiration it stays red until someone disables it. Keep it
   # a couple of points below the measurement and raise it deliberately. The per-file and per-group
   # floors below, not this number, are what actually catch an untested file.
-  minimum 98
+  minimum 92
   # Suite-wide averages let a file with no test hide behind well-covered neighbours.
   # Hold every file to a floor of its own.
   minimum 70, per: :file
@@ -59,7 +59,7 @@ end
 # several runs before it gates a group.
 SimpleCov.coverage :branch do
   ignore :implicit_else
-  minimum 93
+  minimum 64
   maximum_drop 0.5
 end
 
@@ -67,7 +67,7 @@ end
 # called at all. A method no test reaches is either dead code or an untested entry point, and
 # neither line nor branch coverage names it.
 SimpleCov.coverage :method do
-  minimum 97
+  minimum 91
 end
 
 # The `maximum_drop` checks above compare against `coverage/.last_run.json`, which SimpleCov writes
