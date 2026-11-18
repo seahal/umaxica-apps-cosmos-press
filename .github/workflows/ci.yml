@@ -356,6 +356,13 @@ jobs:
         run: mkdir -p tmp && ln -sfn /tmp/pg tmp/pg
       - name: Create test databases
         run: env RAILS_ENV=test bin/rails db:create
+      - name: Create test replica databases
+        # db:create skips replicas; db:test:prepare requires them in the catalog.
+        run: >-
+          env RAILS_ENV=test bin/rails runner
+          'ActiveRecord::Base.configurations.configs_for(env_name: "test", include_hidden:
+          true).select(&:replica?).each { puts _1.database }' | xargs -n1 createdb -h "$PWD/tmp/pg"
+          -U root
       - name: Setup test databases
         # Same command as config/ci.rb; the list must cover every verified test database.
         run: >-
@@ -588,6 +595,13 @@ jobs:
         run: mkdir -p tmp && ln -sfn /tmp/pg tmp/pg
       - name: Create test databases
         run: env RAILS_ENV=test bin/rails db:create
+      - name: Create test replica databases
+        # db:create skips replicas; db:test:prepare requires them in the catalog.
+        run: >-
+          env RAILS_ENV=test bin/rails runner
+          'ActiveRecord::Base.configurations.configs_for(env_name: "test", include_hidden:
+          true).select(&:replica?).each { puts _1.database }' | xargs -n1 createdb -h "$PWD/tmp/pg"
+          -U root
       - name: Setup test databases
         # Same command as config/ci.rb; the list must cover every verified test database.
         run: >-
