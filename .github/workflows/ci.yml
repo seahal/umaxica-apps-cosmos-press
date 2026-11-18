@@ -352,6 +352,14 @@ jobs:
           cache-version: 1
       - name: Install native runtime dependencies
         run: sudo apt-get update -qq && sudo apt-get install --no-install-recommends -y libvips
+      # test/test_helper.rb builds the Vite test bundle with bun.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+      - run: bun install --frozen-lockfile
       - name: Link the PostgreSQL socket directory
         run: mkdir -p tmp && ln -sfn /tmp/pg tmp/pg
       - name: Create test databases
@@ -591,6 +599,14 @@ jobs:
           cache-version: 1
       - name: Install native runtime dependencies
         run: sudo apt-get update -qq && sudo apt-get install --no-install-recommends -y libvips
+      # test/test_helper.rb builds the Vite test bundle with bun.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+      - run: bun install --frozen-lockfile
       - name: Link the PostgreSQL socket directory
         run: mkdir -p tmp && ln -sfn /tmp/pg tmp/pg
       - name: Create test databases
